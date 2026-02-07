@@ -28,7 +28,10 @@ pub struct Vault {
 impl Vault {
     /// Create or open a vault
     pub fn new(config: Option<VaultConfig>) -> Result<Self> {
-        let config = config.unwrap_or_else(|| VaultConfig::new().expect("Failed to create config"));
+        let config = match config {
+            Some(c) => c,
+            None => VaultConfig::new()?,
+        };
 
         let vault_path = config.get_vault_path(None);
 
@@ -123,6 +126,7 @@ impl Vault {
     }
 
     /// Check if vault is unlocked
+    #[must_use]
     pub fn is_unlocked(&self) -> bool {
         self.active_key.is_some()
     }
@@ -261,6 +265,7 @@ impl Vault {
     }
 
     /// List all models in vault
+    #[must_use]
     pub fn list_models(&self) -> Vec<String> {
         self.version_control.versions.keys().cloned().collect()
     }

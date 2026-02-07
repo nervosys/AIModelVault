@@ -4,6 +4,15 @@ FIPS 140-3 Compliant Cryptographic Module
 This module provides FIPS 140-3 compliant encryption/decryption for model storage.
 Uses AES-256-GCM with PBKDF2 key derivation.
 
+.. warning:: Crypto Compatibility
+
+   This Python module uses **PBKDF2-HMAC-SHA256** for key derivation.
+   The Rust implementation (``src/crypto/mod.rs``) uses **Argon2id**.
+   Vaults created by the Rust ``aim`` CLI **cannot** be decrypted by this
+   Python module and vice-versa. For interop, use the Rust binary via
+   ``neuralvault.core.vault.Vault`` (subprocess wrapper) or wait for
+   PyO3 bindings (planned for v0.3.0).
+
 Security Controls:
 - NIST SP 800-38D (GCM mode)
 - NIST SP 800-132 (PBKDF2)

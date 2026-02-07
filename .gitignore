@@ -72,7 +72,7 @@ logs/
 
 # Rust
 target/
-Cargo.lock
+# Note: Cargo.lock is committed for binary crate reproducibility
 **/*.rs.bk
 *.pdb
 

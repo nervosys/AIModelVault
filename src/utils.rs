@@ -107,6 +107,7 @@ pub struct CompressionAnalyzer;
 
 impl CompressionAnalyzer {
     /// Calculate compression ratio
+    #[must_use]
     pub fn compression_ratio(original_size: u64, compressed_size: u64) -> f64 {
         if compressed_size == 0 {
             return 0.0;
@@ -115,6 +116,7 @@ impl CompressionAnalyzer {
     }
 
     /// Estimate compression ratio for model format
+    #[must_use]
     pub fn estimate_ratio(format: &ModelFormat) -> f64 {
         match format {
             ModelFormat::Safetensors => 1.05, // Low compression (already optimized)
@@ -287,6 +289,7 @@ impl QuantizationInfo {
     }
 
     /// Estimate model size after quantization
+    #[must_use]
     pub fn estimate_size(original_size: u64, from_bits: u8, to_bits: u8) -> u64 {
         if from_bits == 0 || to_bits == 0 {
             return original_size;
@@ -295,6 +298,7 @@ impl QuantizationInfo {
     }
 
     /// Calculate memory savings from quantization
+    #[must_use]
     pub fn memory_savings(original_size: u64, quantized_size: u64) -> QuantizationSavings {
         let saved_bytes = original_size.saturating_sub(quantized_size);
         let saved_percent = (saved_bytes as f64 / original_size as f64) * 100.0;
@@ -354,6 +358,7 @@ impl PruningInfo {
     }
 
     /// Calculate actual sparsity from parameters
+    #[must_use]
     pub fn calculate_sparsity(&self) -> f64 {
         if self.original_params == 0 {
             return 0.0;
@@ -362,6 +367,7 @@ impl PruningInfo {
     }
 
     /// Estimate size reduction from pruning
+    #[must_use]
     pub fn size_reduction(&self) -> f64 {
         self.calculate_sparsity() * 100.0
     }
@@ -407,6 +413,7 @@ impl ModelAnalyzer {
     }
 
     /// Get human-readable size
+    #[must_use]
     pub fn format_size(bytes: u64) -> String {
         const KB: u64 = 1024;
         const MB: u64 = KB * 1024;
@@ -427,6 +434,7 @@ impl ModelAnalyzer {
     }
 
     /// Get human-readable parameter count
+    #[must_use]
     pub fn format_parameters(params: u64) -> String {
         const K: u64 = 1_000;
         const M: u64 = K * 1_000;
@@ -506,6 +514,7 @@ pub struct ModelDeduplicator;
 
 impl ModelDeduplicator {
     /// Calculate model hash for deduplication
+    #[must_use]
     pub fn calculate_hash(data: &[u8]) -> String {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
@@ -530,6 +539,7 @@ impl ModelDeduplicator {
     }
 
     /// Calculate content similarity (simple byte comparison)
+    #[must_use]
     pub fn similarity_score(data1: &[u8], data2: &[u8]) -> f64 {
         if data1.len() != data2.len() {
             return 0.0;

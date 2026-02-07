@@ -191,26 +191,31 @@ impl ModelMetadata {
         self
     }
 
+    /// Set the framework used to train the model.
     pub fn with_framework(mut self, framework: String) -> Self {
         self.framework = Some(framework);
         self
     }
 
+    /// Set the model's target task (e.g., classification, generation).
     pub fn with_task(mut self, task: String) -> Self {
         self.task = Some(task);
         self
     }
 
+    /// Set the model architecture (e.g., Transformer, CNN).
     pub fn with_architecture(mut self, arch: String) -> Self {
         self.architecture = Some(arch);
         self
     }
 
+    /// Set the model parameter count.
     pub fn with_parameters(mut self, params: u64) -> Self {
         self.parameters = Some(params);
         self
     }
 
+    /// Add a custom metadata field as a key-value pair.
     pub fn add_custom_field(mut self, key: String, value: String) -> Self {
         self.custom_fields.insert(key, value);
         self

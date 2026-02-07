@@ -5,7 +5,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-171%20passing-brightgreen.svg)](TEST_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-227%20passing-brightgreen.svg)](TEST_COVERAGE.md)
 
 A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, compression, and advanced model utilities.
 
@@ -91,7 +91,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 
 ### 10. 🔄 Production-Ready Reliability
 **Why it matters**: Trust it with your most important models
-- 171 comprehensive tests (100% passing)
+- 227 comprehensive tests (100% passing)
 - Type-safe Rust implementation (no memory bugs)
 - Comprehensive error handling
 - Detailed logging and debugging support
@@ -756,7 +756,7 @@ let result = server.execute_tool(
 | [Formats Guide](FORMATS.md)                 | Supported model formats (22+)         |
 | [Development Guide](DEVELOPMENT.md)         | For contributors and developers       |
 | [Security Policy](SECURITY.md)              | Security standards and reporting      |
-| [Test Coverage](TEST_COVERAGE.md)           | Test suite documentation (171 tests)  |
+| [Test Coverage](TEST_COVERAGE.md)           | Test suite documentation (227 tests)  |
 
 ## 🔐 Security & Compliance
 
@@ -816,7 +816,7 @@ User Passphrase
 ## 🧪 Testing & Quality
 
 ```bash
-# Run all tests (119 tests)
+# Run all tests (227 tests)
 cargo test --all
 
 # Run specific test suites
@@ -832,14 +832,16 @@ cargo audit
 cargo bench
 ```
 
-**Test Coverage**: 171 tests, all passing ✅
-- Unit tests: 22
+**Test Coverage**: 227 tests, all passing ✅
+- Unit tests: 40
 - Config/Error tests: 22
 - Crypto tests: 14
 - Format tests: 15
 - Integration tests: 8
-- Utilities tests: 38
+- Model card integration: 4
+- Model card tests: 48
 - RAG tests: 38 (includes 23 MCP tests)
+- Utilities tests: 38
 
 ## 📦 Project Structure
 
@@ -856,7 +858,7 @@ aimodelvault/
 │   ├── crypto/             # FIPS cryptography
 │   ├── audit.rs            # Security logging
 │   └── compliance.rs       # Compliance checks
-├── tests/                  # 119 comprehensive tests
+├── tests/                  # 227 comprehensive tests
 ├── docs/                   # Documentation
 ├── examples/               # Usage examples
 └── benches/                # Performance benchmarks
@@ -899,12 +901,7 @@ See [SECURITY.md](SECURITY.md) for our security policy.
 
 ## 🌟 Features Roadmap
 
-- [ ] CLI commands for utilities (archive, dedupe, analyze)
-- [ ] Async API for large model operations
-- [ ] Model format conversion utilities
-- [ ] Cloud storage backends (S3, Azure Blob)
-- [ ] Model registry and discovery
-- [ ] GraphQL API for model management
+See [ROADMAP.md](ROADMAP.md) for the full development roadmap from v0.1.1 through v1.0.0.
 
 ## � Documentation
 

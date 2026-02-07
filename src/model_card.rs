@@ -256,21 +256,25 @@ impl ModelCard {
         self
     }
 
+    /// Set the evaluation metrics and results section.
     pub fn with_evaluation(mut self, evaluation: Evaluation) -> Self {
         self.evaluation = Some(evaluation);
         self
     }
 
+    /// Set the ethical considerations section.
     pub fn with_ethical_considerations(mut self, ethical: EthicalConsiderations) -> Self {
         self.ethical_considerations = Some(ethical);
         self
     }
 
+    /// Set the caveats and recommendations section.
     pub fn with_caveats_and_recommendations(mut self, caveats: CaveatsAndRecommendations) -> Self {
         self.caveats_and_recommendations = Some(caveats);
         self
     }
 
+    /// Add a custom metadata key-value pair to the model card.
     pub fn add_metadata(mut self, key: String, value: String) -> Self {
         self.metadata.insert(key, value);
         self

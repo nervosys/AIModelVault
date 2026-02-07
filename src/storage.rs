@@ -54,19 +54,23 @@ pub trait StorageBackend: Send + Sync {
 /// Storage backend configuration
 #[derive(Debug, Clone)]
 pub enum StorageConfig {
+    /// Local filesystem storage.
     Local {
         path: PathBuf,
     },
+    /// AWS S3 object storage.
     S3 {
         bucket: String,
         region: String,
         prefix: Option<String>,
     },
+    /// Azure Blob storage.
     Azure {
         account: String,
         container: String,
         prefix: Option<String>,
     },
+    /// Google Cloud Storage.
     Gcs {
         bucket: String,
         project: String,

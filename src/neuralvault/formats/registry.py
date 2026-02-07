@@ -3,6 +3,9 @@ Model format registry for AI Model Vault.
 
 Enumerates supported model formats and provides detection/conversion guidance.
 Mirrors the Rust `ModelFormat` enum in src/formats.rs.
+
+NOTE: This enum is kept in sync with the Rust enum. If you add a variant here,
+add the corresponding entry in src/formats.rs (and vice-versa).
 """
 
 from enum import Enum
@@ -16,64 +19,42 @@ class ModelFormat(Enum):
 
     Each variant corresponds to a file format that AI Model Vault
     can store, retrieve, and (where applicable) convert between.
+
+    This enum mirrors the Rust ``ModelFormat`` in ``src/formats.rs``.
     """
 
-    # PyTorch formats
-    PYTORCH = "pytorch"
-    PYTORCH_SCRIPT = "pytorch_script"
-
-    # TensorFlow / Keras
-    TENSORFLOW = "tensorflow"
-    TENSORFLOW_LITE = "tensorflow_lite"
-    KERAS = "keras"
-
-    # ONNX
-    ONNX = "onnx"
-
-    # SafeTensors (Hugging Face)
+    # ----- LLM-centric formats -----
     SAFETENSORS = "safetensors"
-
-    # Hugging Face Transformers
-    HUGGINGFACE = "huggingface"
-
-    # JAX / Flax
-    JAX = "jax"
-    FLAX = "flax"
-
-    # Apple Core ML
-    COREML = "coreml"
-
-    # NVIDIA TensorRT
-    TENSORRT = "tensorrt"
-
-    # OpenVINO
-    OPENVINO = "openvino"
-
-    # GGML / GGUF (llama.cpp)
-    GGML = "ggml"
     GGUF = "gguf"
+    PYTORCH = "pytorch"
+    TENSORRT = "tensorrt"
+    ONNX = "onnx"
+    MLX = "mlx"
+    COREML = "coreml"
+    TORCHSCRIPT = "torchscript"
+    TFLITE = "tflite"
 
-    # MXNet
-    MXNET = "mxnet"
+    # ----- General DL formats -----
+    TENSORFLOW = "tensorflow"
+    KERAS = "keras"
+    OPENVINO = "openvino"
+    TVM = "tvm"
+    NCNN = "ncnn"
+    MNN = "mnn"
+    RKNN = "rknn"
 
-    # PaddlePaddle
-    PADDLE = "paddle"
-
-    # Caffe
+    # ----- Legacy formats -----
     CAFFE = "caffe"
+    MXNET = "mxnet"
+    DARKNET = "darknet"
 
-    # Scikit-learn (pickle/joblib)
-    SKLEARN = "sklearn"
+    # ----- Data formats -----
+    HDF5 = "hdf5"
+    PICKLE = "pickle"
+    NUMPY = "numpy"
 
-    # XGBoost
-    XGBOOST = "xgboost"
-
-    # LightGBM
-    LIGHTGBM = "lightgbm"
-
-    # Raw binary / unknown
-    RAW = "raw"
-    UNKNOWN = "unknown"
+    # ----- Special -----
+    CUSTOM = "custom"
 
     @classmethod
     def detect(cls, path: str) -> "ModelFormat":
@@ -88,53 +69,85 @@ class ModelFormat(Enum):
         """
         ext = Path(path).suffix.lower()
         extension_map = {
+            # Safetensors
+            ".safetensors": cls.SAFETENSORS,
+            # GGUF
+            ".gguf": cls.GGUF,
+            # PyTorch
             ".pt": cls.PYTORCH,
             ".pth": cls.PYTORCH,
-            ".bin": cls.PYTORCH,  # Common for HF models
-            ".torchscript": cls.PYTORCH_SCRIPT,
-            ".pb": cls.TENSORFLOW,
-            ".tflite": cls.TENSORFLOW_LITE,
-            ".h5": cls.KERAS,
-            ".keras": cls.KERAS,
+            ".bin": cls.PYTORCH,
+            # TensorRT
+            ".plan": cls.TENSORRT,
+            ".engine": cls.TENSORRT,
+            ".trt": cls.TENSORRT,
+            # ONNX
             ".onnx": cls.ONNX,
-            ".safetensors": cls.SAFETENSORS,
-            ".ggml": cls.GGML,
-            ".gguf": cls.GGUF,
+            # MLX
+            ".npz": cls.MLX,
+            # Core ML
             ".mlmodel": cls.COREML,
             ".mlpackage": cls.COREML,
-            ".trt": cls.TENSORRT,
-            ".engine": cls.TENSORRT,
+            # TorchScript
+            ".torchscript": cls.TORCHSCRIPT,
+            # TFLite
+            ".tflite": cls.TFLITE,
+            # TensorFlow
+            ".pb": cls.TENSORFLOW,
+            ".savedmodel": cls.TENSORFLOW,
+            # Keras
+            ".h5": cls.KERAS,
+            ".keras": cls.KERAS,
+            # OpenVINO
             ".xml": cls.OPENVINO,
-            ".pdparams": cls.PADDLE,
+            # NCNN
+            ".param": cls.NCNN,
+            # MNN
+            ".mnn": cls.MNN,
+            # RKNN
+            ".rknn": cls.RKNN,
+            # Caffe
             ".caffemodel": cls.CAFFE,
-            ".pkl": cls.SKLEARN,
-            ".joblib": cls.SKLEARN,
-            ".xgb": cls.XGBOOST,
-            ".lgb": cls.LIGHTGBM,
+            # MXNet
+            ".params": cls.MXNET,
+            # Darknet
+            ".weights": cls.DARKNET,
+            # HDF5
+            ".hdf5": cls.HDF5,
+            # Pickle
+            ".pkl": cls.PICKLE,
+            ".pickle": cls.PICKLE,
+            # NumPy
+            ".npy": cls.NUMPY,
         }
-        return extension_map.get(ext, cls.UNKNOWN)
+        return extension_map.get(ext, cls.CUSTOM)
 
     @property
     def file_extensions(self) -> list:
         """Return common file extensions for this format."""
         ext_map = {
-            self.PYTORCH: [".pt", ".pth", ".bin"],
-            self.PYTORCH_SCRIPT: [".torchscript"],
-            self.TENSORFLOW: [".pb", ".savedmodel"],
-            self.TENSORFLOW_LITE: [".tflite"],
-            self.KERAS: [".h5", ".keras"],
-            self.ONNX: [".onnx"],
             self.SAFETENSORS: [".safetensors"],
-            self.GGML: [".ggml"],
             self.GGUF: [".gguf"],
+            self.PYTORCH: [".pt", ".pth", ".bin"],
+            self.TENSORRT: [".plan", ".engine", ".trt"],
+            self.ONNX: [".onnx"],
+            self.MLX: [".npz"],
             self.COREML: [".mlmodel", ".mlpackage"],
-            self.TENSORRT: [".trt", ".engine"],
+            self.TORCHSCRIPT: [".torchscript"],
+            self.TFLITE: [".tflite"],
+            self.TENSORFLOW: [".pb", ".savedmodel"],
+            self.KERAS: [".h5", ".keras"],
             self.OPENVINO: [".xml"],
-            self.PADDLE: [".pdparams"],
+            self.TVM: [],
+            self.NCNN: [".param"],
+            self.MNN: [".mnn"],
+            self.RKNN: [".rknn"],
             self.CAFFE: [".caffemodel"],
-            self.SKLEARN: [".pkl", ".joblib"],
-            self.XGBOOST: [".xgb"],
-            self.LIGHTGBM: [".lgb"],
+            self.MXNET: [".params"],
+            self.DARKNET: [".weights"],
+            self.HDF5: [".hdf5"],
+            self.PICKLE: [".pkl", ".pickle"],
+            self.NUMPY: [".npy", ".npz"],
         }
         return ext_map.get(self, [])
 

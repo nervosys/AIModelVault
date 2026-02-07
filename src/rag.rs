@@ -750,7 +750,8 @@ fn validate_sql_identifier(name: &str) -> Result<()> {
         ));
     }
     // Only allow alphanumeric characters and underscores; must start with letter or underscore
-    let first = name.chars().next().unwrap();
+    // Safety: empty case is handled above, so .expect() is unreachable
+    let first = name.chars().next().expect("BUG: empty check above should have returned");
     if !first.is_ascii_alphabetic() && first != '_' {
         return Err(VaultError::InvalidInput(format!(
             "SQL identifier '{}' must start with a letter or underscore",

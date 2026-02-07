@@ -50,23 +50,27 @@ pub struct VaultConfig {
     pub dirs: DirectoryPaths,
 }
 
+/// Default vault selection settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultSettings {
     pub default_vault: String,
 }
 
+/// Cryptographic algorithm and key derivation settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CryptoSettings {
     pub algorithm: String,
     pub kdf: String,
 }
 
+/// Compression algorithm and level settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompressionSettings {
     pub algorithm: String,
     pub level: u8,
 }
 
+/// Storage backend behavior settings (versioning, cleanup).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageSettings {
     pub max_versions: u32,
@@ -74,6 +78,7 @@ pub struct StorageSettings {
     pub checkpoint_format: String,
 }
 
+/// Security policy settings (passphrase, session timeout, audit).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecuritySettings {
     pub require_passphrase: bool,
@@ -81,6 +86,7 @@ pub struct SecuritySettings {
     pub audit_log: bool,
 }
 
+/// Compliance and regulatory settings (FIPS mode, CVE scanning).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplianceSettings {
     pub fips_mode: bool,
@@ -88,6 +94,7 @@ pub struct ComplianceSettings {
     pub audit_retention_days: u32,
 }
 
+/// XDG-compliant directory paths for config, data, cache, and logs.
 #[derive(Debug, Clone, Default)]
 pub struct DirectoryPaths {
     pub config_dir: PathBuf,
@@ -283,8 +290,10 @@ impl VaultConfig {
     }
 }
 
+/// Note: `VaultConfig::default()` panics if the home directory cannot be determined.
+/// Prefer `VaultConfig::new()` which returns `Result` for fallible creation.
 impl Default for VaultConfig {
     fn default() -> Self {
-        Self::new().expect("Failed to create default configuration")
+        Self::new().expect("Failed to create default configuration: home directory unavailable")
     }
 }

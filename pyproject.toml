@@ -34,7 +34,11 @@ dependencies = [
     "filelock>=3.12.0",
     "jsonschema>=4.19.0",
     "packaging>=23.0",
-    # Model format support
+]
+
+[project.optional-dependencies]
+ml = [
+    # Model format support (multi-GB, install only when needed)
     "torch>=2.0.0",
     "tensorflow>=2.13.0",
     "onnx>=1.14.0",
@@ -42,8 +46,6 @@ dependencies = [
     "numpy>=1.24.0",
     "h5py>=3.9.0",
 ]
-
-[project.optional-dependencies]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",

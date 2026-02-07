@@ -205,6 +205,7 @@ impl FipsCrypto {
     ///
     /// # Compliance
     /// - FIPS 140-3: Approved random number generation
+    #[must_use]
     pub fn generate_random(&self, length: usize) -> Vec<u8> {
         let mut bytes = vec![0u8; length];
         OsRng.fill_bytes(&mut bytes);
@@ -212,6 +213,7 @@ impl FipsCrypto {
     }
 
     /// Compute SHA-256 hash
+    #[must_use]
     pub fn hash_sha256(data: &[u8]) -> Vec<u8> {
         let mut hasher = Sha256::new();
         hasher.update(data);
@@ -219,14 +221,17 @@ impl FipsCrypto {
     }
 
     /// Compute SHA-256 hash as hex string
+    #[must_use]
     pub fn hash_sha256_hex(data: &[u8]) -> String {
         hex::encode(Self::hash_sha256(data))
     }
 }
 
+/// Note: `FipsCrypto::default()` panics if RNG initialization fails.
+/// Prefer `FipsCrypto::new()` which returns `Result` for fallible creation.
 impl Default for FipsCrypto {
     fn default() -> Self {
-        Self::new().expect("Failed to create FipsCrypto")
+        Self::new().expect("Failed to create FipsCrypto: RNG unavailable")
     }
 }
 
@@ -285,9 +290,11 @@ impl KeyManager {
     }
 }
 
+/// Note: `KeyManager::default()` panics if RNG initialization fails.
+/// Prefer `KeyManager::new()` which returns `Result` for fallible creation.
 impl Default for KeyManager {
     fn default() -> Self {
-        Self::new().expect("Failed to create KeyManager")
+        Self::new().expect("Failed to create KeyManager: RNG unavailable")
     }
 }
 
