@@ -1,0 +1,156 @@
+warning: use of deprecated associated function `aes_gcm::aead::generic_array::GenericArray::<T, N>::from_slice`: please upgrade to generic-array 1.x
+   --> src\crypto\mod.rs:152:44
+    |
+152 |         let cipher_key = Key::<Aes256Gcm>::from_slice(key.as_bytes());
+    |                                            ^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated associated function `aes_gcm::aead::generic_array::GenericArray::<T, N>::from_slice`: please upgrade to generic-array 1.x
+   --> src\crypto\mod.rs:158:28
+    |
+158 |         let nonce = Nonce::from_slice(&nonce_bytes);
+    |                            ^^^^^^^^^^
+
+warning: use of deprecated associated function `aes_gcm::aead::generic_array::GenericArray::<T, N>::from_slice`: please upgrade to generic-array 1.x
+   --> src\crypto\mod.rs:191:44
+    |
+191 |         let cipher_key = Key::<Aes256Gcm>::from_slice(key.as_bytes());
+    |                                            ^^^^^^^^^^
+
+warning: use of deprecated associated function `aes_gcm::aead::generic_array::GenericArray::<T, N>::from_slice`: please upgrade to generic-array 1.x
+   --> src\crypto\mod.rs:195:28
+    |
+195 |         let nonce = Nonce::from_slice(&encrypted_data[..NONCE_SIZE]);
+    |                            ^^^^^^^^^^
+
+warning: field `enabled_checks` is never read
+  --> src\compliance.rs:46:5
+   |
+45 | pub struct ComplianceChecker {
+   |            ----------------- field in this struct
+46 |     enabled_checks: HashMap<String, bool>,
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: field `key_manager` is never read
+  --> src\vault.rs:23:5
+   |
+17 | pub struct Vault {
+   |            ----- field in this struct
+...
+23 |     key_manager: KeyManager,
+   |     ^^^^^^^^^^^
+
+warning: field `vault_path` is never read
+  --> src\version.rs:62:5
+   |
+61 | pub struct VersionControl {
+   |            -------------- field in this struct
+62 |     vault_path: PathBuf,
+   |     ^^^^^^^^^^
+
+=== AI Model Vault Utilities Demo ===
+
+≡ƒôè Compression Analysis
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Compression ratio: 1.33x
+Original size: 10000000 bytes
+Compressed size: 7500000 bytes
+Space saved: 2500000 bytes (25.0%)
+Efficiency: 1.03x of expected
+
+Estimated compression ratios by format:
+  Safetensors: 1.05x
+  GGUF: 1.00x
+  PyTorch: 1.30x
+  HDF5: 1.40x
+
+≡ƒöó Quantization Analysis
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Supported quantization schemes:
+  ΓÇó FP32
+  ΓÇó FP16
+  ΓÇó BF16
+  ΓÇó INT8
+  ΓÇó INT4
+  ΓÇó Q8_0
+  ΓÇó Q4_0
+  ΓÇó Q4_K_M
+  ΓÇó Q5_K_M
+  ΓÇó Q6_K
+
+Size estimates for 4GB FP32 model:
+  FP32 ΓåÆ INT8: 953.67 MB (1.00 GB)
+  FP32 ΓåÆ INT4: 476.84 MB (0.50 GB)
+
+FP32 ΓåÆ INT8 savings:
+  Space saved: 2.79 GB
+  Percentage: 75.0%
+  Size ratio: 4.0x smaller
+
+Γ£é∩╕Å  Pruning Analysis
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Pruning method: Magnitude
+Target sparsity: 50.0%
+Original parameters: 7.00B
+Remaining parameters: 3.50B
+Actual sparsity: 50.0%
+Size reduction: 50.0%
+
+≡ƒôê Model Analysis
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Format: Safetensors
+Size: 4.77 MB
+Size (MB): 4.77
+Size (GB): 0.00
+Estimated parameters: 1.25M
+Framework: PyTorch 2.1
+Task: text-generation
+
+ΓÜí Retrieval Optimization (LRU Cache)
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Cache size limit: 10.00 MB
+Γ£ô Cached 'llama-7b' (1000000 bytes)
+Γ£ô Cached 'gpt2' (5000000 bytes)
+Γ£ô Retrieved 'llama-7b' from cache (fast!)
+
+Cache statistics:
+  Entries: 2
+  Total size: 5.72 MB
+  Max size: 10.00 MB
+  Utilization: 57.2%
+
+≡ƒôª Model Archiving
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Γ£ô Created TAR archive: C:\Users\adamm\AppData\Local\Temp\.tmp0POUBc\models.tar
+  Size: 450 bytes
+Γ£ô Created ZIP archive: C:\Users\adamm\AppData\Local\Temp\.tmp0POUBc\models.zip
+  Size: 450 bytes
+Γ£ô Extracted 3 models from TAR
+Γ£ô Extracted 3 models from ZIP
+
+≡ƒöì Deduplication
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Hash of model-v1: d29751f2649b32ff...
+
+Found 1 duplicate group(s):
+  Hash d29751f2649b32ff...:
+    - model-v1
+    - model-v1-copy
+
+≡ƒôñ Model Export
+ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+Γ£ô Exported model: C:\Users\adamm\AppData\Local\Temp\.tmpIhzp9V\exported-model.onnx
+Γ£ô Exported metadata: C:\Users\adamm\AppData\Local\Temp\.tmpIhzp9V\exported-model.meta.json
+
+Metadata preview:
+  {
+    "name": "exported-model",
+    "format": "ONNX",
+    "description": "Demo model for export",
+    "framework": "PyTorch",
+
+
+=== Demo Complete! ===

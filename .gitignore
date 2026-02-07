@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Security - NEVER commit these
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+vault_data/
+.vault_config
+*.enc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model files (can be large)
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.pb
+*.h5
+*.safetensors
+
+# Documentation
+docs/_build/
+site/
+
+# Logs
+*.log
+logs/
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# Test outputs (keep committed for reference)
+# reports/*.txt can be gitignored if you prefer
+
