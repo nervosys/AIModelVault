@@ -44,9 +44,7 @@ pub struct FipsCrypto {
 
 /// Secure key container that zeroizes on drop
 #[derive(Clone, ZeroizeOnDrop)]
-#[allow(unused_assignments)]
 pub struct SecureKey {
-    #[zeroize(skip)]
     key: [u8; KEY_SIZE],
 }
 

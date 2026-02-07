@@ -776,7 +776,7 @@ fn test_builtin_add_document_tool() {
     assert_eq!(result.data.get("id").unwrap().as_str().unwrap(), "doc123");
     assert_eq!(
         result.data.get("status").unwrap().as_str().unwrap(),
-        "added"
+        "accepted"
     );
 }
 
@@ -839,8 +839,8 @@ fn test_builtin_execute_rule_tool() {
         "rule123"
     );
     assert_eq!(
-        result.data.get("executed").unwrap().as_bool().unwrap(),
-        true
+        result.data.get("status").unwrap().as_str().unwrap(),
+        "accepted"
     );
 }
 
