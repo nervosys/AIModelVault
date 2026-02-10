@@ -14,10 +14,7 @@ pub struct RetrievalCache {
 
 #[derive(Debug, Clone)]
 struct CachedResult {
-    #[allow(dead_code)]
-    query_hash: String,
     results: Vec<Document>,
-    #[allow(dead_code)]
     timestamp: std::time::SystemTime,
     access_count: usize,
 }
@@ -53,9 +50,8 @@ impl RetrievalCache {
 
         if result_size <= self.max_size {
             self.cache.insert(
-                query_hash.clone(),
+                query_hash,
                 CachedResult {
-                    query_hash,
                     results,
                     timestamp: std::time::SystemTime::now(),
                     access_count: 0,
@@ -79,12 +75,16 @@ impl RetrievalCache {
         }
     }
 
-    /// Evict least recently used entry
+    /// Evict least recently used entry (lowest access_count; oldest timestamp breaks ties)
     fn evict_lru(&mut self) {
         if let Some((key_to_remove, size)) = self
             .cache
             .iter()
-            .min_by_key(|(_, v)| v.access_count)
+            .min_by(|(_, a), (_, b)| {
+                a.access_count
+                    .cmp(&b.access_count)
+                    .then_with(|| a.timestamp.cmp(&b.timestamp))
+            })
             .map(|(k, v)| {
                 let size = v.results.iter().map(|d| d.content.len()).sum::<usize>();
                 (k.clone(), size)

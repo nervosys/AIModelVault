@@ -20,7 +20,6 @@ pub struct Vault {
     version_control: VersionControl,
     audit_logger: Option<AuditLogger>,
     crypto: FipsCrypto,
-    #[allow(dead_code)]
     key_manager: KeyManager,
     active_key: Option<SecureKey>,
 }
@@ -334,6 +333,11 @@ impl Vault {
     /// Get vault configuration
     pub fn get_config(&self) -> &VaultConfig {
         &self.config
+    }
+
+    /// Get the key manager
+    pub fn key_manager(&self) -> &KeyManager {
+        &self.key_manager
     }
 
     /// Change vault passphrase

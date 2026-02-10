@@ -59,7 +59,6 @@ pub struct ModelVersion {
 /// - CMMC AU.3.046: Alert in the event of an audit logging process failure
 /// - CMMC AU.3.049: Protect audit information from unauthorized access
 pub struct VersionControl {
-    #[allow(dead_code)]
     vault_path: PathBuf,
     version_file: PathBuf,
     pub(crate) versions: HashMap<String, Vec<ModelVersion>>,
@@ -78,6 +77,11 @@ impl VersionControl {
         };
         vc.load_versions()?;
         Ok(vc)
+    }
+
+    /// Return the vault directory path
+    pub fn vault_path(&self) -> &std::path::Path {
+        &self.vault_path
     }
 
     /// Load version history from file

@@ -275,8 +275,8 @@ impl ModelCard {
     }
 
     /// Add a custom metadata key-value pair to the model card.
-    pub fn add_metadata(mut self, key: String, value: String) -> Self {
-        self.metadata.insert(key, value);
+    pub fn add_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
         self
     }
 
@@ -299,57 +299,53 @@ impl ModelCard {
 
     /// Convert to Markdown format (HuggingFace style)
     pub fn to_markdown(&self) -> String {
-        let mut md = String::new();
+        use std::fmt::Write;
+        let mut md = String::with_capacity(2048);
 
         // Header
-        md.push_str(&format!("# Model Card: {}\n\n", self.model_details.name));
+        let _ = write!(md, "# Model Card: {}\n\n", self.model_details.name);
 
         // Model Details
         md.push_str("## Model Details\n\n");
-        md.push_str(&format!("- **Name**: {}\n", self.model_details.name));
-        md.push_str(&format!("- **Version**: {}\n", self.model_details.version));
-        md.push_str(&format!("- **Type**: {}\n", self.model_details.model_type));
-        md.push_str(&format!(
-            "- **Architecture**: {}\n",
-            self.model_details.architecture
-        ));
-        md.push_str(&format!("- **Size**: {}\n", self.model_details.size));
-        md.push_str(&format!(
-            "- **Framework**: {}\n",
-            self.model_details.framework
-        ));
-        md.push_str(&format!("- **Format**: {}\n", self.model_details.format));
+        let _ = write!(md, "- **Name**: {}\n", self.model_details.name);
+        let _ = write!(md, "- **Version**: {}\n", self.model_details.version);
+        let _ = write!(md, "- **Type**: {}\n", self.model_details.model_type);
+        let _ = write!(md, "- **Architecture**: {}\n", self.model_details.architecture);
+        let _ = write!(md, "- **Size**: {}\n", self.model_details.size);
+        let _ = write!(md, "- **Framework**: {}\n", self.model_details.framework);
+        let _ = write!(md, "- **Format**: {}\n", self.model_details.format);
 
         if let Some(license) = &self.model_details.license {
-            md.push_str(&format!("- **License**: {}\n", license));
+            let _ = write!(md, "- **License**: {}\n", license);
         }
 
         if !self.model_details.developers.is_empty() {
-            md.push_str(&format!(
+            let _ = write!(
+                md,
                 "- **Developers**: {}\n",
                 self.model_details.developers.join(", ")
-            ));
+            );
         }
 
         if let Some(repo) = &self.model_details.repository {
-            md.push_str(&format!("- **Repository**: {}\n", repo));
+            let _ = write!(md, "- **Repository**: {}\n", repo);
         }
 
-        md.push_str(&format!("\n{}\n\n", self.model_details.description));
+        let _ = write!(md, "\n{}\n\n", self.model_details.description);
 
         // Intended Use
         md.push_str("## Intended Use\n\n");
         md.push_str("### Primary Uses\n");
         for use_case in &self.intended_use.primary_uses {
-            md.push_str(&format!("- {}\n", use_case));
+            let _ = write!(md, "- {}\n", use_case);
         }
         md.push_str("\n### Primary Users\n");
         for user in &self.intended_use.primary_users {
-            md.push_str(&format!("- {}\n", user));
+            let _ = write!(md, "- {}\n", user);
         }
         md.push_str("\n### Out-of-Scope Uses\n");
         for use_case in &self.intended_use.out_of_scope_uses {
-            md.push_str(&format!("- {}\n", use_case));
+            let _ = write!(md, "- {}\n", use_case);
         }
         md.push('\n');
 
@@ -358,13 +354,13 @@ impl ModelCard {
             md.push_str("## Training Data\n\n");
             md.push_str("### Datasets\n");
             for dataset in &training.datasets {
-                md.push_str(&format!("- {}\n", dataset));
+                let _ = write!(md, "- {}\n", dataset);
             }
             if let Some(size) = &training.size {
-                md.push_str(&format!("\n**Dataset Size**: {}\n", size));
+                let _ = write!(md, "\n**Dataset Size**: {}\n", size);
             }
             if let Some(languages) = &training.languages {
-                md.push_str(&format!("\n**Languages**: {}\n", languages.join(", ")));
+                let _ = write!(md, "\n**Languages**: {}\n", languages.join(", "));
             }
             md.push('\n');
         }
@@ -374,9 +370,9 @@ impl ModelCard {
             md.push_str("## Evaluation\n\n");
             md.push_str("### Metrics\n");
             for metric in &eval.metrics {
-                md.push_str(&format!("- **{}**: {:.4}", metric.name, metric.value));
+                let _ = write!(md, "- **{}**: {:.4}", metric.name, metric.value);
                 if let Some(desc) = &metric.description {
-                    md.push_str(&format!(" - {}", desc));
+                    let _ = write!(md, " - {}", desc);
                 }
                 md.push('\n');
             }
@@ -384,7 +380,7 @@ impl ModelCard {
             if let Some(benchmarks) = &eval.benchmarks {
                 md.push_str("\n### Benchmark Results\n");
                 for (name, score) in benchmarks {
-                    md.push_str(&format!("- **{}**: {:.4}\n", name, score));
+                    let _ = write!(md, "- **{}**: {:.4}\n", name, score);
                 }
             }
             md.push('\n');
@@ -397,7 +393,7 @@ impl ModelCard {
             if let Some(bias) = &ethical.bias {
                 md.push_str("### Bias Considerations\n");
                 for item in bias {
-                    md.push_str(&format!("- {}\n", item));
+                    let _ = write!(md, "- {}\n", item);
                 }
                 md.push('\n');
             }
@@ -405,17 +401,17 @@ impl ModelCard {
             if let Some(risks) = &ethical.risks {
                 md.push_str("### Risk Assessment\n");
                 for risk in risks {
-                    md.push_str(&format!("- {}\n", risk));
+                    let _ = write!(md, "- {}\n", risk);
                 }
                 md.push('\n');
             }
 
             if let Some(impact) = &ethical.environmental_impact {
                 md.push_str("### Environmental Impact\n");
-                md.push_str(&format!("- **Hardware**: {}\n", impact.hardware));
-                md.push_str(&format!("- **Training Hours**: {:.1}\n", impact.hours));
+                let _ = write!(md, "- **Hardware**: {}\n", impact.hardware);
+                let _ = write!(md, "- **Training Hours**: {:.1}\n", impact.hours);
                 if let Some(carbon) = impact.carbon_emitted {
-                    md.push_str(&format!("- **Carbon Emitted**: {:.2} kg CO2e\n", carbon));
+                    let _ = write!(md, "- **Carbon Emitted**: {:.2} kg CO2e\n", carbon);
                 }
                 md.push('\n');
             }
@@ -426,11 +422,11 @@ impl ModelCard {
             md.push_str("## Limitations and Recommendations\n\n");
             md.push_str("### Limitations\n");
             for limitation in &caveats.limitations {
-                md.push_str(&format!("- {}\n", limitation));
+                let _ = write!(md, "- {}\n", limitation);
             }
             md.push_str("\n### Recommendations\n");
             for rec in &caveats.recommendations {
-                md.push_str(&format!("- {}\n", rec));
+                let _ = write!(md, "- {}\n", rec);
             }
             md.push('\n');
         }
@@ -444,14 +440,16 @@ impl ModelCard {
         }
 
         // Footer
-        md.push_str(&format!(
+        let _ = write!(
+            md,
             "\n---\n*Model card created: {}*\n",
             self.created_at.format("%Y-%m-%d")
-        ));
-        md.push_str(&format!(
+        );
+        let _ = write!(
+            md,
             "*Last updated: {}*\n",
             self.updated_at.format("%Y-%m-%d")
-        ));
+        );
 
         md
     }

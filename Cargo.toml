@@ -123,3 +123,7 @@ path = "src/lib.rs"
 [[bench]]
 name = "crypto_bench"
 harness = false
+
+[[bench]]
+name = "vault_bench"
+harness = false

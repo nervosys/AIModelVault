@@ -43,7 +43,6 @@ pub enum ViolationSeverity {
 
 /// Compliance checker
 pub struct ComplianceChecker {
-    #[allow(dead_code)]
     enabled_checks: HashMap<String, bool>,
 }
 
@@ -69,6 +68,9 @@ impl ComplianceChecker {
     /// Note: This is a static analysis of the algorithms configured, not a
     /// runtime verification by a FIPS-certified module.
     pub fn check_fips_140_3(&self) -> bool {
+        if !self.is_check_enabled("fips_140_3") {
+            return true;
+        }
         // We use AES-256-GCM via the aes-gcm crate, Argon2id via argon2 crate,
         // and SHA-256 via sha2 crate. These are FIPS-approved algorithm choices.
         // The underlying implementations are NOT FIPS-validated (would require
@@ -81,6 +83,9 @@ impl ComplianceChecker {
     /// Runs `cargo audit` if available, otherwise reports the limitation.
     /// Returns (passed, list_of_cves).
     pub fn check_cve(&self) -> (bool, Vec<String>) {
+        if !self.is_check_enabled("cve") {
+            return (true, Vec::new());
+        }
         // Attempt to run cargo-audit for real CVE scanning
         match std::process::Command::new("cargo")
             .args(["audit", "--json"])
@@ -133,6 +138,9 @@ impl ComplianceChecker {
     /// - T1078: Valid Accounts → passphrase auth required for vault access
     /// - T1005: Data from Local System → AES-256-GCM encryption at rest
     pub fn check_mitre_attack(&self) -> bool {
+        if !self.is_check_enabled("mitre_attack") {
+            return true;
+        }
         // This is a design-level assessment, not a runtime pentest.
         true
     }
@@ -146,7 +154,20 @@ impl ComplianceChecker {
     /// - IA (Identification and Authentication): Argon2id KDF
     /// - SC (System and Communications Protection): AES-256-GCM
     pub fn check_cmmc(&self) -> u8 {
+        if !self.is_check_enabled("cmmc") {
+            return 0;
+        }
         2
+    }
+
+    /// Check if a specific compliance check is enabled
+    pub fn is_check_enabled(&self, check_name: &str) -> bool {
+        *self.enabled_checks.get(check_name).unwrap_or(&false)
+    }
+
+    /// Enable or disable a specific compliance check
+    pub fn set_check_enabled(&mut self, check_name: &str, enabled: bool) {
+        self.enabled_checks.insert(check_name.to_string(), enabled);
     }
 
     /// Run all compliance checks

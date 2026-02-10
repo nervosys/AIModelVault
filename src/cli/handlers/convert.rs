@@ -114,7 +114,7 @@ pub fn handle_convert(
     println!("\n💡 Conversion steps:");
 
     // Suggest conversion paths
-    match (from_format.name().as_str(), to_format.name().as_str()) {
+    match (from_format.name(), to_format.name()) {
         ("PyTorch", "Safetensors") => {
             println!("   1. Convert with Python:");
             println!("      from safetensors.torch import save_file");
