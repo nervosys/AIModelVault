@@ -65,62 +65,37 @@ export const CLICompliance: React.FC = () => {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "60px 80px",
+          padding: 24,
         }}
       >
         <div
           style={{
-            fontFamily: FONTS.display,
-            fontSize: 40,
-            fontWeight: 700,
-            color: COLORS.text,
-            marginBottom: 8,
-            opacity: interpolate(frame, [0, 12], [0, 1], {
-              extrapolateRight: "clamp",
-            }),
-          }}
-        >
-          Security &amp; Compliance
-        </div>
-        <div
-          style={{
-            fontFamily: FONTS.sans,
-            fontSize: 20,
-            color: COLORS.textMuted,
-            marginBottom: 30,
-            opacity: interpolate(frame, [5, 18], [0, 1], {
-              extrapolateRight: "clamp",
-            }),
-          }}
-        >
-          FIPS 140-3 · MITRE ATT&amp;CK · CVE scanning — built in
-        </div>
-
-        <div
-          style={{
-            width: "88%",
+            width: "100%",
+            height: "100%",
             borderRadius: 14,
             overflow: "hidden",
             boxShadow: `0 25px 60px rgba(0,0,0,0.6), 0 0 40px ${COLORS.glow}`,
             border: `1px solid ${COLORS.border}`,
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <div
             style={{
               background: "#1c2333",
-              padding: "10px 16px",
+              padding: "14px 20px",
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 10,
             }}
           >
-            <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ display: "flex", gap: 8 }}>
               {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
                 <div
                   key={c}
                   style={{
-                    width: 12,
-                    height: 12,
+                    width: 14,
+                    height: 14,
                     borderRadius: "50%",
                     background: c,
                   }}
@@ -130,7 +105,7 @@ export const CLICompliance: React.FC = () => {
             <span
               style={{
                 color: COLORS.textMuted,
-                fontSize: 13,
+                fontSize: 16,
                 fontFamily: FONTS.mono,
                 marginLeft: 8,
               }}
@@ -142,12 +117,12 @@ export const CLICompliance: React.FC = () => {
           <div
             style={{
               background: COLORS.terminalBg,
-              padding: "22px 28px",
+              padding: "28px 40px",
               fontFamily: FONTS.mono,
-              fontSize: 15,
-              lineHeight: 1.7,
+              fontSize: 20,
+              lineHeight: 1.45,
               color: COLORS.text,
-              minHeight: 440,
+              flex: 1,
             }}
           >
             {LINES.map((line, i) => {
