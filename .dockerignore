@@ -12,5 +12,6 @@ reports/
 *.ps1
 *.sh
 deploy/
+website/
 node_modules/
 .vscode/
