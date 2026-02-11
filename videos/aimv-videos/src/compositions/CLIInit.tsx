@@ -10,12 +10,9 @@ import {
 import { COLORS, FONTS } from "../theme";
 import { GridBackground } from "../components/shared";
 
-// ─── Inline terminal typing (no Sequence needed) ─────────────────────────────
-
 interface Line {
   type: "cmd" | "out";
   text: string;
-  /** Absolute frame this line starts at */
   at: number;
 }
 
@@ -24,12 +21,12 @@ const LINES: Line[] = [
   { type: "out", text: "🔐 Creating new vault...", at: 70 },
   { type: "out", text: "   Location: ~/.local/share/aim/vault", at: 78 },
   { type: "out", text: "   Cipher:   AES-256-GCM", at: 86 },
-  { type: "out", text: "   KDF:      Argon2id (19 MiB, 2 iterations)", at: 94 },
+  { type: "out", text: "   KDF:      Argon2id (19 MiB, 2 iter)", at: 94 },
   { type: "out", text: "   Salt:     32-byte CSPRNG", at: 102 },
-  { type: "out", text: "✅ Vault initialized successfully!", at: 114 },
+  { type: "out", text: "✅ Vault initialized!", at: 114 },
   { type: "cmd", text: "aim unlock", at: 150 },
-  { type: "out", text: "🔑 Enter passphrase: ••••••••••••", at: 180 },
-  { type: "out", text: "🔓 Vault unlocked (session: 30 min)", at: 195 },
+  { type: "out", text: "🔑 Passphrase: ••••••••••••", at: 180 },
+  { type: "out", text: "🔓 Vault unlocked (30 min session)", at: 195 },
   { type: "cmd", text: "aim status", at: 225 },
   { type: "out", text: "Vault:       unlocked", at: 258 },
   { type: "out", text: "Models:      0", at: 265 },
@@ -37,28 +34,27 @@ const LINES: Line[] = [
   { type: "out", text: "Compliance:  FIPS 140-3 ✓", at: 279 },
 ];
 
-const TYPE_SPEED = 1.5; // frames per char for commands
+const TYPE_SPEED = 1.5;
+const FONT_SIZE = 40;
+const LINE_HEIGHT = 1.5;
+const LINE_PX = FONT_SIZE * LINE_HEIGHT;
+const MAX_VISIBLE = 13;
 
 export const CLIInit: React.FC = () => {
   const frame = useCurrentFrame();
+  const visibleCount = LINES.filter((l) => frame >= l.at).length;
+  const scrollY = Math.max(0, visibleCount - MAX_VISIBLE) * LINE_PX;
 
   return (
     <AbsoluteFill>
       <GridBackground />
       <AbsoluteFill
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
-        }}
+        style={{ display: "flex", flexDirection: "column", padding: 20 }}
       >
-        {/* Terminal */}
         <div
           style={{
             width: "100%",
-            height: "100%",
+            flex: 1,
             borderRadius: 14,
             overflow: "hidden",
             boxShadow: `0 25px 60px rgba(0,0,0,0.6), 0 0 40px ${COLORS.glow}`,
@@ -67,11 +63,10 @@ export const CLIInit: React.FC = () => {
             flexDirection: "column",
           }}
         >
-          {/* Title bar */}
           <div
             style={{
               background: "#1c2333",
-              padding: "14px 20px",
+              padding: "14px 24px",
               display: "flex",
               alignItems: "center",
               gap: 10,
@@ -79,75 +74,51 @@ export const CLIInit: React.FC = () => {
           >
             <div style={{ display: "flex", gap: 8 }}>
               {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
-                <div
-                  key={c}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    background: c,
-                  }}
-                />
+                <div key={c} style={{ width: 14, height: 14, borderRadius: "50%", background: c }} />
               ))}
             </div>
-            <span
-              style={{
-                color: COLORS.textMuted,
-                fontSize: 16,
-                fontFamily: FONTS.mono,
-                marginLeft: 8,
-              }}
-            >
+            <span style={{ color: COLORS.textMuted, fontSize: 18, fontFamily: FONTS.mono, marginLeft: 8 }}>
               Terminal — aim init
             </span>
           </div>
 
-          {/* Body */}
           <div
             style={{
               background: COLORS.terminalBg,
-              padding: "32px 40px",
+              padding: "36px 48px",
               fontFamily: FONTS.mono,
-              fontSize: 26,
-              lineHeight: 1.7,
+              fontSize: FONT_SIZE,
+              lineHeight: LINE_HEIGHT,
               color: COLORS.text,
               flex: 1,
+              overflow: "hidden",
             }}
           >
-            {LINES.map((line, i) => {
-              if (line.type === "cmd") {
-                const elapsed = frame - line.at;
-                if (elapsed < 0) return null;
-                const chars = Math.floor(elapsed / TYPE_SPEED);
-                const visible = line.text.slice(0, chars);
-                const done = chars >= line.text.length;
+            <div style={{ transform: `translateY(-${scrollY}px)` }}>
+              {LINES.map((line, i) => {
+                if (line.type === "cmd") {
+                  const elapsed = frame - line.at;
+                  if (elapsed < 0) return null;
+                  const chars = Math.floor(elapsed / TYPE_SPEED);
+                  const visible = line.text.slice(0, chars);
+                  const done = chars >= line.text.length;
+                  return (
+                    <div key={i} style={{ marginTop: i > 0 ? 12 : 0 }}>
+                      <span style={{ color: COLORS.terminalPrompt }}>$ </span>
+                      <span style={{ color: COLORS.terminalGreen }}>{visible}</span>
+                      {!done && <span style={{ color: COLORS.text }}>▌</span>}
+                    </div>
+                  );
+                }
+                if (frame < line.at) return null;
+                const opacity = interpolate(frame - line.at, [0, 5], [0, 1], { extrapolateRight: "clamp" });
                 return (
-                  <div key={i} style={{ marginTop: i > 0 ? 10 : 0 }}>
-                    <span style={{ color: COLORS.terminalPrompt }}>$ </span>
-                    <span style={{ color: COLORS.terminalGreen }}>
-                      {visible}
-                    </span>
-                    {!done && (
-                      <span style={{ color: COLORS.text }}>▌</span>
-                    )}
+                  <div key={i} style={{ color: COLORS.text, opacity }}>
+                    {line.text}
                   </div>
                 );
-              }
-              // output line
-              const show = frame >= line.at;
-              if (!show) return null;
-              const opacity = interpolate(
-                frame - line.at,
-                [0, 5],
-                [0, 1],
-                { extrapolateRight: "clamp" }
-              );
-              return (
-                <div key={i} style={{ color: COLORS.text, opacity }}>
-                  {line.text}
-                </div>
-              );
-            })}
+              })}
+            </div>
           </div>
         </div>
       </AbsoluteFill>

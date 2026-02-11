@@ -18,52 +18,44 @@ interface Line {
 
 const LINES: Line[] = [
   { type: "cmd", text: "aim store llama-3.1-70b ./model.safetensors", at: 20 },
-  { type: "out", text: "📦 Format detected: SafeTensors", at: 78 },
-  { type: "out", text: "📐 Size: 140.3 GB", at: 86 },
-  { type: "out", text: "🗜️  Compressing (LZMA)...  140.3 GB → 62.1 GB  (55.7%)", at: 96 },
-  { type: "out", text: "🔒 Encrypting (AES-256-GCM)...", at: 110 },
-  { type: "out", text: "🔑 KDF: Argon2id (19 MiB, 2 iterations)", at: 120 },
-  { type: "out", text: "✅ Stored successfully!", at: 136, color: COLORS.terminalGreen },
-  { type: "out", text: "   Version:    1", at: 144 },
-  { type: "out", text: "   Checkpoint: 3fa8c2e1", at: 150 },
-  { type: "out", text: "   SHA-256:    a7c3…f912", at: 156 },
-  { type: "cmd", text: "aim store mistral-7b ./mistral.gguf", at: 185 },
-  { type: "out", text: "📦 Format detected: GGUF", at: 230 },
-  { type: "out", text: "📐 Size: 4.1 GB", at: 238 },
-  { type: "out", text: "🗜️  Compressing...  4.1 GB → 3.8 GB  (7.3%)", at: 248 },
-  { type: "out", text: "🔒 Encrypting...", at: 260 },
-  { type: "out", text: "✅ Stored successfully!  v1 · c1e9ab5f", at: 272, color: COLORS.terminalGreen },
-  { type: "cmd", text: "aim list", at: 300 },
-  { type: "out", text: "  Model             Format       Versions  Size", at: 335 },
-  { type: "out", text: "  ─────             ──────       ────────  ────", at: 340 },
-  { type: "out", text: "  llama-3.1-70b     SafeTensors  1         62.1 GB", at: 346 },
-  { type: "out", text: "  mistral-7b        GGUF         1          3.8 GB", at: 352 },
-  { type: "out", text: "", at: 358 },
-  { type: "out", text: "  Total: 2 models · 65.9 GB stored", at: 362 },
+  { type: "out", text: "📦 Format: SafeTensors  📐 140.3 GB", at: 78 },
+  { type: "out", text: "🗜️  Compressing (LZMA)...  → 62.1 GB (55.7%)", at: 90 },
+  { type: "out", text: "🔒 Encrypting (AES-256-GCM)...", at: 104 },
+  { type: "out", text: "✅ Stored! v1 · 3fa8c2e1 · SHA ✓", at: 118, color: COLORS.terminalGreen },
+  { type: "cmd", text: "aim store mistral-7b ./mistral.gguf", at: 155 },
+  { type: "out", text: "📦 Format: GGUF  📐 4.1 GB", at: 200 },
+  { type: "out", text: "🗜️  Compressing...  → 3.8 GB (7.3%)", at: 214 },
+  { type: "out", text: "🔒 Encrypting...", at: 228 },
+  { type: "out", text: "✅ Stored! v1 · c1e9ab5f", at: 242, color: COLORS.terminalGreen },
+  { type: "cmd", text: "aim list", at: 275 },
+  { type: "out", text: "  Model           Format       Size", at: 308 },
+  { type: "out", text: "  ─────           ──────       ────", at: 313 },
+  { type: "out", text: "  llama-3.1-70b   SafeTensors  62.1 GB", at: 320 },
+  { type: "out", text: "  mistral-7b      GGUF          3.8 GB", at: 328 },
+  { type: "out", text: "  Total: 2 models · 65.9 GB", at: 340 },
 ];
 
 const TYPE_SPEED = 1.2;
+const FONT_SIZE = 38;
+const LINE_HEIGHT = 1.5;
+const LINE_PX = FONT_SIZE * LINE_HEIGHT;
+const MAX_VISIBLE = 13;
 
 export const CLIStore: React.FC = () => {
   const frame = useCurrentFrame();
+  const visibleCount = LINES.filter((l) => frame >= l.at).length;
+  const scrollY = Math.max(0, visibleCount - MAX_VISIBLE) * LINE_PX;
 
   return (
     <AbsoluteFill>
       <GridBackground />
       <AbsoluteFill
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
-        }}
+        style={{ display: "flex", flexDirection: "column", padding: 20 }}
       >
-        {/* Terminal */}
         <div
           style={{
             width: "100%",
-            height: "100%",
+            flex: 1,
             borderRadius: 14,
             overflow: "hidden",
             boxShadow: `0 25px 60px rgba(0,0,0,0.6), 0 0 40px ${COLORS.glow}`,
@@ -75,7 +67,7 @@ export const CLIStore: React.FC = () => {
           <div
             style={{
               background: "#1c2333",
-              padding: "14px 20px",
+              padding: "14px 24px",
               display: "flex",
               alignItems: "center",
               gap: 10,
@@ -83,25 +75,10 @@ export const CLIStore: React.FC = () => {
           >
             <div style={{ display: "flex", gap: 8 }}>
               {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
-                <div
-                  key={c}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    background: c,
-                  }}
-                />
+                <div key={c} style={{ width: 14, height: 14, borderRadius: "50%", background: c }} />
               ))}
             </div>
-            <span
-              style={{
-                color: COLORS.textMuted,
-                fontSize: 16,
-                fontFamily: FONTS.mono,
-                marginLeft: 8,
-              }}
-            >
+            <span style={{ color: COLORS.textMuted, fontSize: 18, fontFamily: FONTS.mono, marginLeft: 8 }}>
               Terminal — aim store
             </span>
           </div>
@@ -109,44 +86,40 @@ export const CLIStore: React.FC = () => {
           <div
             style={{
               background: COLORS.terminalBg,
-              padding: "32px 40px",
+              padding: "36px 48px",
               fontFamily: FONTS.mono,
-              fontSize: 24,
-              lineHeight: 1.55,
+              fontSize: FONT_SIZE,
+              lineHeight: LINE_HEIGHT,
               color: COLORS.text,
               flex: 1,
+              overflow: "hidden",
             }}
           >
-            {LINES.map((line, i) => {
-              if (line.type === "cmd") {
-                const elapsed = frame - line.at;
-                if (elapsed < 0) return null;
-                const chars = Math.floor(elapsed / TYPE_SPEED);
-                const visible = line.text.slice(0, chars);
-                const done = chars >= line.text.length;
+            <div style={{ transform: `translateY(-${scrollY}px)` }}>
+              {LINES.map((line, i) => {
+                if (line.type === "cmd") {
+                  const elapsed = frame - line.at;
+                  if (elapsed < 0) return null;
+                  const chars = Math.floor(elapsed / TYPE_SPEED);
+                  const visible = line.text.slice(0, chars);
+                  const done = chars >= line.text.length;
+                  return (
+                    <div key={i} style={{ marginTop: i > 0 ? 12 : 0 }}>
+                      <span style={{ color: COLORS.terminalPrompt }}>$ </span>
+                      <span style={{ color: COLORS.terminalGreen }}>{visible}</span>
+                      {!done && <span style={{ color: COLORS.text }}>▌</span>}
+                    </div>
+                  );
+                }
+                if (frame < line.at) return null;
+                const opacity = interpolate(frame - line.at, [0, 5], [0, 1], { extrapolateRight: "clamp" });
                 return (
-                  <div key={i} style={{ marginTop: i > 0 ? 10 : 0 }}>
-                    <span style={{ color: COLORS.terminalPrompt }}>$ </span>
-                    <span style={{ color: COLORS.terminalGreen }}>
-                      {visible}
-                    </span>
-                    {!done && <span style={{ color: COLORS.text }}>▌</span>}
+                  <div key={i} style={{ color: line.color ?? COLORS.text, opacity }}>
+                    {line.text}
                   </div>
                 );
-              }
-              if (frame < line.at) return null;
-              const opacity = interpolate(frame - line.at, [0, 5], [0, 1], {
-                extrapolateRight: "clamp",
-              });
-              return (
-                <div
-                  key={i}
-                  style={{ color: line.color ?? COLORS.text, opacity }}
-                >
-                  {line.text}
-                </div>
-              );
-            })}
+              })}
+            </div>
           </div>
         </div>
       </AbsoluteFill>

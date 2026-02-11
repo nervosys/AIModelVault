@@ -121,7 +121,7 @@ export default function HomePage() {
             Watch quick CLI demos showing real workflows — from vault initialization
             to security compliance audits.
           </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-8">
             <VideoCard
               src="/videos/CLIInit.mp4"
               title="Initialize a Vault"
