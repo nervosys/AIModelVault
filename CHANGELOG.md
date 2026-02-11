@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-10
+
+### Added
+- **REST API server** (`src/api/`, ~1200 lines, behind `api` feature flag)
+  - Axum 0.7 HTTP server with 14 RESTful endpoints
+  - JWT authentication (`jsonwebtoken` 9.3) with Bearer token auth
+  - Endpoints: health, auth/token, models (list/get/store), versions (list/get/delete), lineage, conversions (list/convert), stats, audit
+  - Multipart file upload for model storage
+  - Base64-encoded conversion API for format conversion over HTTP
+  - CORS support via `tower-http` with `--cors-permissive` flag
+  - Request body size limits (default 512 MiB)
+  - HTTP request tracing via `tower-http::trace`
+- **OpenAPI 3.1 specification** at `/api/v1/openapi.json`
+  - Complete API documentation with schemas, parameters, and security definitions
+- **Embedded web dashboard** served at `/`
+  - Single-page HTML/JS/CSS application (no build step required)
+  - Model inventory browser with version drill-down
+  - Storage statistics (models, versions, size, files)
+  - Audit log viewer, conversion registry browser
+  - Passphrase-based login with JWT session management
+- **CLI `serve` command** (`aim serve`)
+  - Flags: `--host`, `--port`, `--jwt-secret`, `--token-expiry`, `--cors-permissive`, `--no-dashboard`
+  - Environment variables: `AIM_HOST`, `AIM_PORT`, `AIM_JWT_SECRET`
+- **15 API tests** (3 auth unit + 12 integration via tower `oneshot`)
+- Dependencies: axum 0.7, tower 0.5, tower-http 0.6, jsonwebtoken 9.3, utoipa 5, base64 0.22, hyper 1.4
+
 ## [0.4.0] - 2026-02-10
 
 ### Added

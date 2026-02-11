@@ -219,23 +219,30 @@ Real model format conversion (not just export + guidance).
 
 ---
 
-## v0.5.0 — API & Web Interface
+## v0.5.0 — API & Web Interface ✅
 
 Network-accessible vault management.
 
-- [ ] **REST API**
-  - `actix-web` or `axum` HTTP server
-  - JWT authentication
-  - OpenAPI/Swagger documentation
-  - Rate limiting and CORS
+- [x] **REST API** (axum 0.7)
+  - 14 endpoints: health, auth, models CRUD, versions, lineage, conversions, convert, stats, audit
+  - JWT authentication with `Authorization: Bearer` header
+  - OpenAPI 3.1 specification at `/api/v1/openapi.json`
+  - CORS support (`--cors-permissive` flag) and request body limits (512 MiB default)
+  - `api` feature flag — zero cost when unused
 
-- [ ] **Web dashboard**
-  - Model inventory browser
-  - Version history visualization
-  - Storage usage analytics
-  - Audit log viewer
+- [x] **Web dashboard**
+  - Embedded single-page HTML application at `/`
+  - Model inventory browser with version drill-down
+  - Storage usage statistics (models, versions, size, files)
+  - Audit log viewer (newest first)
+  - Conversion registry browser
+  - Passphrase-based login with JWT session
 
-- [ ] **GraphQL API** (optional)
+- [x] **CLI integration**
+  - `aim serve` with `--host`, `--port`, `--jwt-secret`, `--token-expiry`, `--cors-permissive`, `--no-dashboard`
+  - Environment variable support: `AIM_HOST`, `AIM_PORT`, `AIM_JWT_SECRET`
+
+- [ ] **GraphQL API** (deferred to future release)
   - `async-graphql` integration
   - Subscription support for real-time updates
 

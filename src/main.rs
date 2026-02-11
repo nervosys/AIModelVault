@@ -81,6 +81,28 @@ fn main() -> Result<()> {
             plan_only,
         } => convert::handle_convert(name, to_format, output, version, quantization, opset, validate, plan_only, config),
         Commands::ListConversions => convert::handle_list_conversions(),
+        #[cfg(feature = "api")]
+        Commands::Serve {
+            host,
+            port,
+            jwt_secret,
+            token_expiry,
+            cors_permissive,
+            no_dashboard,
+        } => {
+            let api_config = ai_model_vault::api::ApiConfig {
+                host,
+                port,
+                jwt_secret,
+                token_expiry_secs: token_expiry,
+                cors_permissive,
+                enable_dashboard: !no_dashboard,
+                ..Default::default()
+            };
+            let rt = tokio::runtime::Runtime::new()
+                .map_err(|e| ai_model_vault::VaultError::IoError(e))?;
+            rt.block_on(ai_model_vault::api::server::serve(config, api_config))
+        }
         Commands::Cache => vault::handle_cache(),
         Commands::Cloud { command } => cloud::handle_cloud(command, config),
         Commands::Card { command } => card::handle_card(command, config),

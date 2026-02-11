@@ -8,6 +8,8 @@
 //! - Version control with complete checkpoint history
 //! - Format conversion capabilities
 
+#[cfg(feature = "api")]
+pub mod api;
 pub mod audit;
 pub mod compliance;
 pub mod config;

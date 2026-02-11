@@ -205,6 +205,34 @@ pub enum Commands {
     /// List supported format conversions
     ListConversions,
 
+    /// Start REST API server
+    #[cfg(feature = "api")]
+    Serve {
+        /// Host address to bind to
+        #[arg(long, default_value = "127.0.0.1", env = "AIM_HOST")]
+        host: String,
+
+        /// Port to listen on
+        #[arg(short, long, default_value_t = 8080, env = "AIM_PORT")]
+        port: u16,
+
+        /// JWT secret for token signing
+        #[arg(long, env = "AIM_JWT_SECRET")]
+        jwt_secret: String,
+
+        /// Token expiry in seconds
+        #[arg(long, default_value_t = 3600)]
+        token_expiry: u64,
+
+        /// Allow CORS from any origin
+        #[arg(long)]
+        cors_permissive: bool,
+
+        /// Disable the embedded web dashboard
+        #[arg(long)]
+        no_dashboard: bool,
+    },
+
     /// Cloud storage operations
     Cloud {
         #[command(subcommand)]
