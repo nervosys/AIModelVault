@@ -41,6 +41,14 @@ Thank you for your interest in contributing to aimodelvault! This document provi
 8. Commit with clear messages
 9. Push to your fork
 10. Open a Pull Request
+11. **Sign the CLA** — include "I have read the CLA and I agree to its terms" in your first PR description (see [CLA.md](CLA.md))
+
+### Contributor License Agreement
+
+All contributions require a signed Contributor License Agreement (CLA). This
+authorizes the maintainer to distribute your contributions under both the
+AGPL-3.0-or-later license and the commercial license. See [CLA.md](CLA.md) for
+the full agreement.
 
 ## Development Setup
 

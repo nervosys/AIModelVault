@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["NervoSys AI Team"]
 description = "Universal cross-platform XDG-compliant secure vault for AI model formats (Neural and Neurosymbolic)"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 repository = "https://github.com/nervosys/ai-model-vault"
 keywords = ["ai", "ml", "vault", "security", "model-conversion", "encryption"]
 categories = ["cryptography", "science"]
@@ -41,7 +41,7 @@ aws-sdk-s3 = { version = "1.12", optional = true }
 azure_storage = { version = "0.19", optional = true }
 azure_storage_blobs = { version = "0.19", optional = true }
 # cloud-storage = { version = "0.11", optional = true }  # Disabled due to security issues
-futures = { version = "0.3", optional = true }  # Reserved for future async stream handling
+futures = { version = "0.3", optional = true } # Reserved for future async stream handling
 
 # XDG compliance
 directories = "5.0" # XDG base directories
@@ -66,6 +66,9 @@ hdf5 = { version = "0.8", optional = true }
 
 # UUID generation
 uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Python bindings (optional)
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
 
 # Database support for RAG
 rusqlite = { version = "0.31", features = [
@@ -102,6 +105,8 @@ s3 = ["aws-config", "aws-sdk-s3"]
 azure = ["azure_storage", "azure_storage_blobs"]
 # gcs = ["cloud-storage"]  # Disabled due to security vulnerabilities in cloud-storage crate
 cloud = ["s3", "azure"] # GCS removed until cloud-storage is updated
+# Python native bindings
+python = ["dep:pyo3"]
 
 [profile.release]
 opt-level = 3

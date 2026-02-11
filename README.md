@@ -3,9 +3,9 @@
 > Universal cross-platform secure vault for AI model storage, versioning, and management with military-grade encryption and comprehensive utilities.
 
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-227%20passing-brightgreen.svg)](TEST_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-246%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
 
 A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, compression, and advanced model utilities.
 
@@ -91,7 +91,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 
 ### 10. 🔄 Production-Ready Reliability
 **Why it matters**: Trust it with your most important models
-- 227 comprehensive tests (100% passing)
+- 246 comprehensive tests (100% passing)
 - Type-safe Rust implementation (no memory bugs)
 - Comprehensive error handling
 - Detailed logging and debugging support
@@ -756,7 +756,7 @@ let result = server.execute_tool(
 | [Formats Guide](FORMATS.md)                 | Supported model formats (22+)         |
 | [Development Guide](DEVELOPMENT.md)         | For contributors and developers       |
 | [Security Policy](SECURITY.md)              | Security standards and reporting      |
-| [Test Coverage](TEST_COVERAGE.md)           | Test suite documentation (227 tests)  |
+| [Test Coverage](reports/TEST_COVERAGE.md)   | Test suite documentation (246 tests)  |
 
 ## 🔐 Security & Compliance
 
@@ -785,8 +785,8 @@ User Passphrase
 
 ### Security Documentation
 
-- **[SECURITY_STATUS.md](SECURITY_STATUS.md)** - 🟢 Production-ready status report (2025-01-04)
-- **[SECURITY_AUDIT.md](SECURITY_AUDIT.md)** - Complete security audit (1,400+ lines)
+- **[SECURITY_STATUS.md](reports/SECURITY_STATUS.md)** - 🟢 Production-ready status report (2025-01-04)
+- **[SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)** - Complete security audit (1,400+ lines)
 - **[docs/SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md)** - Production deployment guide
 - **[SECURITY.md](SECURITY.md)** - Security policy and vulnerability reporting
 
@@ -816,7 +816,7 @@ User Passphrase
 ## 🧪 Testing & Quality
 
 ```bash
-# Run all tests (227 tests)
+# Run all tests (246 tests)
 cargo test --all
 
 # Run specific test suites
@@ -832,7 +832,7 @@ cargo audit
 cargo bench
 ```
 
-**Test Coverage**: 227 tests, all passing ✅
+**Test Coverage**: 246 tests, all passing ✅
 - Unit tests: 40
 - Config/Error tests: 22
 - Crypto tests: 14
@@ -842,14 +842,15 @@ cargo bench
 - Model card tests: 48
 - RAG tests: 38 (includes 23 MCP tests)
 - Utilities tests: 38
+- Coverage gap tests: 19
 
 ## 📦 Project Structure
 
 ```
 aimodelvault/
 ├── src/
-│   ├── lib.rs              # Library API
-│   ├── main.rs             # CLI application
+│   ├── cli/                # CLI dispatcher + command handlers
+│   ├── rag/                # RAG system (7 submodules)
 │   ├── vault.rs            # Core vault logic
 │   ├── storage.rs          # Encrypted storage
 │   ├── version.rs          # Version control
@@ -858,7 +859,7 @@ aimodelvault/
 │   ├── crypto/             # FIPS cryptography
 │   ├── audit.rs            # Security logging
 │   └── compliance.rs       # Compliance checks
-├── tests/                  # 227 comprehensive tests
+├── tests/                  # 246 comprehensive tests
 ├── docs/                   # Documentation
 ├── examples/               # Usage examples
 └── benches/                # Performance benchmarks
@@ -889,7 +890,12 @@ cargo run --example basic_usage
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+This project is dual-licensed:
+
+- **AGPL-3.0-or-later** — Free for open-source use. Any modified version or network-facing service using this software must release its source under the AGPL. See [LICENSE](LICENSE)
+- **Commercial License** — For proprietary, SaaS, or closed-source use without AGPL obligations. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or contact **licensing@nervosys.ai**
+
+All contributions require a Contributor License Agreement (CLA). See [CLA.md](CLA.md).
 
 ## 🔒 Security
 
@@ -901,7 +907,7 @@ See [SECURITY.md](SECURITY.md) for our security policy.
 
 ## 🌟 Features Roadmap
 
-See [ROADMAP.md](ROADMAP.md) for the full development roadmap from v0.1.1 through v1.0.0.
+See [ROADMAP.md](ROADMAP.md) for the full development roadmap from v0.3.0 through v1.0.0.
 
 ## � Documentation
 
@@ -930,10 +936,10 @@ See [ROADMAP.md](ROADMAP.md) for the full development roadmap from v0.1.1 throug
 - **[Utilities Demo](examples/utilities_demo.rs)** - Model utilities showcase
 
 ### Project Information
-- **[Examples Guide](EXAMPLES_GUIDE.md)** - Overview of all examples
+- **[Examples Guide](docs/EXAMPLES_GUIDE.md)** - Overview of all examples
 - **[Contributing](CONTRIBUTING.md)** - How to contribute
 - **[Security Policy](SECURITY.md)** - Security practices and reporting
-- **[Testing](TESTING_COMPLETE.md)** - Test coverage and practices ([Coverage Report](TEST_COVERAGE.md))
+- **[Testing](reports/TESTING_COMPLETE.md)** - Test coverage and practices ([Coverage Report](reports/TEST_COVERAGE.md))
 - **[Development](DEVELOPMENT.md)** - Development setup and guidelines
 - **[Changelog](CHANGELOG.md)** - Version history and changes
 
