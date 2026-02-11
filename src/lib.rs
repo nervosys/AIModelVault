@@ -20,6 +20,7 @@ pub mod formats;
 pub mod model_card;
 pub mod rag;
 pub mod storage;
+pub mod telemetry;
 pub mod utils;
 pub mod vault;
 pub mod version;

@@ -18,6 +18,10 @@ pub struct Cli {
     /// Config file path
     #[arg(short, long)]
     pub config: Option<PathBuf>,
+
+    /// Disable telemetry for this session
+    #[arg(long, env = "AIM_TELEMETRY_DISABLED")]
+    pub no_telemetry: bool,
 }
 
 #[derive(Subcommand)]
@@ -250,6 +254,27 @@ pub enum Commands {
         #[command(subcommand)]
         command: DatabaseCommands,
     },
+
+    /// Telemetry and analytics settings
+    Telemetry {
+        #[command(subcommand)]
+        command: TelemetryCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum TelemetryCommands {
+    /// Show current telemetry status
+    Status,
+
+    /// Enable telemetry
+    Enable,
+
+    /// Disable telemetry (opt out)
+    Disable,
+
+    /// Reset device ID (generates new anonymous ID)
+    Reset,
 }
 
 #[derive(Subcommand)]

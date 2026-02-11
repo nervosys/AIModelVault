@@ -12,9 +12,11 @@ mod cli;
 
 use clap::Parser;
 use cli::args::{Cli, Commands};
-use cli::handlers::{analyze, archive, card, cloud, convert, database, vault};
+use cli::handlers::{
+    analyze, archive, card, cloud, convert, database, telemetry as telemetry_handler, vault,
+};
 
-use ai_model_vault::{Result, VaultConfig};
+use ai_model_vault::{telemetry, Result, VaultConfig};
 
 fn main() -> Result<()> {
     // Initialize tracing
@@ -23,14 +25,22 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Load or create config
-    let config = if let Some(config_path) = cli.config {
+    let config = if let Some(config_path) = &cli.config {
         let contents = std::fs::read_to_string(config_path)?;
         serde_yaml::from_str(&contents)?
     } else {
         VaultConfig::new()?
     };
 
-    match cli.command {
+    // Initialize telemetry (enabled by default, can be disabled via --no-telemetry or config)
+    if cli.no_telemetry || !config.telemetry.enabled {
+        telemetry::disable();
+    } else {
+        telemetry::init_default(Some(&config.dirs.config_dir))?;
+        telemetry::track_app_start();
+    }
+
+    let result = match cli.command {
         Commands::Init { name } => vault::handle_init(name, config),
         Commands::Store {
             name,
@@ -79,7 +89,17 @@ fn main() -> Result<()> {
             opset,
             validate,
             plan_only,
-        } => convert::handle_convert(name, to_format, output, version, quantization, opset, validate, plan_only, config),
+        } => convert::handle_convert(
+            name,
+            to_format,
+            output,
+            version,
+            quantization,
+            opset,
+            validate,
+            plan_only,
+            config,
+        ),
         Commands::ListConversions => convert::handle_list_conversions(),
         #[cfg(feature = "api")]
         Commands::Serve {
@@ -107,6 +127,11 @@ fn main() -> Result<()> {
         Commands::Cloud { command } => cloud::handle_cloud(command, config),
         Commands::Card { command } => card::handle_card(command, config),
         Commands::Database { command } => database::handle_database(command),
-    }
-}
+        Commands::Telemetry { command } => telemetry_handler::handle_telemetry(command, config),
+    };
 
+    // Flush telemetry before exit
+    telemetry::flush();
+
+    result
+}

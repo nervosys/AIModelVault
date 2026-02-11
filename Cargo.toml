@@ -50,6 +50,9 @@ futures = { version = "0.3", optional = true } # Reserved for future async strea
 # XDG compliance
 directories = "5.0" # XDG base directories
 
+# Concurrency
+parking_lot = "0.12" # Fast mutex for telemetry
+
 # Error handling
 thiserror = "1.0"
 
@@ -74,7 +77,11 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 # REST API (optional)
 axum = { version = "0.7", features = ["json", "multipart"], optional = true }
 tower = { version = "0.5", optional = true }
-tower-http = { version = "0.6", features = ["cors", "trace", "limit"], optional = true }
+tower-http = { version = "0.6", features = [
+    "cors",
+    "trace",
+    "limit",
+], optional = true }
 jsonwebtoken = { version = "9.3", optional = true }
 utoipa = { version = "5", features = ["axum_extras"], optional = true }
 base64 = { version = "0.22", optional = true }
@@ -119,7 +126,15 @@ azure = ["azure_storage", "azure_storage_blobs"]
 # gcs = ["cloud-storage"]  # Disabled due to security vulnerabilities in cloud-storage crate
 cloud = ["s3", "azure"] # GCS removed until cloud-storage is updated
 # REST API
-api = ["axum", "tower", "tower-http", "jsonwebtoken", "utoipa", "base64", "hyper"]
+api = [
+    "axum",
+    "tower",
+    "tower-http",
+    "jsonwebtoken",
+    "utoipa",
+    "base64",
+    "hyper",
+]
 # Python native bindings
 python = ["dep:pyo3"]
 

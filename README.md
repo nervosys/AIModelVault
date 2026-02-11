@@ -759,7 +759,7 @@ let result = server.execute_tool(
 | [Development Guide](DEVELOPMENT.md)         | For contributors and developers       |
 | [Security Policy](SECURITY.md)              | Security standards and reporting      |
 | [Test Coverage](reports/TEST_COVERAGE.md)   | Test suite documentation (331 tests)  |
-| [Documentation Website](website/)            | Next.js documentation site            |
+| [Documentation Website](website/)           | Next.js documentation site            |
 
 ## 🔐 Security & Compliance
 

@@ -6,4 +6,5 @@ pub mod card;
 pub mod cloud;
 pub mod convert;
 pub mod database;
+pub mod telemetry;
 pub mod vault;

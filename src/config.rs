@@ -45,6 +45,10 @@ pub struct VaultConfig {
     /// Compliance settings
     pub compliance: ComplianceSettings,
 
+    /// Telemetry settings
+    #[serde(default)]
+    pub telemetry: TelemetrySettings,
+
     /// Directory paths (not serialized, computed at runtime)
     #[serde(skip)]
     pub dirs: DirectoryPaths,
@@ -92,6 +96,29 @@ pub struct ComplianceSettings {
     pub fips_mode: bool,
     pub cve_scanning: bool,
     pub audit_retention_days: u32,
+}
+
+/// Telemetry and analytics settings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TelemetrySettings {
+    /// Whether telemetry is enabled (default: true)
+    pub enabled: bool,
+    /// Anonymous device ID (auto-generated)
+    #[serde(default = "default_device_id")]
+    pub device_id: String,
+}
+
+fn default_device_id() -> String {
+    uuid::Uuid::new_v4().to_string()
+}
+
+impl Default for TelemetrySettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            device_id: default_device_id(),
+        }
+    }
 }
 
 /// XDG-compliant directory paths for config, data, cache, and logs.
@@ -237,6 +264,7 @@ impl VaultConfig {
                 cve_scanning: true,
                 audit_retention_days: 90,
             },
+            telemetry: TelemetrySettings::default(),
             dirs,
         }
     }

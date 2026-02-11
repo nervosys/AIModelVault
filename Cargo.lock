@@ -99,6 +99,7 @@ dependencies = [
  "lancedb",
  "lzma-rs",
  "ndarray",
+ "parking_lot 0.12.5",
  "proptest",
  "pyo3",
  "qdrant-client",
