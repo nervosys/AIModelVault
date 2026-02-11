@@ -41,6 +41,9 @@ export default function Header() {
             <Link href="/docs" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
               Docs
             </Link>
+            <Link href="/demos" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
+              Demos
+            </Link>
             <Link href="/docs/api" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
               API
             </Link>

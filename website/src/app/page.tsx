@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FeatureCard } from "@/components/DocElements";
+import VideoCard from "@/components/VideoCard";
 
 export default function HomePage() {
   return (
@@ -109,6 +110,58 @@ export default function HomePage() {
             description="Built-in document store, knowledge base, vector search, and Model Context Protocol agents."
             href="/docs/rag"
           />
+        </div>
+      </section>
+
+      {/* CLI Demo Videos */}
+      <section className="bg-[var(--color-bg-secondary)] border-y border-[var(--color-border)]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <h2 className="text-3xl font-bold text-center mb-4">See It in Action</h2>
+          <p className="text-center text-[var(--color-text-secondary)] mb-12 max-w-2xl mx-auto">
+            Watch quick CLI demos showing real workflows — from vault initialization
+            to security compliance audits.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <VideoCard
+              src="/videos/CLIInit.mp4"
+              title="Initialize a Vault"
+              description="Create an encrypted vault with AES-256-GCM, unlock it, and check status."
+              duration="0:11"
+            />
+            <VideoCard
+              src="/videos/CLIStore.mp4"
+              title="Store & List Models"
+              description="Store multiple models with auto-format detection and list vault contents."
+              duration="0:14"
+            />
+            <VideoCard
+              src="/videos/CLIVersions.mp4"
+              title="Version Control"
+              description="Track version history, rollback to previous versions, and view lineage."
+              duration="0:16"
+            />
+            <VideoCard
+              src="/videos/CLIConvert.mp4"
+              title="Format Conversion"
+              description="Convert models between formats with quantization — GGUF, ONNX, and more."
+              duration="0:13"
+            />
+            <VideoCard
+              src="/videos/CLICompliance.mp4"
+              title="Security Compliance"
+              description="Run a full security audit with 12 checks and review the audit log."
+              duration="0:11"
+            />
+          </div>
+          <div className="text-center mt-8">
+            <Link
+              href="/demos"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[var(--color-border)] text-sm font-medium hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)] transition-colors"
+            >
+              View All Demos
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </Link>
+          </div>
         </div>
       </section>
 
