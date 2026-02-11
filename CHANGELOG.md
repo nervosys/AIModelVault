@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Next.js documentation website** (`website/`)
+  - 21 documentation pages covering all features
+  - Responsive layout with sidebar navigation and mobile menu
+  - Light/dark theme with CSS custom properties
+  - Reusable components: CodeBlock, Callout, FeatureCard
+  - Static generation — all 25 routes prerendered
+- Updated README badges and stats (331 tests, v1.0.0, Rust 1.75+)
+- Updated ROADMAP version header to v1.0.0
+
 ## [1.0.0] - 2026-02-10
 
 ### Changed

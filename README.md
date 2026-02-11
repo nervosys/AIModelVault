@@ -2,10 +2,12 @@
 
 > Universal cross-platform secure vault for AI model storage, versioning, and management with military-grade encryption and comprehensive utilities.
 
-[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-246%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
+[![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
 
 A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, compression, and advanced model utilities.
 
@@ -756,7 +758,8 @@ let result = server.execute_tool(
 | [Formats Guide](FORMATS.md)                 | Supported model formats (22+)         |
 | [Development Guide](DEVELOPMENT.md)         | For contributors and developers       |
 | [Security Policy](SECURITY.md)              | Security standards and reporting      |
-| [Test Coverage](reports/TEST_COVERAGE.md)   | Test suite documentation (246 tests)  |
+| [Test Coverage](reports/TEST_COVERAGE.md)   | Test suite documentation (331 tests)  |
+| [Documentation Website](website/)            | Next.js documentation site            |
 
 ## 🔐 Security & Compliance
 
@@ -816,8 +819,8 @@ User Passphrase
 ## 🧪 Testing & Quality
 
 ```bash
-# Run all tests (246 tests)
-cargo test --all
+# Run all tests (331 tests)
+cargo test --all --features api
 
 # Run specific test suites
 cargo test --test crypto_tests      # Cryptography (14 tests)
@@ -832,7 +835,7 @@ cargo audit
 cargo bench
 ```
 
-**Test Coverage**: 246 tests, all passing ✅
+**Test Coverage**: 331 tests, all passing ✅
 - Unit tests: 40
 - Config/Error tests: 22
 - Crypto tests: 14
@@ -859,7 +862,9 @@ aimodelvault/
 │   ├── crypto/             # FIPS cryptography
 │   ├── audit.rs            # Security logging
 │   └── compliance.rs       # Compliance checks
-├── tests/                  # 246 comprehensive tests
+├── website/                # Next.js documentation site
+├── deploy/                 # Dockerfile & Helm chart
+├── tests/                  # 331 comprehensive tests
 ├── docs/                   # Documentation
 ├── examples/               # Usage examples
 └── benches/                # Performance benchmarks
@@ -907,7 +912,7 @@ See [SECURITY.md](SECURITY.md) for our security policy.
 
 ## 🌟 Features Roadmap
 
-See [ROADMAP.md](ROADMAP.md) for the full development roadmap from v0.3.0 through v1.0.0.
+See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
 
 ## � Documentation
 
@@ -947,7 +952,7 @@ See [ROADMAP.md](ROADMAP.md) for the full development roadmap from v0.3.0 throug
 
 ## �📞 Support & Community
 
-- 📖 [Documentation](https://aimodelvault.nervosys.ai)
+- 📖 [Documentation](website/) | [Online](https://aimodelvault.nervosys.ai)
 - 💬 [GitHub Discussions](https://github.com/nervosys/aimodelvault/discussions)
 - 🐛 [Issue Tracker](https://github.com/nervosys/aimodelvault/issues)
 - 📧 Email: dev@nervosys.ai

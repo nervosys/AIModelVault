@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-02-10  
-> Current version: **0.3.0**  
-> Status: Native PyO3 Python bindings complete — AGPL-3.0 dual-license
+> Last updated: 2026-02-11  
+> Current version: **1.0.0**  
+> Status: Production release — documentation website live
 
 ---
 
