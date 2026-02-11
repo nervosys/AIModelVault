@@ -11,10 +11,8 @@ use std::collections::HashMap;
 use crate::config::VaultConfig;
 use crate::error::VaultError;
 use crate::formats::{ModelFormat, ModelMetadata};
-use crate::model_card::{
-    Evaluation, IntendedUse, Metric, ModelCard, ModelDetails, TrainingData,
-};
-use crate::vault::Vault;
+use crate::model_card::{Evaluation, IntendedUse, Metric, ModelCard, ModelDetails, TrainingData};
+use crate::vault::{ModelStream, Vault};
 use crate::version::ModelVersion;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -203,9 +201,7 @@ impl PyModelMetadata {
 
     /// Add a custom key/value field.
     fn add_custom_field(&mut self, key: String, value: String) {
-        self.inner
-            .custom_fields
-            .insert(key, value);
+        self.inner.custom_fields.insert(key, value);
     }
 
     fn __repr__(&self) -> String {
@@ -276,9 +272,7 @@ impl PyModelVersion {
     fn __repr__(&self) -> String {
         format!(
             "ModelVersion(version={}, format='{}', size={})",
-            self.inner.version,
-            self.inner.format,
-            self.inner.size_bytes
+            self.inner.version, self.inner.format, self.inner.size_bytes
         )
     }
 }
@@ -321,7 +315,10 @@ impl PyVaultConfig {
 
     #[getter]
     fn vault_path(&self) -> String {
-        self.inner.get_vault_path(None).to_string_lossy().to_string()
+        self.inner
+            .get_vault_path(None)
+            .to_string_lossy()
+            .to_string()
     }
 
     fn __repr__(&self) -> String {
@@ -364,9 +361,7 @@ impl PyVault {
 
     /// Unlock the vault with a passphrase (`bytes`).
     fn unlock(&mut self, passphrase: &[u8]) -> PyResult<()> {
-        self.inner
-            .unlock(passphrase.to_vec())
-            .map_err(to_py_err)
+        self.inner.unlock(passphrase.to_vec()).map_err(to_py_err)
     }
 
     /// Lock the vault (zeroizes keys in memory).
@@ -400,12 +395,7 @@ impl PyVault {
     ) -> PyResult<PyModelVersion> {
         let ver = self
             .inner
-            .store_model(
-                name,
-                data.to_vec(),
-                metadata.inner.clone(),
-                parent_version,
-            )
+            .store_model(name, data.to_vec(), metadata.inner.clone(), parent_version)
             .map_err(to_py_err)?;
         Ok(PyModelVersion { inner: ver })
     }
@@ -471,6 +461,45 @@ impl PyVault {
         self.inner
             .change_passphrase(new_passphrase.to_vec())
             .map_err(to_py_err)
+    }
+
+    /// Store a model from an iterable of `bytes` chunks (streaming ingest).
+    #[pyo3(signature = (name, chunks, metadata, parent_version=None))]
+    fn store_model_streamed(
+        &mut self,
+        name: &str,
+        chunks: &Bound<'_, PyAny>,
+        metadata: &PyModelMetadata,
+        parent_version: Option<u32>,
+    ) -> PyResult<PyModelVersion> {
+        let mut buf = Vec::new();
+        let iter = chunks.iter()?;
+        for item in iter {
+            let item = item?;
+            let bytes: &[u8] = item.extract()?;
+            buf.extend_from_slice(bytes);
+        }
+        let ver = self
+            .inner
+            .store_model(name, buf, metadata.inner.clone(), parent_version)
+            .map_err(to_py_err)?;
+        Ok(PyModelVersion { inner: ver })
+    }
+
+    /// Retrieve a model as a `ModelStream` of fixed-size chunks.
+    #[pyo3(signature = (name, version=None, chunk_size=None))]
+    fn get_model_streamed(
+        &self,
+        name: &str,
+        version: Option<u32>,
+        chunk_size: Option<usize>,
+    ) -> PyResult<PyModelStream> {
+        let cs = chunk_size.unwrap_or(8 * 1024 * 1024);
+        let stream = self
+            .inner
+            .get_model_chunked(name, version, cs)
+            .map_err(to_py_err)?;
+        Ok(PyModelStream { inner: stream })
     }
 
     /// Get the vault configuration.
@@ -647,6 +676,49 @@ impl PyModelCard {
     }
 }
 
+
+// ── PyModelStream ────────────────────────────────────────────────────────────
+
+/// Iterator that yields fixed-size `bytes` chunks of a model.
+#[pyclass(name = "ModelStream")]
+struct PyModelStream {
+    inner: ModelStream,
+}
+
+#[pymethods]
+impl PyModelStream {
+    #[getter]
+    fn total_size(&self) -> usize {
+        self.inner.total_size()
+    }
+
+    #[getter]
+    fn remaining(&self) -> usize {
+        self.inner.remaining()
+    }
+
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__<'py>(&mut self, py: Python<'py>) -> Option<Bound<'py, PyBytes>> {
+        self.inner
+            .next()
+            .map(|chunk| PyBytes::new_bound(py, &chunk))
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "ModelStream(total_size={}, remaining={})",
+            self.inner.total_size(),
+            self.inner.remaining(),
+        )
+    }
+
+    fn __len__(&self) -> usize {
+        self.inner.total_size()
+    }
+}
 // ── PyVaultError wrapper ─────────────────────────────────────────────────────
 
 /// Standalone utility: SHA-256 hex digest of data.
@@ -673,6 +745,7 @@ fn neuralvault_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyVaultConfig>()?;
     m.add_class::<PyVault>()?;
     m.add_class::<PyModelCard>()?;
+    m.add_class::<PyModelStream>()?;
     m.add_function(wrap_pyfunction!(sha256_hex, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     Ok(())

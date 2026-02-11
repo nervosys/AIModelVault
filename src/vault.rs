@@ -437,6 +437,90 @@ impl Vault {
     ) -> Option<String> {
         self.version_control.get_metadata(model_name, version, key)
     }
+
+    /// Store a model from an iterator of chunks (streaming ingest).
+    ///
+    /// Collects chunks into a contiguous buffer, then encrypts and stores.
+    /// For models that are too large to hold entirely in memory at the call
+    /// site, the caller can feed data in increments.
+    pub fn store_model_streamed<I>(
+        &mut self,
+        name: &str,
+        chunks: I,
+        metadata: ModelMetadata,
+        parent_version: Option<u32>,
+    ) -> Result<ModelVersion>
+    where
+        I: IntoIterator<Item = Vec<u8>>,
+    {
+        let mut buf = Vec::new();
+        for chunk in chunks {
+            buf.extend_from_slice(&chunk);
+        }
+        self.store_model(name, buf, metadata, parent_version)
+    }
+
+    /// Retrieve a model as fixed-size chunks (streaming retrieval).
+    ///
+    /// Decrypts the full model, then returns a `ModelStream` that yields
+    /// `chunk_size`-byte pieces.  This avoids handing Python a single
+    /// multi-GB `bytes` object.
+    pub fn get_model_chunked(
+        &self,
+        name: &str,
+        version: Option<u32>,
+        chunk_size: usize,
+    ) -> Result<ModelStream> {
+        let data = self.get_model(name, version)?;
+        Ok(ModelStream::new(data, chunk_size))
+    }
+}
+
+/// Iterator that yields fixed-size chunks of decrypted model data.
+///
+/// Created by [`Vault::get_model_chunked`].
+pub struct ModelStream {
+    data: Vec<u8>,
+    offset: usize,
+    chunk_size: usize,
+}
+
+impl ModelStream {
+    /// Create a new `ModelStream`.
+    pub fn new(data: Vec<u8>, chunk_size: usize) -> Self {
+        let chunk_size = if chunk_size == 0 { 1 << 20 } else { chunk_size };
+        Self {
+            data,
+            offset: 0,
+            chunk_size,
+        }
+    }
+
+    /// Total size of the underlying data in bytes.
+    #[must_use]
+    pub fn total_size(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Number of bytes remaining.
+    #[must_use]
+    pub fn remaining(&self) -> usize {
+        self.data.len().saturating_sub(self.offset)
+    }
+}
+
+impl Iterator for ModelStream {
+    type Item = Vec<u8>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.offset >= self.data.len() {
+            return None;
+        }
+        let end = (self.offset + self.chunk_size).min(self.data.len());
+        let chunk = self.data[self.offset..end].to_vec();
+        self.offset = end;
+        Some(chunk)
+    }
 }
 
 /// Vault statistics

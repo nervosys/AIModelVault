@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `python` feature flag in Cargo.toml gating PyO3 dependency
 - maturin build backend in `pyproject.toml` (replaced setuptools)
 - Native import with graceful fallback in `__init__.py` (`_NATIVE` flag)
+- **Streaming API** for large models
+  - `Vault.store_model_streamed()`: ingest from any iterable of `bytes` chunks
+  - `Vault.get_model_streamed()`: retrieve as `ModelStream` iterator (default 8 MiB chunks)
+  - `ModelStream`: Python iterator with `total_size`, `remaining` properties
+  - Rust `ModelStream` + `Vault::store_model_streamed()` / `Vault::get_model_chunked()`
+- **Sphinx documentation** (`docs/`)
+  - API reference: Vault, VaultConfig, ModelFormat, ModelMetadata, ModelVersion, ModelCard, utilities
+  - User guides: vault lifecycle, format detection, model cards, version control
+  - Quick start and installation guides (uv-based)
 
 ### Changed
 - Python package now uses native Rust FFI instead of CLI subprocess wrappers when built with maturin

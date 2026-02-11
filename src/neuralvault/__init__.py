@@ -13,6 +13,7 @@ try:
         ModelCard,
         ModelFormat,
         ModelMetadata,
+        ModelStream,
         ModelVersion,
         Vault,
         VaultConfig,
@@ -28,6 +29,7 @@ except ImportError:
     from neuralvault.formats.registry import ModelFormat  # type: ignore[assignment]
 
     ModelMetadata = None  # type: ignore[assignment,misc]
+    ModelStream = None  # type: ignore[assignment,misc]
     ModelVersion = None  # type: ignore[assignment,misc]
     ModelCard = None  # type: ignore[assignment,misc]
     sha256_hex = None  # type: ignore[assignment]
@@ -39,6 +41,7 @@ __all__ = [
     "VaultConfig",
     "ModelFormat",
     "ModelMetadata",
+    "ModelStream",
     "ModelVersion",
     "ModelCard",
     "sha256_hex",

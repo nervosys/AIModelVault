@@ -1,0 +1,97 @@
+Installation
+============
+
+Requirements
+------------
+
+- **Python** 3.9 or later
+- **Rust toolchain** (for building from source)
+- **maturin** 1.7+ (for building native bindings)
+
+
+Install from PyPI
+-----------------
+
+.. code-block:: bash
+
+   pip install neuralvault
+
+This installs the pre-built wheel with native Rust bindings. No Rust toolchain needed.
+
+
+Install from Source
+-------------------
+
+.. code-block:: bash
+
+   # Clone the repository
+   git clone https://github.com/nervosys/ai-model-vault.git
+   cd ai-model-vault
+
+   # Create a virtual environment
+   python -m venv .venv
+   source .venv/bin/activate   # Linux/macOS
+   # .venv\Scripts\Activate.ps1  # Windows PowerShell
+
+   # Install with native bindings
+   pip install maturin
+   maturin develop --features python
+
+   # Verify
+   python -c "import neuralvault; print(neuralvault._NATIVE)"  # True
+
+
+Optional Dependencies
+---------------------
+
+**ML frameworks** (for working with specific model formats):
+
+.. code-block:: bash
+
+   pip install neuralvault[ml]
+
+This installs PyTorch, TensorFlow, ONNX, SafeTensors, NumPy, and h5py.
+
+**Development tools:**
+
+.. code-block:: bash
+
+   pip install neuralvault[dev]
+
+**Security scanning:**
+
+.. code-block:: bash
+
+   pip install neuralvault[security]
+
+**Documentation building:**
+
+.. code-block:: bash
+
+   pip install neuralvault[docs]
+
+
+Verify Native Bindings
+-----------------------
+
+.. code-block:: python
+
+   import neuralvault
+
+   # True  → native Rust bindings active (fast, full API)
+   # False → pure-Python fallback (CLI wrappers, limited API)
+   print(f"Native: {neuralvault._NATIVE}")
+   print(f"Version: {neuralvault.version()}")
+
+
+Rust CLI
+--------
+
+The Rust binary ``aim`` provides a command-line interface:
+
+.. code-block:: bash
+
+   cargo build --release
+   ./target/release/aim --help
+
+See the :doc:`CLI documentation <../docs/CLI>` for details.

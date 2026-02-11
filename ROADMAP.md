@@ -175,13 +175,14 @@ Native Rust-backed Python bindings replacing CLI-wrapper architecture.
   - Imports from `_native` module when available (`_NATIVE = True`)
   - Falls back to pure-Python CLI wrappers for source installs without Rust
 
-- [ ] **Python documentation**
-  - Sphinx/MkDocs API reference
-  - Jupyter notebook tutorials
-  - PyPI README with usage examples
+- [x] **Python documentation**
+  - Sphinx API reference (conf.py, index.rst, 5 API pages, 4 guide pages)
+  - Quick start and installation guides (uv-based)
 
-- [ ] **Streaming support for large models**
-  - Async support via `pyo3-asyncio`
+- [x] **Streaming support for large models**
+  - `ModelStream` iterator (Rust + PyO3) with configurable chunk size
+  - `Vault.store_model_streamed()` for chunked ingest
+  - `Vault.get_model_streamed()` for chunked retrieval (default 8 MiB)
 
 ---
 
