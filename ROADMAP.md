@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-02-07  
-> Current version: **0.1.1**  
-> Status: Hardened — all v0.1.1 audit items resolved
+> Last updated: 2026-02-10  
+> Current version: **0.3.0**  
+> Status: Native PyO3 Python bindings complete — AGPL-3.0 dual-license
 
 ---
 
@@ -95,11 +95,11 @@ All fixes identified by audit. No new features.
 
 ---
 
-## v0.2.0 — Code Quality & Architecture
+## v0.2.0 — Code Quality & Architecture (complete)
 
-Refactoring and quality improvements.
+Refactoring, quality improvements, and project cleanup.
 
-- [ ] **Split `rag.rs` (2,168 lines) into submodules**
+- [x] **Split `rag.rs` (2,168 lines) into submodules**
   - `rag/mod.rs` — re-exports
   - `rag/documents.rs` — DocumentStore, Document, ChunkInfo
   - `rag/knowledge.rs` — KnowledgeBase, KnowledgeBaseConfig
@@ -109,58 +109,79 @@ Refactoring and quality improvements.
   - `rag/mcp.rs` — MCPServer, MCPTool, ToolExecutor, ToolContext, ToolResult
   - `rag/vector.rs` — VectorStore, SimpleVectorStore, QdrantVectorStore
 
-- [ ] **Split `main.rs` (2,900+ lines) into submodules**
+- [x] **Split `main.rs` (2,900+ lines) into submodules**
   - `cli/mod.rs` — CLI entry point, argument parsing
   - `cli/commands.rs` — Command enum definitions
   - `cli/handlers/` — One file per command group (cloud, card, convert, db, etc.)
 
-- [ ] **Resolve `#[allow(dead_code)]` suppressions**
-  - `Vault.key_manager` — integrate into vault operations or remove
-  - `VersionControl.vault_path` — wire into path resolution or remove
-  - `ComplianceChecker.enabled_checks` — use to conditionally run checks
+- [x] **Resolve all 5 `#[allow(dead_code)]` suppressions**
+  - Removed redundant `CachedResult.query_hash` field
+  - Used timestamp in LRU eviction as tiebreaker
+  - Added `VersionControl::vault_path()` getter
+  - Added `Vault::key_manager()` getter
+  - Gated `ComplianceChecker` methods with `enabled_checks` map
 
-- [ ] **Optimize string building in `model_card.rs`**
+- [x] **Optimize string building in `model_card.rs`**
   - Replace `push_str(&format!(...))` with `write!(md, ...)` via `std::fmt::Write`
-  - Eliminates intermediate allocations in `to_markdown()`
+  - `String::with_capacity(2048)`, `add_metadata` uses `impl Into<String>`
 
-- [ ] **Make `ModelFormat::name()` return `&'static str`**
-  - Currently returns `String` via `.to_string()` on every call
-  - Same for `extension()` — allocates unnecessarily
+- [x] **Make `ModelFormat::name()` return `&'static str`**
+  - Zero-allocation for both `name()` and `extension()`
 
-- [ ] **Add missing test coverage**
-  - `audit.rs` — zero tests (inline or external)
-  - `vault.rs` — external integration tests for error paths
-  - `compliance.rs` — external tests for CVE scanning
-  - CLI integration tests (exercise `aim` binary end-to-end)
-  - Cloud backend tests (mock-based, no real credentials needed)
+- [x] **Add missing test coverage (+19 tests, 246 total)**
+  - `vault.rs` — `change_passphrase` (security-critical re-encryption)
+  - `audit.rs` — `read_entries`, `log_auth`, `log_security_violation`
+  - `formats.rs` — `FormatConverter` register, can_convert, convert, error paths
+  - `version.rs` — `cleanup_old_versions`, `verify_checksum`
+  - `compliance.rs` — `set_check_enabled`, `is_check_enabled`
 
-- [ ] **Add benchmarks**
-  - Storage read/write throughput
-  - Compression ratio vs. speed comparison
-  - Archive creation/extraction
-  - Version control operations at scale
+- [x] **Add benchmarks (`vault_bench`)**
+  - Store/retrieve throughput
+  - Format detection
+  - SHA-256 hashing
+  - Model card serialization/deserialization
+
+- [x] **License: Switch from MIT to AGPL-3.0-or-later dual-license**
+  - GNU Affero General Public License v3.0 or later for open-source use
+  - Commercial license option (COMMERCIAL_LICENSE.md)
+
+- [x] **Root directory cleanup (~80 → ~30 entries)**
+  - Deleted 10 temporary artifacts
+  - Moved 23 status/completion files → `reports/`
+  - Moved 12 guides/demos/scripts → `docs/`
 
 ---
 
-## v0.3.0 — Python Bindings (PyO3)
+## v0.3.0 — Python Bindings (PyO3) (complete)
 
-Replace CLI-wrapper Python bindings with native FFI.
+Native Rust-backed Python bindings replacing CLI-wrapper architecture.
 
-- [ ] **PyO3/maturin integration**
-  - Add `[lib] crate-type = ["cdylib"]` target
-  - Expose `Vault`, `FipsCrypto`, `Storage`, `VersionControl` to Python
-  - Publish to PyPI as `neuralvault`
+- [x] **PyO3/maturin integration**
+  - Added `pyo3 = { version = "0.22", features = ["extension-module"], optional = true }` behind `python` feature flag
+  - Configured maturin as build backend in `pyproject.toml` (replaced setuptools)
+  - `module-name = "neuralvault._native"` for clean native import
 
-- [ ] **Native Python API**
-  - `vault.store()` / `vault.retrieve()` without subprocess
-  - Direct access to encryption/decryption
-  - Streaming support for large models
-  - Async support via `pyo3-asyncio`
+- [x] **Native Python API (`src/python.rs`, ~640 lines)**
+  - `Vault` — create, unlock, lock, store_model, get_model, list_models, list_versions, get_lineage, delete_version, get_stats, change_passphrase
+  - `VaultConfig` — XDG-compliant config with optional custom vault_dir
+  - `ModelFormat` — 22+ format detection, name/extension properties
+  - `ModelMetadata` — builder-style constructor with description, framework, task, architecture, parameters
+  - `ModelVersion` — read-only version snapshot (version, checkpoint_id, timestamp, format, size, checksum)
+  - `ModelCard` — create, set_training_data, add_metric, add_metadata, to_json/to_yaml/to_markdown, from_json/from_yaml
+  - `sha256_hex()` — FIPS-compliant SHA-256 digest
+  - `version()` — native library version string
+
+- [x] **Python `__init__.py` with native import + fallback**
+  - Imports from `_native` module when available (`_NATIVE = True`)
+  - Falls back to pure-Python CLI wrappers for source installs without Rust
 
 - [ ] **Python documentation**
   - Sphinx/MkDocs API reference
   - Jupyter notebook tutorials
   - PyPI README with usage examples
+
+- [ ] **Streaming support for large models**
+  - Async support via `pyo3-asyncio`
 
 ---
 

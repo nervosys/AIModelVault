@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-10
+
+### Added
+- **Native Python bindings via PyO3** (`src/python.rs`, ~640 lines)
+  - `Vault`: create, unlock, lock, store_model, get_model, list_models, list_versions, get_lineage, delete_version, get_stats, change_passphrase
+  - `VaultConfig`: XDG-compliant configuration with optional custom vault directory
+  - `ModelFormat`: 22+ format detection with name/extension properties
+  - `ModelMetadata`: builder-style constructor (name, format, description, framework, task, architecture, parameters)
+  - `ModelVersion`: read-only version snapshot (version, checkpoint_id, timestamp, format, size, checksum)
+  - `ModelCard`: create, set_training_data, add_metric, add_metadata, serialization (JSON/YAML/Markdown), deserialization
+  - `sha256_hex()`: FIPS-compliant SHA-256 hex digest
+  - `version()`: native library version string
+- `python` feature flag in Cargo.toml gating PyO3 dependency
+- maturin build backend in `pyproject.toml` (replaced setuptools)
+- Native import with graceful fallback in `__init__.py` (`_NATIVE` flag)
+
+### Changed
+- Python package now uses native Rust FFI instead of CLI subprocess wrappers when built with maturin
+- `pyproject.toml`: build system switched from setuptools to maturin ≥1.7
+
+## [0.2.0] - 2026-02-10
+
+### Changed
+- **License**: Switched from MIT to AGPL-3.0-or-later with commercial dual-license option + CLA
+- **Architecture**: Split `rag.rs` (2,168 lines) into 7 submodules with backward-compatible re-exports
+- **Architecture**: Split `main.rs` (2,931 lines) into 87-line dispatcher + `cli/` module tree (11 files)
+- **Performance**: `ModelFormat::name()` and `extension()` return `&'static str` (zero allocation)
+- **Performance**: `model_card.rs` uses `write!()` instead of `format!()+push_str()`, `String::with_capacity(2048)`
+
+### Added
+- `COMMERCIAL_LICENSE.md` for proprietary/commercial licensing inquiries
+- `Vault::key_manager()` getter (resolves dead_code suppression)
+- `VersionControl::vault_path()` getter (resolves dead_code suppression)
+- `ComplianceChecker` gated methods with `enabled_checks` map
+- 19 new tests (246 total): `change_passphrase`, `audit` logging, `FormatConverter`, `cleanup_old_versions`, `verify_checksum`, compliance check toggling
+- `vault_bench` benchmarks: store/retrieve, format detection, SHA-256, model card ser/de
+
+### Fixed
+- Resolved all 5 `#[allow(dead_code)]` annotations in production code
+- Removed redundant `CachedResult.query_hash` field; used timestamp in LRU eviction as tiebreaker
+
+### Removed
+- 10 temporary artifacts from root (test outputs, status files)
+- Moved 23 status/completion files to `reports/`
+- Moved 12 guides/demo scripts to `docs/`
+
+## [0.1.1] - 2026-02-07
+
+### Fixed
+- **Critical**: Replaced panicking `.expect()` in `Vault::new()` with `match` returning `Result`
+- **Critical**: Guarded `validate_sql_identifier()` against empty-string panic
+- Deprecated `actions-rs/toolchain@v1` → `dtolnay/rust-toolchain@stable` in CI
+- Deprecated `actions/create-release@v1` → `softprops/action-gh-release@v2`
+- Fixed binary name `aimv` → `aim` in release.yml
+- Made heavyweight Python deps optional in `pyproject.toml` (`[project.optional-dependencies] ml`)
+
+### Added
+- 40+ Python tests for ModelFormat, VaultConfig, Vault, FIPSCrypto
+- `#[must_use]` annotations on all 15 pure functions
+- `///` doc comments on 17+ public types and builder methods
+- Warning docstring to `fips.py` documenting PBKDF2 vs Argon2id incompatibility
+
+### Changed
+- Synced Python `ModelFormat` enum 1:1 with Rust's 23-variant enum
+- Committed `Cargo.lock` for reproducible binary builds
+- Updated test count references from 171/119 → 227
+
 ## [0.1.0] - 2025-11-03
 
 ### Added
@@ -144,14 +211,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Future Releases
 
-### Planned for v0.2.0
-- Python bindings (PyO3)
-- Model format conversion utilities
-- GraphQL API for model management
-- Web interface for vault management
-- Additional cloud storage providers
-- Kubernetes deployment examples
+### Planned for v0.3.0
+- Native Python bindings (PyO3/maturin)
+- Direct Python API without subprocess
+- PyPI publication as `neuralvault`
+
+### Planned for v0.4.0
+- Real model format conversion pipeline
+- PyTorch ↔ ONNX, SafeTensors ↔ PyTorch, GGUF ↔ SafeTensors
 
 ---
 
+[0.2.0]: https://github.com/nervosys/aimodelvault/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/nervosys/aimodelvault/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/nervosys/aimodelvault/releases/tag/v0.1.0
