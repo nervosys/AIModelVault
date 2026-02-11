@@ -13,6 +13,8 @@
 pub mod auth;
 pub mod dashboard;
 pub mod error;
+#[cfg(feature = "graphql")]
+pub mod graphql;
 pub mod openapi;
 pub mod routes;
 pub mod server;

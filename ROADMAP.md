@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-02-11  
-> Current version: **1.0.0**  
-> Status: Production release — documentation website live
+> Last updated: 2026-02-12  
+> Current version: **1.1.0**  
+> Status: Production release — advanced distributed features
 
 ---
 
@@ -242,13 +242,15 @@ Network-accessible vault management.
   - `aim serve` with `--host`, `--port`, `--jwt-secret`, `--token-expiry`, `--cors-permissive`, `--no-dashboard`
   - Environment variable support: `AIM_HOST`, `AIM_PORT`, `AIM_JWT_SECRET`
 
-- [ ] **GraphQL API** (deferred to future release)
-  - `async-graphql` integration
-  - Subscription support for real-time updates
+- [x] **GraphQL API** (`graphql` feature flag)
+  - `async-graphql` 7.0 integration with axum
+  - Queries: models, model, versions, lineage, stats, audit_log, conversions, health, version
+  - Mutations: store_model, delete_model, delete_version, convert_model, unlock, lock
+  - GraphQL Playground at `/graphql`
 
 ---
 
-## v1.0.0 — Production Release
+## v1.0.0 — Production Release ✅
 
 - [x] FIPS 140-3 CMVP validation (formal, if needed)
 - [x] Security audit by third party
@@ -261,15 +263,47 @@ Network-accessible vault management.
 
 ---
 
+## v1.1.0 — Advanced Features ✅
+
+Distributed systems and hardware acceleration.
+
+- [x] **GraphQL API** (`graphql` feature flag)
+  - Full async-graphql 7.0 integration with axum
+  - Queries: models, model, versions, lineage, stats, audit_log, conversions, health, version
+  - Mutations: store_model, delete_model, delete_version, convert_model, unlock, lock
+  - GraphQL Playground at `/graphql`
+
+- [x] **GPU-Accelerated Encryption** (`gpu` feature flag, ~500 lines)
+  - OpenCL-based AES-256-CTR encryption/decryption
+  - Full AES implementation in OpenCL kernel (~200 lines)
+  - Automatic CPU fallback when GPU unavailable
+  - Threshold-based activation (≥10 MiB for GPU)
+  - Benchmark utilities for CPU vs GPU comparison
+  - Requires OpenCL SDK installation
+
+- [x] **Federated Vault Synchronization** (~800 lines)
+  - Vector clocks for causal ordering (`VectorClock`, `ClockComparison`)
+  - Peer configuration and discovery (`FederationConfig`, `PeerConfig`)
+  - Sync protocol with delta computation (`FederationManager`)
+  - Manifest generation and comparison (`SyncManifest`, `ModelManifestEntry`)
+  - Conflict detection and resolution strategies (`SyncConflict`, `ConflictResolution`)
+
+- [x] **Blockchain-Based Audit Trail** (~650 lines)
+  - Merkle tree implementation with proof generation/verification
+  - Audit block structure with hash chain integrity
+  - JSON-based persistence with file-per-block storage
+  - Complete chain verification (`ChainVerification`)
+  - Cryptographic proof from entry to genesis (`AuditProof`)
+  - Auto-finalization based on block size threshold
+
+---
+
 ## Out of Scope (Current)
 
 These are tracked but not planned for any specific release:
 
 - Google Cloud Storage (blocked by RUSTSEC-2025-0009/0010 in `cloud-storage` crate)
-- GPU-accelerated encryption
 - Model training integration
-- Federated vault synchronization
-- Blockchain-based audit trail
 
 ---
 

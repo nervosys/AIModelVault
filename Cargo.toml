@@ -53,6 +53,12 @@ directories = "5.0" # XDG base directories
 # Concurrency
 parking_lot = "0.12" # Fast mutex for telemetry
 
+# System info
+hostname = "0.4"
+
+# Async streams (for GraphQL subscriptions)
+async-stream = "0.3"
+
 # HTTP client for telemetry
 reqwest = { version = "0.12", default-features = false, features = [
     "blocking",
@@ -93,6 +99,16 @@ jsonwebtoken = { version = "9.3", optional = true }
 utoipa = { version = "5", features = ["axum_extras"], optional = true }
 base64 = { version = "0.22", optional = true }
 hyper = { version = "1.4", optional = true }
+
+# GraphQL API (optional)
+async-graphql = { version = "7.0", features = [
+    "chrono",
+    "uuid",
+], optional = true }
+async-graphql-axum = { version = "7.0", optional = true }
+
+# GPU acceleration (optional)
+ocl = { version = "0.19", optional = true }
 
 # Python bindings (optional)
 pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
@@ -142,6 +158,10 @@ api = [
     "base64",
     "hyper",
 ]
+# GraphQL API (requires api)
+graphql = ["api", "async-graphql", "async-graphql-axum"]
+# GPU-accelerated encryption
+gpu = ["ocl"]
 # Python native bindings
 python = ["dep:pyo3"]
 

@@ -11,11 +11,13 @@
 #[cfg(feature = "api")]
 pub mod api;
 pub mod audit;
+pub mod blockchain;
 pub mod compliance;
 pub mod config;
 pub mod conversion;
 pub mod crypto;
 pub mod error;
+pub mod federation;
 pub mod formats;
 pub mod model_card;
 pub mod rag;
@@ -50,6 +52,18 @@ pub use utils::{
 };
 pub use vault::Vault;
 pub use version::{ModelVersion, VersionControl};
+
+// Blockchain audit exports
+pub use blockchain::{
+    AuditBlock, AuditProof, BlockchainAudit, ChainVerification, MerkleProof, MerkleTree,
+    ProofVerification,
+};
+
+// Federation exports
+pub use federation::{
+    ConflictResolution, FederationConfig, FederationManager, FederationStatus, PeerConfig,
+    SyncConflict, SyncManifest, SyncResult, VectorClock,
+};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

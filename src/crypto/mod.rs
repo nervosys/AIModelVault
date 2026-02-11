@@ -10,6 +10,8 @@
 //! - RFC 9106 (Argon2)
 
 pub mod compression;
+#[cfg(feature = "gpu")]
+pub mod gpu;
 
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
