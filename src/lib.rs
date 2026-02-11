@@ -21,6 +21,9 @@ pub mod utils;
 pub mod vault;
 pub mod version;
 
+#[cfg(feature = "python")]
+mod python;
+
 pub use config::VaultConfig;
 pub use error::{Result, VaultError};
 pub use model_card::{

@@ -1,11 +1,54 @@
 """
 NeuralVault - Universal secure vault for AI model formats
+
+Native Rust bindings via PyO3. Falls back to pure-Python CLI wrappers
+if the native extension is not available (e.g. source installs without Rust).
 """
 
 __version__ = "0.1.0"
 
-from neuralvault.core.vault import Vault
-from neuralvault.core.config import VaultConfig
-from neuralvault.formats.registry import ModelFormat
+try:
+    # Native Rust bindings (installed via maturin)
+    from neuralvault._native import (  # type: ignore[attr-defined]
+        ModelCard,
+        ModelFormat,
+        ModelMetadata,
+        ModelVersion,
+        Vault,
+        VaultConfig,
+        sha256_hex,
+        version as rust_version,
+    )
 
-__all__ = ["Vault", "VaultConfig", "ModelFormat"]
+    _NATIVE = True
+except ImportError:
+    # Fallback to pure-Python CLI wrappers
+    from neuralvault.core.vault import Vault  # type: ignore[assignment]
+    from neuralvault.core.config import VaultConfig  # type: ignore[assignment]
+    from neuralvault.formats.registry import ModelFormat  # type: ignore[assignment]
+
+    ModelMetadata = None  # type: ignore[assignment,misc]
+    ModelVersion = None  # type: ignore[assignment,misc]
+    ModelCard = None  # type: ignore[assignment,misc]
+    sha256_hex = None  # type: ignore[assignment]
+    rust_version = None  # type: ignore[assignment]
+    _NATIVE = False
+
+__all__ = [
+    "Vault",
+    "VaultConfig",
+    "ModelFormat",
+    "ModelMetadata",
+    "ModelVersion",
+    "ModelCard",
+    "sha256_hex",
+    "version",
+    "_NATIVE",
+]
+
+
+def version() -> str:
+    """Return the native Rust library version, or the Python package version."""
+    if rust_version is not None:
+        return rust_version()
+    return __version__
