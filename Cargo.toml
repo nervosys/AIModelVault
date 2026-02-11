@@ -53,6 +53,13 @@ directories = "5.0" # XDG base directories
 # Concurrency
 parking_lot = "0.12" # Fast mutex for telemetry
 
+# HTTP client for telemetry
+reqwest = { version = "0.12", default-features = false, features = [
+    "blocking",
+    "json",
+    "rustls-tls",
+] }
+
 # Error handling
 thiserror = "1.0"
 

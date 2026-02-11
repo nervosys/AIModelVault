@@ -245,31 +245,136 @@ impl TelemetryClient {
 
     /// Send a batch of events to the telemetry endpoint
     fn send_batch(&self, events: Vec<TelemetryEnvelope>) {
-        // Fire and forget - don't block on telemetry
-        let _endpoint = self.config.endpoint.clone();
+        let endpoint = self.config.endpoint.clone();
 
         std::thread::spawn(move || {
-            // Use a simple blocking HTTP client
-            // In production, this would use reqwest or similar
-            if let Ok(body) = serde_json::to_string(&events) {
-                // For now, just log to a local file for offline collection
-                // This avoids adding network dependencies
-                let _ = Self::write_to_local_queue(&body);
+            // Try to send to remote server with retries
+            let mut last_error = None;
+            for attempt in 0..3 {
+                if attempt > 0 {
+                    // Exponential backoff: 100ms, 400ms
+                    std::thread::sleep(Duration::from_millis(100 * (1 << attempt)));
+                }
+
+                match Self::send_http_batch(&endpoint, &events) {
+                    Ok(()) => {
+                        // Also try to send any previously queued events
+                        let _ = Self::flush_local_queue(&endpoint);
+                        return;
+                    }
+                    Err(e) => {
+                        last_error = Some(e);
+                    }
+                }
+            }
+
+            // All retries failed - save to local queue for later
+            if let Some(_err) = last_error {
+                if let Ok(body) = serde_json::to_string(&events) {
+                    let _ = Self::write_to_local_queue(&body);
+                }
             }
         });
+    }
+
+    /// Send events via HTTP POST
+    fn send_http_batch(
+        endpoint: &str,
+        events: &[TelemetryEnvelope],
+    ) -> std::result::Result<(), String> {
+        use reqwest::blocking::Client;
+
+        let client = Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+        let response = client
+            .post(endpoint)
+            .header("Content-Type", "application/json")
+            .header("User-Agent", format!("aim/{}", env!("CARGO_PKG_VERSION")))
+            .json(events)
+            .send()
+            .map_err(|e| format!("HTTP request failed: {}", e))?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(format!("Server returned error: {}", response.status()))
+        }
+    }
+
+    /// Flush any events stored in the local queue
+    fn flush_local_queue(endpoint: &str) -> std::result::Result<(), String> {
+        let queue_file = Self::get_queue_file_path();
+
+        if !queue_file.exists() {
+            return Ok(());
+        }
+
+        // Read all queued events
+        let contents =
+            fs::read_to_string(&queue_file).map_err(|e| format!("Failed to read queue: {}", e))?;
+
+        let mut all_sent = true;
+        let mut remaining_lines = Vec::new();
+
+        for line in contents.lines() {
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            // Parse the queued batch
+            if let Ok(events) = serde_json::from_str::<Vec<TelemetryEnvelope>>(line) {
+                if Self::send_http_batch(endpoint, &events).is_err() {
+                    all_sent = false;
+                    remaining_lines.push(line.to_string());
+                }
+            }
+        }
+
+        // Update queue file - remove sent events
+        if all_sent {
+            let _ = fs::remove_file(&queue_file);
+        } else if !remaining_lines.is_empty() {
+            use std::io::Write;
+            if let Ok(mut file) = fs::File::create(&queue_file) {
+                for line in remaining_lines {
+                    let _ = writeln!(file, "{}", line);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get the queue file path
+    fn get_queue_file_path() -> PathBuf {
+        directories::BaseDirs::new()
+            .map(|d| {
+                d.cache_dir()
+                    .join("ai")
+                    .join("telemetry")
+                    .join("events.jsonl")
+            })
+            .unwrap_or_else(|| {
+                PathBuf::from(".")
+                    .join(".cache")
+                    .join("ai")
+                    .join("telemetry")
+                    .join("events.jsonl")
+            })
     }
 
     /// Write events to local queue file (for offline/batched collection)
     fn write_to_local_queue(body: &str) -> std::io::Result<()> {
         use std::io::Write;
 
-        let queue_dir = directories::BaseDirs::new()
-            .map(|d| d.cache_dir().join("ai").join("telemetry"))
-            .unwrap_or_else(|| PathBuf::from(".").join(".cache").join("ai").join("telemetry"));
+        let queue_file = Self::get_queue_file_path();
+        if let Some(queue_dir) = queue_file.parent() {
+            fs::create_dir_all(queue_dir)?;
+        }
 
-        fs::create_dir_all(&queue_dir)?;
-
-        let queue_file = queue_dir.join("events.jsonl");
         let mut file = fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -309,10 +414,7 @@ pub fn init_default(config_dir: Option<&PathBuf>) -> Result<()> {
 fn load_or_create_config(config_dir: Option<&PathBuf>) -> Result<TelemetryConfig> {
     let config_path = config_dir
         .cloned()
-        .or_else(|| {
-            directories::BaseDirs::new()
-                .map(|d| d.config_dir().join("ai").join("models"))
-        })
+        .or_else(|| directories::BaseDirs::new().map(|d| d.config_dir().join("ai").join("models")))
         .map(|d| d.join("telemetry.yaml"));
 
     if let Some(path) = &config_path {
@@ -398,10 +500,10 @@ pub fn track_model_op(
     success: bool,
 ) {
     let size_bucket = match size_bytes {
-        0..=10_000_000 => "small",         // < 10MB
-        10_000_001..=100_000_000 => "medium", // 10MB - 100MB
+        0..=10_000_000 => "small",              // < 10MB
+        10_000_001..=100_000_000 => "medium",   // 10MB - 100MB
         100_000_001..=1_000_000_000 => "large", // 100MB - 1GB
-        _ => "xlarge",                      // > 1GB
+        _ => "xlarge",                          // > 1GB
     };
 
     track(TelemetryEvent::ModelOperation {
