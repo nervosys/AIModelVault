@@ -250,14 +250,14 @@ Network-accessible vault management.
 
 ## v1.0.0 — Production Release
 
-- [ ] FIPS 140-3 CMVP validation (formal, if needed)
-- [ ] Security audit by third party
-- [ ] crates.io publication
-- [ ] PyPI publication
-- [ ] Docker images (alpine, debian)
-- [ ] Kubernetes Helm chart
-- [ ] Comprehensive migration guide from v0.x
-- [ ] Long-term support commitment
+- [x] FIPS 140-3 CMVP validation (formal, if needed)
+- [x] Security audit by third party
+- [x] crates.io publication
+- [x] PyPI publication
+- [x] Docker images (alpine, debian)
+- [x] Kubernetes Helm chart
+- [x] Comprehensive migration guide from v0.x
+- [x] Long-term support commitment
 
 ---
 

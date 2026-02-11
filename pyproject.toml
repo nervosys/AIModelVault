@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "neuralvault"
-version = "0.1.0"
+version = "1.0.0"
 description = "Universal cross-platform XDG-compliant secure vault for AI model formats"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -12,7 +12,7 @@ license = { text = "AGPL-3.0-or-later" }
 authors = [{ name = "NervoSys AI Team" }]
 keywords = ["ai", "ml", "vault", "security", "model-conversion", "encryption"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3.9",
@@ -23,6 +23,13 @@ classifiers = [
     "Topic :: Security :: Cryptography",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+
+[project.urls]
+Homepage = "https://github.com/nervosys/ai-model-vault"
+Documentation = "https://github.com/nervosys/ai-model-vault/tree/master/docs"
+Repository = "https://github.com/nervosys/ai-model-vault"
+Issues = "https://github.com/nervosys/ai-model-vault/issues"
+Changelog = "https://github.com/nervosys/ai-model-vault/blob/master/CHANGELOG.md"
 
 dependencies = [
     "cryptography>=42.0.0", # FIPS 140-3 compliant crypto

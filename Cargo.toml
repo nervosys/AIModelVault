@@ -1,12 +1,16 @@
 [package]
 name = "ai-model-vault"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+rust-version = "1.75"
 authors = ["NervoSys AI Team"]
 description = "Universal cross-platform XDG-compliant secure vault for AI model formats (Neural and Neurosymbolic)"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/nervosys/ai-model-vault"
-keywords = ["ai", "ml", "vault", "security", "model-conversion", "encryption"]
+homepage = "https://github.com/nervosys/ai-model-vault"
+documentation = "https://docs.rs/ai-model-vault"
+readme = "README.md"
+keywords = ["ai", "ml", "vault", "security", "encryption"]
 categories = ["cryptography", "science"]
 
 [dependencies]

@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-02-10
+
+### Changed
+- **Version bump to 1.0.0** — first production-stable release
+  - Cargo.toml: `0.1.0` → `1.0.0`
+  - pyproject.toml: `0.1.0` → `1.0.0`, classifier `Alpha` → `Production/Stable`
+  - CLI version: `0.1.0` → `1.0.0`
+  - OpenAPI spec: `0.5.0` → `1.0.0`
+
+### Added
+- **Multi-stage Dockerfile** with Alpine (default, ~12 MB) and Debian variants
+  - Static musl binary via `x86_64-unknown-linux-musl` target
+  - Non-root user, tini init, XDG volume mounts
+  - Configurable `FEATURES` build arg (e.g., `--build-arg FEATURES=api`)
+  - `.dockerignore` for minimal build context
+- **Kubernetes Helm chart** (`deploy/helm/ai-model-vault/`)
+  - Deployment with hardened security context (non-root, read-only FS, drop all caps)
+  - Service (ClusterIP), Secret (auto-generated JWT), ServiceAccount
+  - PersistentVolumeClaims for data, config, and cache
+  - Optional Ingress with TLS support
+  - HorizontalPodAutoscaler
+  - Values: image, replicas, API config, persistence, resources, probes, autoscaling
+- **Docker CI/CD workflow** (`.github/workflows/docker.yml`)
+  - Builds and pushes Alpine, Debian, and API images to GHCR on tag push
+  - Docker Buildx with GitHub Actions cache
+  - OCI metadata labels via `docker/metadata-action`
+- **Comprehensive migration guide** (`docs/MIGRATION.md`)
+  - Covers Rust crate, Python package, CLI, REST API, Docker, and Kubernetes
+  - Breaking changes summary, data migration notes, environment variables
+- **Publication readiness metadata**
+  - Cargo.toml: added `readme`, `homepage`, `documentation`, `rust-version` fields
+  - pyproject.toml: added `[project.urls]` section (Homepage, Docs, Repo, Issues, Changelog)
+  - Keywords trimmed to 5 for crates.io compliance
+
 ## [0.5.0] - 2026-02-10
 
 ### Added
