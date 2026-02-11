@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-10
+
+### Added
+- **Format conversion pipeline** (`src/conversion.rs`, ~1350 lines)
+  - `Converter` trait with `convert()`, `validate()`, `name()`, `source_format()`, `target_format()`
+  - `ConversionPipeline` with BFS multi-step path finding and `with_builtins()` factory
+  - `ConversionOptions`: quantization, opset_version, tolerance, preserve_metadata, extra params
+  - `ConversionResult`: output data, conversion path, input/output sizes, optional validation report
+  - `ConversionProgress` with step tracking and Display impl
+  - `ValidationReport` and `ValidationCheck` structures
+- **10 built-in format converters**
+  - Pure Rust: SafeTensors↔Raw roundtrip, GGUF header parser, ONNX metadata extractor
+  - Shim converters (JSON conversion plans): SafeTensors↔PyTorch, PyTorch→ONNX, ONNX→TensorRT, ONNX→CoreML, SafeTensors→GGUF
+- **Magic-bytes validation** for SafeTensors, GGUF, PyTorch (ZIP/pickle), ONNX (protobuf), TFLite
+- **CLI commands**
+  - `aim convert` with `--opset`, `--validate`, `--plan-only` flags
+  - `aim list-conversions` to show all registered converters and multi-step paths
+- **53 conversion tests** (22 unit + 31 integration)
+
 ## [0.3.0] - 2026-02-10
 
 ### Added

@@ -188,7 +188,22 @@ pub enum Commands {
         /// Quantization level for GGUF conversion (q4_0, q4_k_m, q8_0, etc.)
         #[arg(short, long)]
         quantization: Option<String>,
+
+        /// ONNX opset version (default 17)
+        #[arg(long)]
+        opset: Option<u32>,
+
+        /// Validate conversion output
+        #[arg(long)]
+        validate: bool,
+
+        /// Only show conversion plan (don't execute)
+        #[arg(long)]
+        plan_only: bool,
     },
+
+    /// List supported format conversions
+    ListConversions,
 
     /// Cloud storage operations
     Cloud {

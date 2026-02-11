@@ -11,6 +11,7 @@
 pub mod audit;
 pub mod compliance;
 pub mod config;
+pub mod conversion;
 pub mod crypto;
 pub mod error;
 pub mod formats;
@@ -25,6 +26,10 @@ pub mod version;
 mod python;
 
 pub use config::VaultConfig;
+pub use conversion::{
+    ConversionOptions, ConversionPipeline, ConversionProgress, ConversionResult, Converter,
+    ValidationCheck, ValidationReport,
+};
 pub use error::{Result, VaultError};
 pub use model_card::{
     CaveatsAndRecommendations, EnvironmentalImpact, EthicalConsiderations, Evaluation, IntendedUse,
