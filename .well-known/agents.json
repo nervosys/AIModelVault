@@ -1,0 +1,173 @@
+{
+  "$schema": "https://nervosys.com/schemas/agents-discovery-v1.json",
+  "schema_version": "1.0",
+  "project": {
+    "id": "ai-model-vault",
+    "name": "AI Model Vault",
+    "version": "1.1.0",
+    "description": "Encrypted AI/ML model management system with versioning, format conversion, compliance validation, RAG, MCP tools, and federated sync.",
+    "homepage": "https://github.com/nervosys/AIModelVault",
+    "documentation": "https://github.com/nervosys/AIModelVault/tree/master/docs",
+    "license": "AGPL-3.0-or-later",
+    "languages": ["Rust"],
+    "binary": "aim",
+    "package_registry": "crates.io",
+    "package_name": "ai-model-vault"
+  },
+
+  "discovery": {
+    "ontology": ".well-known/ontology.jsonld",
+    "mcp_manifest": ".well-known/mcp-manifest.json",
+    "ai_plugin": ".well-known/ai-plugin.json",
+    "openapi": ".well-known/openapi.yaml",
+    "readme": "README.md",
+    "changelog": "CHANGELOG.md",
+    "architecture": "docs/ARCHITECTURE.md"
+  },
+
+  "agent_interfaces": [
+    {
+      "type": "cli",
+      "binary": "aim",
+      "description": "Command-line interface with 30+ subcommands for vault, model, cloud, database, and utility operations.",
+      "install": "cargo install ai-model-vault",
+      "help": "aim --help",
+      "exit_codes": {
+        "0": "Success",
+        "1": "General error",
+        "2": "Authentication failed",
+        "3": "Not found",
+        "4": "Permission denied",
+        "5": "Integrity check failed"
+      },
+      "environment_variables": [
+        {"name": "aimodelvault_CONFIG", "description": "Custom config file path"},
+        {"name": "aimodelvault_VAULT", "description": "Default vault name"},
+        {"name": "aimodelvault_PASSPHRASE", "description": "Vault passphrase (for automation)"},
+        {"name": "AWS_ACCESS_KEY_ID", "description": "AWS S3 access key"},
+        {"name": "AWS_SECRET_ACCESS_KEY", "description": "AWS S3 secret key"},
+        {"name": "AWS_REGION", "description": "AWS region"},
+        {"name": "AZURE_STORAGE_ACCOUNT", "description": "Azure storage account name"},
+        {"name": "AZURE_STORAGE_KEY", "description": "Azure storage key"},
+        {"name": "GOOGLE_APPLICATION_CREDENTIALS", "description": "GCP service account JSON path"},
+        {"name": "GCP_PROJECT", "description": "GCP project ID"}
+      ]
+    },
+    {
+      "type": "mcp",
+      "description": "Model Context Protocol server with 4 built-in tools and extensible tool registry.",
+      "protocol_version": "2024-11-05",
+      "manifest": ".well-known/mcp-manifest.json",
+      "builtin_tools": ["search_documents", "add_document", "chunk_text", "execute_rule"],
+      "extensible": true
+    },
+    {
+      "type": "rest_api",
+      "description": "REST API powered by Axum with JWT authentication. Requires `api` cargo feature.",
+      "feature_flag": "api",
+      "default_port": 8080,
+      "auth": "JWT (Bearer token)",
+      "start_command": "aim serve --port 8080"
+    },
+    {
+      "type": "graphql",
+      "description": "GraphQL API powered by async-graphql. Requires `graphql` cargo feature.",
+      "feature_flag": "graphql",
+      "endpoint": "/graphql",
+      "playground": "/graphql/playground"
+    },
+    {
+      "type": "rust_library",
+      "description": "Rust crate with public API for embedding in Rust applications.",
+      "crate": "ai-model-vault",
+      "docs_rs": "https://docs.rs/ai-model-vault",
+      "key_types": ["Vault", "ModelVersion", "ModelMetadata", "ModelFormat", "ModelCard", "DocumentStore", "KnowledgeBase", "RuleEngine", "MCPServer", "ConversionPipeline"]
+    },
+    {
+      "type": "python_bindings",
+      "description": "Python bindings via PyO3. Requires `python` cargo feature.",
+      "feature_flag": "python",
+      "install": "pip install ai-model-vault"
+    }
+  ],
+
+  "capabilities": {
+    "model_management": {
+      "description": "Store, retrieve, version, and delete AI models with full encryption",
+      "commands": ["aim init", "aim store", "aim get", "aim list", "aim versions", "aim lineage", "aim delete", "aim stats"],
+      "formats_supported": 23,
+      "versioning": "Sequential with parent lineage and branching"
+    },
+    "encryption": {
+      "description": "Military-grade encryption for all stored models",
+      "algorithm": "AES-256-GCM",
+      "key_derivation": "Argon2id (64MB, 3 iterations)",
+      "compliance": ["FIPS 140-3", "CMMC 2.0 Level 2"]
+    },
+    "format_conversion": {
+      "description": "Convert models between 23+ formats with optional quantization",
+      "commands": ["aim convert", "aim list-conversions"],
+      "paths": [
+        "PyTorch → Safetensors/ONNX/TorchScript/CoreML/MLX",
+        "Safetensors → GGUF",
+        "ONNX → TensorRT/OpenVINO/TFLite",
+        "TensorFlow → TFLite"
+      ],
+      "quantization": ["q4_0", "q4_k_m", "q5_k_m", "q8_0"]
+    },
+    "compliance": {
+      "description": "Automated compliance validation against industry standards",
+      "commands": ["aim compliance"],
+      "standards": ["FIPS 140-3", "CMMC 2.0 Level 2", "MITRE ATT&CK"]
+    },
+    "cloud_storage": {
+      "description": "Push/pull encrypted models to cloud providers",
+      "commands": ["aim cloud push", "aim cloud pull", "aim cloud list", "aim cloud config"],
+      "providers": ["AWS S3", "Azure Blob Storage", "Google Cloud Storage"]
+    },
+    "rag": {
+      "description": "Retrieval Augmented Generation system for AI-powered document search",
+      "commands": ["aim database init", "aim database store", "aim database search", "aim database list"],
+      "components": ["DocumentStore", "KnowledgeBase", "RuleEngine", "RetrievalCache"],
+      "backends": ["InMemory", "SQLite", "Sled", "Qdrant", "LanceDB"]
+    },
+    "model_cards": {
+      "description": "Structured model documentation following Google/HuggingFace standards",
+      "commands": ["aim card"],
+      "export_formats": ["JSON", "YAML", "Markdown"]
+    },
+    "utilities": {
+      "description": "Archive, analyze, deduplicate, and export models",
+      "commands": ["aim archive", "aim extract", "aim analyze", "aim deduplicate", "aim export", "aim cache"],
+      "tools": ["ModelArchive", "CompressionAnalyzer", "ModelAnalyzer", "ModelDeduplicator", "ModelExporter", "QuantizationInfo", "PruningInfo"]
+    },
+    "federation": {
+      "description": "Sync vaults across peers with vector clocks and conflict resolution",
+      "feature_flag": "default"
+    },
+    "blockchain_audit": {
+      "description": "Append-only blockchain audit trail with Merkle tree proofs",
+      "feature_flag": "default"
+    },
+    "gpu_acceleration": {
+      "description": "GPU-accelerated encryption using OpenCL",
+      "feature_flag": "gpu"
+    }
+  },
+
+  "taxonomy": {
+    "domain": "MLOps / AI Infrastructure",
+    "subdomain": ["Model Management", "Model Security", "Model Versioning", "Format Conversion", "Compliance", "RAG", "Edge Deployment"],
+    "related_projects": ["MLflow", "DVC", "Weights & Biases", "Hugging Face Hub", "ONNX Runtime", "llama.cpp"],
+    "use_cases": [
+      "Secure model storage for regulated industries (defense, healthcare, finance)",
+      "Model version control and lineage tracking for ML teams",
+      "Format conversion for edge/mobile deployment (GGUF, TFLite, CoreML)",
+      "FIPS/CMMC compliance for government contractors",
+      "RAG-powered knowledge base for model documentation",
+      "Federated model sync across distributed teams",
+      "Local LLM serving pipeline (store → convert to GGUF → serve via Ollama)"
+    ],
+    "target_users": ["ML Engineers", "MLOps Teams", "Security Engineers", "Compliance Officers", "AI Researchers", "Government Contractors"]
+  }
+}

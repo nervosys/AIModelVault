@@ -1,0 +1,466 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/tools.json",
+  "name": "ai-model-vault",
+  "version": "1.1.0",
+  "description": "MCP tool manifest for AI Model Vault — encrypted AI/ML model management with versioning, conversion, compliance, and RAG.",
+  "protocol_version": "2024-11-05",
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": true
+  },
+  "tools": [
+    {
+      "name": "search_documents",
+      "description": "Search the RAG knowledge base using vector similarity (cosine distance). Returns ranked documents matching the query embedding.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search query text to find similar documents"
+          },
+          "top_k": {
+            "type": "number",
+            "description": "Maximum number of results to return (default: 10)",
+            "default": 10
+          },
+          "threshold": {
+            "type": "number",
+            "description": "Minimum cosine similarity threshold (0.0-1.0, default: 0.7)",
+            "default": 0.7
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "add_document",
+      "description": "Add a document to the RAG knowledge base. Documents are stored with optional metadata and embeddings for similarity search.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique document identifier"
+          },
+          "content": {
+            "type": "string",
+            "description": "Document text content"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Optional key-value metadata (e.g., {\"source\": \"paper.pdf\", \"author\": \"Smith\"})",
+            "additionalProperties": {"type": "string"}
+          }
+        },
+        "required": ["id", "content"]
+      }
+    },
+    {
+      "name": "chunk_text",
+      "description": "Split text into overlapping chunks for RAG ingestion. Uses configurable chunk size and overlap.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The text to split into chunks"
+          },
+          "chunk_size": {
+            "type": "number",
+            "description": "Characters per chunk (default: 512)",
+            "default": 512
+          },
+          "overlap": {
+            "type": "number",
+            "description": "Overlap between adjacent chunks in characters (default: 50)",
+            "default": 50
+          }
+        },
+        "required": ["text"]
+      }
+    },
+    {
+      "name": "execute_rule",
+      "description": "Execute a business rule from the rule engine against a given context. Rules have conditions and actions executed by priority.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "description": "ID of the rule to execute"
+          },
+          "context": {
+            "type": "object",
+            "description": "Key-value context for rule condition evaluation",
+            "additionalProperties": true
+          }
+        },
+        "required": ["rule_id", "context"]
+      }
+    },
+    {
+      "name": "vault_init",
+      "description": "Initialize a new encrypted vault for storing AI models. Creates XDG-compliant directory structure with AES-256-GCM encryption.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the vault to create (default: 'default')"
+          },
+          "encryption": {
+            "type": "string",
+            "enum": ["aes-256-gcm"],
+            "description": "Encryption algorithm (only aes-256-gcm supported)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "vault_store",
+      "description": "Store an AI model in the vault with encryption, versioning, and metadata. Supports 23+ model formats.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name to store the model under"
+          },
+          "path": {
+            "type": "string",
+            "description": "File path to the model to store"
+          },
+          "format": {
+            "type": "string",
+            "description": "Model format (auto-detected if omitted)",
+            "enum": ["safetensors", "gguf", "pytorch", "onnx", "tensorrt", "mlx", "coreml", "torchscript", "tflite", "tensorflow", "keras", "openvino", "tvm", "ncnn", "mnn", "rknn", "caffe", "mxnet", "darknet", "hdf5", "pickle", "numpy"]
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable model description"
+          },
+          "framework": {
+            "type": "string",
+            "description": "Framework that produced the model (e.g., 'pytorch', 'tensorflow')"
+          },
+          "task": {
+            "type": "string",
+            "description": "ML task (e.g., 'text-generation', 'image-classification')"
+          },
+          "parent_version": {
+            "type": "number",
+            "description": "Parent version number for lineage tracking"
+          }
+        },
+        "required": ["name", "path"]
+      }
+    },
+    {
+      "name": "vault_get",
+      "description": "Retrieve and decrypt a model from the vault. Verifies SHA-256 checksum on retrieval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the model to retrieve"
+          },
+          "output": {
+            "type": "string",
+            "description": "Output file path for the decrypted model"
+          },
+          "version": {
+            "type": "number",
+            "description": "Specific version to retrieve (default: latest)"
+          }
+        },
+        "required": ["name", "output"]
+      }
+    },
+    {
+      "name": "vault_list",
+      "description": "List all models stored in the vault with their versions, formats, and sizes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "vault_versions",
+      "description": "List all versions of a specific model with timestamps, sizes, and parent lineage.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Model name to list versions for"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "vault_lineage",
+      "description": "Show the version ancestry tree for a model version, tracing parent-child relationships.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Model name"
+          },
+          "version": {
+            "type": "number",
+            "description": "Version number to trace lineage from"
+          }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "model_convert",
+      "description": "Convert a model between formats. Supports PyTorch→SafeTensors/ONNX/TorchScript/CoreML/MLX, SafeTensors→GGUF, ONNX→TensorRT/OpenVINO/TFLite, TensorFlow→TFLite.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Name of the model to convert"
+          },
+          "to_format": {
+            "type": "string",
+            "description": "Target format",
+            "enum": ["safetensors", "gguf", "onnx", "torchscript", "coreml", "mlx", "tensorrt", "openvino", "tflite"]
+          },
+          "output": {
+            "type": "string",
+            "description": "Output file path (optional)"
+          },
+          "version": {
+            "type": "number",
+            "description": "Source version to convert (default: latest)"
+          },
+          "quantization": {
+            "type": "string",
+            "description": "Quantization scheme for GGUF conversion",
+            "enum": ["q4_0", "q4_k_m", "q5_k_m", "q8_0"]
+          },
+          "validate": {
+            "type": "boolean",
+            "description": "Validate the converted output"
+          }
+        },
+        "required": ["model", "to_format"]
+      }
+    },
+    {
+      "name": "compliance_check",
+      "description": "Run FIPS 140-3, CMMC 2.0, and MITRE ATT&CK compliance checks against the vault configuration.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "verbose": {
+            "type": "boolean",
+            "description": "Show detailed check results"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "cloud_push",
+      "description": "Push an encrypted model to cloud storage (AWS S3, Azure Blob, or Google Cloud Storage).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Model name to push"
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["s3", "azure", "gcs"],
+            "description": "Cloud storage provider"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "Bucket/container name"
+          },
+          "version": {
+            "type": "number",
+            "description": "Version to push (default: latest)"
+          }
+        },
+        "required": ["model", "provider", "bucket"]
+      }
+    },
+    {
+      "name": "cloud_pull",
+      "description": "Pull an encrypted model from cloud storage into the local vault.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Local model name"
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["s3", "azure", "gcs"],
+            "description": "Cloud storage provider"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "Bucket/container name"
+          },
+          "remote_path": {
+            "type": "string",
+            "description": "Path within the bucket"
+          }
+        },
+        "required": ["model", "provider", "bucket", "remote_path"]
+      }
+    },
+    {
+      "name": "model_analyze",
+      "description": "Analyze a stored model — size, compression ratio, format details, parameter estimates.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Model name to analyze"
+          },
+          "version": {
+            "type": "number",
+            "description": "Version to analyze (default: latest)"
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "model_deduplicate",
+      "description": "Find duplicate models in the vault using SHA-256 hash comparison.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "detailed": {
+            "type": "boolean",
+            "description": "Show detailed similarity scores"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "vault_stats",
+      "description": "Get vault statistics — total models, versions, storage used, format distribution.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "database_search",
+      "description": "Full-text search across the RAG database (SQLite or Sled backend).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Database path"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results to return"
+          }
+        },
+        "required": ["path", "query"]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "aimv://vault/models",
+      "name": "Vault Models",
+      "description": "List of all models in the current vault with versions and metadata",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "aimv://vault/stats",
+      "name": "Vault Statistics",
+      "description": "Aggregate statistics about vault contents, storage, and formats",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "aimv://vault/compliance",
+      "name": "Compliance Report",
+      "description": "FIPS/CMMC/MITRE compliance status for the current vault",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "aimv://model/{name}/card",
+      "name": "Model Card",
+      "description": "Model card documentation for a specific model",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "aimv://model/{name}/versions",
+      "name": "Model Versions",
+      "description": "Version history and lineage for a specific model",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "aimv://rag/documents",
+      "name": "RAG Documents",
+      "description": "List of documents in the RAG knowledge base",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "aimv://conversions",
+      "name": "Conversion Paths",
+      "description": "Supported format conversion paths and quantization schemes",
+      "mimeType": "application/json"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "store_model",
+      "description": "Guide storing a new AI model in the vault with proper metadata",
+      "arguments": [
+        {"name": "model_path", "description": "Path to the model file", "required": true},
+        {"name": "model_name", "description": "Name for the stored model", "required": true}
+      ]
+    },
+    {
+      "name": "convert_model",
+      "description": "Guide converting a model between formats with optimal settings",
+      "arguments": [
+        {"name": "source_format", "description": "Current model format", "required": true},
+        {"name": "target_format", "description": "Desired output format", "required": true}
+      ]
+    },
+    {
+      "name": "compliance_audit",
+      "description": "Run a full compliance audit and explain results",
+      "arguments": []
+    },
+    {
+      "name": "setup_rag",
+      "description": "Guide setting up a RAG knowledge base with documents",
+      "arguments": [
+        {"name": "db_type", "description": "Database backend (sqlite, sled, memory)", "required": false}
+      ]
+    }
+  ]
+}

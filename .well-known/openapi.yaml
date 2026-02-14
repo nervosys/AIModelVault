@@ -1,0 +1,699 @@
+openapi: 3.1.0
+info:
+  title: AI Model Vault API
+  description: |
+    REST & GraphQL API for AI Model Vault — encrypted AI/ML model management
+    with versioning, format conversion, compliance validation, and RAG.
+    
+    Requires the `api` cargo feature: `cargo build --features api`
+    Start with: `aim serve --port 8080`
+  version: 1.1.0
+  license:
+    name: AGPL-3.0-or-later
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+  contact:
+    name: NervoSys AI Team
+    url: https://github.com/nervosys/AIModelVault
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ModelVersion:
+      type: object
+      properties:
+        version:
+          type: integer
+          description: Sequential version number
+        checkpoint_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        parent_version:
+          type: integer
+          nullable: true
+        format:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        compressed_size_bytes:
+          type: integer
+          format: int64
+        checksum_sha256:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    ModelMetadata:
+      type: object
+      required: [name, format]
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+        description:
+          type: string
+        framework:
+          type: string
+        task:
+          type: string
+        architecture:
+          type: string
+        parameters:
+          type: integer
+          format: int64
+        custom_fields:
+          type: object
+          additionalProperties:
+            type: string
+
+    ModelCard:
+      type: object
+      properties:
+        model_details:
+          $ref: '#/components/schemas/ModelDetails'
+        intended_use:
+          $ref: '#/components/schemas/IntendedUse'
+        training_data:
+          $ref: '#/components/schemas/TrainingData'
+        evaluation:
+          $ref: '#/components/schemas/Evaluation'
+        ethical_considerations:
+          $ref: '#/components/schemas/EthicalConsiderations'
+        caveats_and_recommendations:
+          $ref: '#/components/schemas/CaveatsAndRecommendations'
+
+    ModelDetails:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        license:
+          type: string
+
+    IntendedUse:
+      type: object
+      properties:
+        primary_uses:
+          type: array
+          items:
+            type: string
+        out_of_scope_uses:
+          type: array
+          items:
+            type: string
+        target_users:
+          type: array
+          items:
+            type: string
+
+    TrainingData:
+      type: object
+      properties:
+        datasets:
+          type: array
+          items:
+            type: string
+        preprocessing:
+          type: string
+
+    Evaluation:
+      type: object
+      properties:
+        metrics:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: number
+              split:
+                type: string
+
+    EthicalConsiderations:
+      type: object
+      properties:
+        bias_risks:
+          type: array
+          items:
+            type: string
+        mitigation_strategies:
+          type: array
+          items:
+            type: string
+        environmental_impact:
+          type: object
+          properties:
+            carbon_kg:
+              type: number
+            energy_kwh:
+              type: number
+            hardware:
+              type: string
+            training_hours:
+              type: number
+
+    CaveatsAndRecommendations:
+      type: object
+      properties:
+        known_limitations:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    ComplianceReport:
+      type: object
+      properties:
+        fips_140_3:
+          type: object
+          properties:
+            compliant:
+              type: boolean
+            checks:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  passed:
+                    type: boolean
+        cmmc_2_0:
+          type: object
+          properties:
+            certified:
+              type: boolean
+            controls:
+              type: array
+              items:
+                type: string
+        mitre_attack:
+          type: object
+          properties:
+            mitigated_techniques:
+              type: array
+              items:
+                type: string
+
+    VaultStats:
+      type: object
+      properties:
+        total_models:
+          type: integer
+        total_versions:
+          type: integer
+        total_size_bytes:
+          type: integer
+          format: int64
+        format_distribution:
+          type: object
+          additionalProperties:
+            type: integer
+
+    ConversionRequest:
+      type: object
+      required: [model, to_format]
+      properties:
+        model:
+          type: string
+        to_format:
+          type: string
+          enum: [safetensors, gguf, onnx, torchscript, coreml, mlx, tensorrt, openvino, tflite]
+        version:
+          type: integer
+        quantization:
+          type: string
+          enum: [q4_0, q4_k_m, q5_k_m, q8_0]
+        validate:
+          type: boolean
+
+    ConversionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        output_path:
+          type: string
+        output_format:
+          type: string
+        output_size_bytes:
+          type: integer
+          format: int64
+        validation:
+          type: object
+
+    Document:
+      type: object
+      required: [id, content]
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        embedding:
+          type: array
+          items:
+            type: number
+            format: float
+
+    SearchResult:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        total:
+          type: integer
+        query_time_ms:
+          type: number
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+        details:
+          type: string
+
+paths:
+  /api/v1/auth/token:
+    post:
+      summary: Get JWT authentication token
+      tags: [Auth]
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [passphrase]
+              properties:
+                passphrase:
+                  type: string
+      responses:
+        '200':
+          description: JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expires_in:
+                    type: integer
+
+  /api/v1/vault/stats:
+    get:
+      summary: Get vault statistics
+      tags: [Vault]
+      responses:
+        '200':
+          description: Vault statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultStats'
+
+  /api/v1/models:
+    get:
+      summary: List all models
+      tags: [Models]
+      responses:
+        '200':
+          description: List of models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelMetadata'
+    post:
+      summary: Store a new model
+      tags: [Models]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, file]
+              properties:
+                name:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+                format:
+                  type: string
+                description:
+                  type: string
+                framework:
+                  type: string
+                task:
+                  type: string
+      responses:
+        '201':
+          description: Model stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelVersion'
+
+  /api/v1/models/{name}:
+    get:
+      summary: Get model metadata
+      tags: [Models]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model metadata and latest version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelMetadata'
+    delete:
+      summary: Delete a model
+      tags: [Models]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Model deleted
+
+  /api/v1/models/{name}/versions:
+    get:
+      summary: List model versions
+      tags: [Versions]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelVersion'
+
+  /api/v1/models/{name}/versions/{version}:
+    get:
+      summary: Get specific version details
+      tags: [Versions]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Version details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelVersion'
+
+  /api/v1/models/{name}/versions/{version}/download:
+    get:
+      summary: Download decrypted model file
+      tags: [Versions]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Model binary
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  /api/v1/models/{name}/lineage/{version}:
+    get:
+      summary: Get version lineage tree
+      tags: [Versions]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lineage tree
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/models/{name}/card:
+    get:
+      summary: Get model card
+      tags: [Model Cards]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model card
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelCard'
+    put:
+      summary: Update model card
+      tags: [Model Cards]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelCard'
+      responses:
+        '200':
+          description: Model card updated
+
+  /api/v1/convert:
+    post:
+      summary: Convert model format
+      tags: [Conversion]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversionRequest'
+      responses:
+        '200':
+          description: Conversion result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversionResult'
+
+  /api/v1/conversions:
+    get:
+      summary: List supported conversion paths
+      tags: [Conversion]
+      responses:
+        '200':
+          description: Conversion paths
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    from:
+                      type: string
+                    to:
+                      type: string
+
+  /api/v1/compliance:
+    get:
+      summary: Run compliance check
+      tags: [Compliance]
+      responses:
+        '200':
+          description: Compliance report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceReport'
+
+  /api/v1/rag/documents:
+    get:
+      summary: List RAG documents
+      tags: [RAG]
+      responses:
+        '200':
+          description: Document list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+    post:
+      summary: Add document to RAG store
+      tags: [RAG]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      responses:
+        '201':
+          description: Document added
+
+  /api/v1/rag/search:
+    post:
+      summary: Search RAG knowledge base
+      tags: [RAG]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                top_k:
+                  type: integer
+                  default: 10
+                threshold:
+                  type: number
+                  default: 0.7
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+
+  /graphql:
+    post:
+      summary: GraphQL endpoint
+      tags: [GraphQL]
+      description: Full GraphQL API (requires `graphql` feature). See playground at /graphql/playground.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                variables:
+                  type: object
+                operationName:
+                  type: string
+      responses:
+        '200':
+          description: GraphQL response
+          content:
+            application/json:
+              schema:
+                type: object
+
+tags:
+  - name: Auth
+    description: Authentication and token management
+  - name: Vault
+    description: Vault-level operations
+  - name: Models
+    description: Model storage and retrieval
+  - name: Versions
+    description: Version control and lineage
+  - name: Model Cards
+    description: Model documentation (Google/HuggingFace standard)
+  - name: Conversion
+    description: Format conversion and quantization
+  - name: Compliance
+    description: FIPS/CMMC/MITRE compliance
+  - name: RAG
+    description: Retrieval Augmented Generation
+  - name: GraphQL
+    description: GraphQL API endpoint
