@@ -98,9 +98,9 @@ AIModelVault/
 ## Documentation
 
 - 📖 [PYTORCH_UV_GUIDE.md](PYTORCH_UV_GUIDE.md) - Complete PyTorch guide
-- 📖 [README.md](README.md) - Main documentation
+- 📖 [README.md](../README.md) - Main documentation
 - 📖 [DEMO_GUIDE.md](DEMO_GUIDE.md) - All demo scripts
-- 📖 [FEATURES_DEMO.md](FEATURES_DEMO.md) - Feature showcase
+- 📖 [FEATURES_DEMO.md](../reports/FEATURES_DEMO.md) - Feature showcase
 
 ## Troubleshooting
 

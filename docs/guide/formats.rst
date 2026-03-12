@@ -1,7 +1,7 @@
 Format Detection Guide
 ======================
 
-NeuralVault recognizes 22+ AI model formats out of the box, enabling automatic
+AI Model Vault recognizes 23+ AI model formats out of the box, enabling automatic
 format detection, metadata tagging, and (in v0.4.0+) format conversion.
 
 
@@ -12,7 +12,7 @@ Format detection works by file extension:
 
 .. code-block:: python
 
-   from neuralvault import ModelFormat
+   from aimodelvault import ModelFormat
 
    fmt = ModelFormat.detect("llama-7b.gguf")
    print(fmt.name)       # "GGUF"
@@ -61,7 +61,7 @@ Using with Metadata
 
 .. code-block:: python
 
-   from neuralvault import ModelMetadata
+   from aimodelvault import ModelMetadata
 
    meta = ModelMetadata(
        "my-model", "safetensors",

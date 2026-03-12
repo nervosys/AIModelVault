@@ -394,7 +394,7 @@ cargo clippy -- -D warnings
 ### Containerization (Docker)
 
 ```dockerfile
-FROM rust:1.70-slim as builder
+FROM rust:1.85-slim-bookworm as builder
 
 # Build with security features
 WORKDIR /app
@@ -512,7 +512,7 @@ spec:
 
 For security questions or concerns:
 - **Email**: security@nervosys.ai
-- **GitHub**: https://github.com/nervosys/aimodelvault/security
+- **GitHub**: https://github.com/nervosys/AIModelVault/security
 - **Documentation**: https://aimodelvault.nervosys.ai/docs/security
 
 **Remember**: Security is a continuous process, not a one-time setup. Regular reviews and updates are essential.

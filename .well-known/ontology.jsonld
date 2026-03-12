@@ -7,22 +7,59 @@
     "skos": "http://www.w3.org/2004/02/skos/core#",
     "owl": "http://www.w3.org/2002/07/owl#",
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-    "xsd": "http://www.w3.org/2001/XMLSchema#"
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "sh": "http://www.w3.org/ns/shacl#",
+    "hydra": "http://www.w3.org/ns/hydra/core#"
   },
+
   "@id": "https://nervosys.com/ontology/aimv",
   "@type": "owl:Ontology",
-  "name": "AI Model Vault Ontology",
-  "description": "Machine-readable ontology for AI Model Vault — an encrypted AI/ML model management system with versioning, format conversion, compliance, RAG, and federated sync.",
+  "name": "AI Model Vault Agent Ontology",
+  "description": "Comprehensive machine-readable ontology for AI Model Vault — designed for autonomous agent observability. Describes entities, states, transitions, events, affordances, constraints, metrics, and causal models so that agents can reason about the system without reading source code.",
   "dcterms:creator": "NervoSys AI Team",
   "dcterms:license": "AGPL-3.0-or-later",
   "dcterms:created": "2026-02-13",
-  "version": "1.1.0",
+  "dcterms:modified": "2026-02-22",
+  "version": "2.0.0",
+  "owl:versionInfo": "2.0.0 — agent-observable redesign",
   "url": "https://github.com/nervosys/AIModelVault",
+
+  "aimv:ontologyDesign": {
+    "purpose": "Enable autonomous agents to discover, understand, and interact with AIMV without reading source code",
+    "layers": [
+      "Concepts — what entities exist and their properties",
+      "States — what states entities can be in",
+      "Events — what happens during operations",
+      "Affordances — what actions are available given current state",
+      "Constraints — what invariants must hold",
+      "Metrics — what can be observed and measured",
+      "Errors — structured failure taxonomy",
+      "Causality — if I do X, what effects should I expect"
+    ],
+    "addressingScheme": {
+      "scheme": "aimv",
+      "format": "aimv://{vault}/{model}@{version}/{resource}?{query}",
+      "examples": [
+        "aimv://                                    → list all vaults",
+        "aimv://default/                            → vault 'default' summary",
+        "aimv://default/llama-3                     → model 'llama-3' latest version",
+        "aimv://default/llama-3@3                   → model 'llama-3' version 3",
+        "aimv://default/llama-3@3/card              → model card for version 3",
+        "aimv://default/llama-3@3/lineage           → version lineage graph",
+        "aimv://default/_compliance                 → compliance report",
+        "aimv://default/_stats                      → vault statistics",
+        "aimv://default/_events?since=2026-01-01    → filtered event log",
+        "aimv://default/_metrics                    → operational metrics",
+        "aimv://rag/{kb}/documents                  → RAG document list",
+        "aimv://rag/{kb}/search?q=attention         → RAG vector search"
+      ]
+    }
+  },
 
   "aimv:projectIdentity": {
     "@type": "SoftwareApplication",
     "name": "AI Model Vault",
-    "alternateName": ["NeuronVault", "aimv"],
+    "alternateName": ["AIMV", "aimv"],
     "applicationCategory": "DeveloperApplication",
     "applicationSubCategory": "MLOps",
     "operatingSystem": ["Linux", "macOS", "Windows"],
@@ -57,227 +94,1100 @@
     ]
   },
 
-  "aimv:concepts": [
-    {
-      "@id": "aimv:Vault",
-      "@type": "rdfs:Class",
-      "rdfs:label": "Vault",
-      "rdfs:comment": "An encrypted container that holds AI/ML models. Created via `aim init`. Secured with a passphrase-derived AES-256-GCM key.",
-      "skos:broader": "aimv:CoreConcept",
-      "aimv:operations": ["init", "unlock", "store", "get", "list", "delete", "stats", "compliance", "change-passphrase"],
-      "aimv:contains": "aimv:ModelVersion",
-      "aimv:uses": ["aimv:CryptoModule", "aimv:VersionControl", "aimv:StorageBackend"]
-    },
-    {
-      "@id": "aimv:ModelVersion",
-      "@type": "rdfs:Class",
-      "rdfs:label": "ModelVersion",
-      "rdfs:comment": "A specific version of a stored model. Contains encrypted data, checksum, metadata, and parent lineage.",
-      "skos:broader": "aimv:CoreConcept",
-      "aimv:properties": {
-        "version": {"@type": "xsd:unsignedInt", "description": "Sequential version number (1, 2, 3...)"},
-        "checkpoint_id": {"@type": "xsd:string", "description": "UUID identifier"},
-        "timestamp": {"@type": "xsd:dateTime", "description": "Creation timestamp"},
-        "parent_version": {"@type": "xsd:unsignedInt", "description": "Parent version for lineage (nullable)"},
-        "format": {"@type": "xsd:string", "description": "Model format identifier"},
-        "size_bytes": {"@type": "xsd:unsignedLong", "description": "Original size in bytes"},
-        "compressed_size_bytes": {"@type": "xsd:unsignedLong", "description": "Compressed/encrypted size"},
-        "checksum_sha256": {"@type": "xsd:string", "description": "SHA-256 integrity checksum"},
-        "metadata": {"@type": "xsd:string", "description": "Key-value metadata map"},
-        "file_path": {"@type": "xsd:string", "description": "Path to encrypted .nvault file"}
+  "aimv:concepts": {
+    "@comment": "Layer 1: Entity definitions — what exists in the domain",
+    "classes": [
+      {
+        "@id": "aimv:Vault",
+        "@type": "rdfs:Class",
+        "rdfs:label": "Vault",
+        "rdfs:comment": "An encrypted namespace that holds AI/ML models. Scoped to a single encryption key derived from a passphrase. All models within a vault share the same encryption key.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:uri": "aimv://{vault_name}/",
+        "aimv:properties": {
+          "name": {"@type": "xsd:string", "required": true, "description": "Human-readable vault name, used in URIs"},
+          "created_at": {"@type": "xsd:dateTime", "required": true},
+          "model_count": {"@type": "xsd:unsignedInt", "computed": true},
+          "total_size_bytes": {"@type": "xsd:unsignedLong", "computed": true},
+          "state": {"@type": "aimv:VaultState", "required": true, "description": "Current vault state (see stateMachines)"},
+          "config": {"@type": "aimv:VaultConfig", "required": true}
+        }
+      },
+      {
+        "@id": "aimv:ModelVersion",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelVersion",
+        "rdfs:comment": "An immutable versioned snapshot of a model artifact. Once stored, its content never changes. Identified by (vault, model_name, version_number).",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:uri": "aimv://{vault}/{model}@{version}",
+        "aimv:properties": {
+          "version": {"@type": "xsd:unsignedInt", "required": true, "description": "Sequential version number (1, 2, 3...), auto-incremented"},
+          "checkpoint_id": {"@type": "xsd:string", "format": "uuid", "required": true, "description": "UUID v4 unique identifier"},
+          "timestamp": {"@type": "xsd:dateTime", "required": true, "description": "UTC creation timestamp"},
+          "parent_version": {"@type": "xsd:unsignedInt", "nullable": true, "description": "Parent version for lineage tracking (null for first version)"},
+          "format": {"@type": "aimv:ModelFormat", "required": true, "description": "Detected or specified model format"},
+          "size_bytes": {"@type": "xsd:unsignedLong", "required": true, "description": "Original uncompressed size"},
+          "compressed_size_bytes": {"@type": "xsd:unsignedLong", "required": true, "description": "Size after compression + encryption"},
+          "checksum_sha256": {"@type": "xsd:string", "pattern": "^[a-f0-9]{64}$", "required": true, "description": "SHA-256 of original plaintext data"},
+          "metadata": {"@type": "aimv:ModelMetadata", "required": true},
+          "file_path": {"@type": "xsd:string", "required": true, "description": "Path to encrypted .vault file on disk"}
+        },
+        "aimv:invariants": [
+          "checksum_sha256 is computed before encryption and verified after decryption",
+          "version numbers are sequential and never reused after deletion",
+          "parent_version, if set, must reference an existing or tombstoned version"
+        ]
+      },
+      {
+        "@id": "aimv:ModelMetadata",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelMetadata",
+        "rdfs:comment": "Descriptive metadata attached to a model version — structured information about the model's identity, origin, and purpose.",
+        "aimv:properties": {
+          "name": {"@type": "xsd:string", "required": true},
+          "format": {"@type": "aimv:ModelFormat", "required": true},
+          "description": {"@type": "xsd:string", "nullable": true},
+          "framework": {"@type": "xsd:string", "nullable": true, "examples": ["pytorch", "tensorflow", "jax"]},
+          "task": {"@type": "xsd:string", "nullable": true, "examples": ["text-generation", "image-classification", "embeddings"]},
+          "architecture": {"@type": "xsd:string", "nullable": true, "examples": ["transformer", "diffusion", "cnn"]},
+          "parameters": {"@type": "xsd:unsignedLong", "nullable": true, "description": "Parameter count"},
+          "custom_fields": {"@type": "xsd:string", "description": "Arbitrary key-value pairs"}
+        },
+        "aimv:builderPattern": "ModelMetadata::new(name, format).with_description(...).with_framework(...).with_task(...).with_architecture(...).with_parameters(u64).add_custom_field(k, v)"
+      },
+      {
+        "@id": "aimv:ModelFormat",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelFormat",
+        "rdfs:comment": "Enum of 23+ supported AI model file formats, organized by category.",
+        "aimv:variants": [
+          {"name": "Safetensors", "extensions": [".safetensors"], "category": "LLM", "ecosystem": "HuggingFace, Stable Diffusion"},
+          {"name": "GGUF", "extensions": [".gguf"], "category": "LLM", "ecosystem": "Ollama, LM Studio, llama.cpp"},
+          {"name": "PyTorch", "extensions": [".pt", ".pth", ".bin"], "category": "LLM", "ecosystem": "HuggingFace, research"},
+          {"name": "TensorRT", "extensions": [".plan"], "category": "LLM", "ecosystem": "NVIDIA TensorRT-LLM"},
+          {"name": "ONNX", "extensions": [".onnx"], "category": "LLM", "ecosystem": "Cross-platform"},
+          {"name": "MLX", "extensions": [".npz"], "category": "LLM", "ecosystem": "Apple Silicon"},
+          {"name": "CoreML", "extensions": [".mlmodel"], "category": "LLM", "ecosystem": "iOS/macOS"},
+          {"name": "TorchScript", "extensions": [".pt"], "category": "LLM", "ecosystem": "PyTorch production"},
+          {"name": "TFLite", "extensions": [".tflite"], "category": "LLM", "ecosystem": "Android/mobile"},
+          {"name": "TensorFlow", "extensions": [".pb"], "category": "GeneralDL", "ecosystem": "Google TensorFlow"},
+          {"name": "Keras", "extensions": [".h5", ".keras"], "category": "GeneralDL", "ecosystem": "Keras"},
+          {"name": "OpenVINO", "extensions": [".xml", ".bin"], "category": "GeneralDL", "ecosystem": "Intel CPU/GPU/VPU"},
+          {"name": "TVM", "extensions": [".so"], "category": "GeneralDL", "ecosystem": "Apache TVM"},
+          {"name": "NCNN", "extensions": [".param", ".bin"], "category": "GeneralDL", "ecosystem": "Tencent NCNN"},
+          {"name": "MNN", "extensions": [".mnn"], "category": "GeneralDL", "ecosystem": "Alibaba MNN"},
+          {"name": "RKNN", "extensions": [".rknn"], "category": "GeneralDL", "ecosystem": "Rockchip NPU"},
+          {"name": "Caffe", "extensions": [".caffemodel"], "category": "Legacy", "ecosystem": "Caffe"},
+          {"name": "MXNet", "extensions": [".params"], "category": "Legacy", "ecosystem": "Apache MXNet"},
+          {"name": "Darknet", "extensions": [".weights"], "category": "Legacy", "ecosystem": "Darknet/YOLO"},
+          {"name": "HDF5", "extensions": [".h5", ".hdf5"], "category": "Data", "ecosystem": "Scientific computing"},
+          {"name": "Pickle", "extensions": [".pkl"], "category": "Data", "ecosystem": "Python"},
+          {"name": "NumPy", "extensions": [".npy", ".npz"], "category": "Data", "ecosystem": "NumPy"}
+        ],
+        "aimv:detection": "Auto-detected from file extension and magic bytes. Can be overridden with --format flag."
+      },
+      {
+        "@id": "aimv:ModelCard",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelCard",
+        "rdfs:comment": "Structured documentation for responsible AI (Google/HuggingFace standard).",
+        "aimv:uri": "aimv://{vault}/{model}@{version}/card",
+        "aimv:exportFormats": ["JSON", "YAML", "Markdown"],
+        "aimv:sections": [
+          {"name": "ModelDetails", "fields": ["name", "version", "description", "authors", "license", "references", "citations"]},
+          {"name": "IntendedUse", "fields": ["primary_uses", "out_of_scope_uses", "target_users"]},
+          {"name": "TrainingData", "fields": ["datasets", "preprocessing", "augmentation"]},
+          {"name": "Evaluation", "fields": ["metrics (name/value/split/confidence_interval)", "performance_by_group"]},
+          {"name": "EthicalConsiderations", "fields": ["bias_risks", "mitigation_strategies", "environmental_impact (carbon_kg, energy_kwh, hardware, training_hours)"]},
+          {"name": "CaveatsAndRecommendations", "fields": ["known_limitations", "recommendations"]}
+        ]
+      },
+      {
+        "@id": "aimv:CryptoModule",
+        "@type": "rdfs:Class",
+        "rdfs:label": "CryptoModule",
+        "rdfs:comment": "FIPS 140-3 compliant cryptographic layer providing authenticated encryption, key derivation, integrity hashing, and secure memory management.",
+        "aimv:algorithms": {
+          "encryption": {"name": "AES-256-GCM", "nonce_size": 12, "tag_size": 16, "key_size": 32},
+          "key_derivation": {"name": "Argon2id", "memory_cost_bytes": 67108864, "iterations": 3, "salt_size": 32, "output_size": 32},
+          "hashing": {"name": "SHA-256", "standard": "FIPS 180-4", "output_size": 32},
+          "memory_protection": {"name": "Zeroize", "strategy": "Zero all key material on drop"}
+        },
+        "aimv:invariants": [
+          "Plaintext key material is zeroed immediately after use",
+          "Every nonce is unique (random 12 bytes from CSPRNG)",
+          "Authentication tag is verified before any plaintext is returned"
+        ]
+      },
+      {
+        "@id": "aimv:VersionControl",
+        "@type": "rdfs:Class",
+        "rdfs:label": "VersionControl",
+        "rdfs:comment": "Append-only version management with sequential numbering, parent lineage DAG, cleanup policies, and integrity verification.",
+        "aimv:operations": ["add_version", "get_version", "list_versions", "get_lineage", "delete_version", "cleanup_old_versions", "verify_checksum"]
+      },
+      {
+        "@id": "aimv:ConversionPipeline",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ConversionPipeline",
+        "rdfs:comment": "Graph-based format conversion engine. Finds shortest conversion path, applies optional quantization, validates result.",
+        "aimv:conversionPaths": [
+          {"from": "PyTorch", "to": "Safetensors", "direct": true},
+          {"from": "PyTorch", "to": "ONNX", "direct": true},
+          {"from": "PyTorch", "to": "TorchScript", "direct": true},
+          {"from": "PyTorch", "to": "CoreML", "direct": true},
+          {"from": "PyTorch", "to": "MLX", "direct": true},
+          {"from": "Safetensors", "to": "GGUF", "direct": true, "quantization": ["q4_0", "q4_k_m", "q5_k_m", "q8_0"]},
+          {"from": "ONNX", "to": "TensorRT", "direct": true},
+          {"from": "ONNX", "to": "OpenVINO", "direct": true},
+          {"from": "ONNX", "to": "TFLite", "direct": true},
+          {"from": "TensorFlow", "to": "TFLite", "direct": true}
+        ],
+        "aimv:features": ["shortest-path graph search", "multi-hop conversion", "validation after conversion", "progress callbacks"]
+      },
+      {
+        "@id": "aimv:RAGSystem",
+        "@type": "rdfs:Class",
+        "rdfs:label": "RAGSystem",
+        "rdfs:comment": "Retrieval Augmented Generation system with document storage, vector similarity search, knowledge base, rule engine, retrieval cache, and MCP server.",
+        "aimv:components": ["DocumentStore", "KnowledgeBase", "RuleEngine", "RetrievalCache", "MCPServer"]
+      },
+      {
+        "@id": "aimv:DocumentStore",
+        "@type": "rdfs:Class",
+        "rdfs:label": "DocumentStore",
+        "rdfs:comment": "Vector-indexed document store with cosine similarity search.",
+        "aimv:operations": ["add_document", "get_document", "search_similar", "delete_document", "count", "clear", "get_all_documents"]
+      },
+      {
+        "@id": "aimv:KnowledgeBase",
+        "@type": "rdfs:Class",
+        "rdfs:label": "KnowledgeBase",
+        "rdfs:comment": "High-level RAG interface with text chunking, configurable overlap, and similarity threshold filtering.",
+        "aimv:config": {
+          "embedding_dim": {"@type": "xsd:unsignedInt", "description": "Vector dimension"},
+          "chunk_size": {"@type": "xsd:unsignedInt", "description": "Characters per chunk"},
+          "chunk_overlap": {"@type": "xsd:unsignedInt", "description": "Overlap between adjacent chunks"},
+          "max_results": {"@type": "xsd:unsignedInt", "description": "Maximum retrieval results"},
+          "similarity_threshold": {"@type": "xsd:float", "description": "Minimum cosine similarity [0.0, 1.0]"}
+        }
+      },
+      {
+        "@id": "aimv:RuleEngine",
+        "@type": "rdfs:Class",
+        "rdfs:label": "RuleEngine",
+        "rdfs:comment": "Priority-based business rule execution with conditions and actions.",
+        "aimv:conditions": ["Equals", "Contains", "Matches", "GreaterThan", "LessThan", "In", "Custom"],
+        "aimv:actions": ["SetValue", "AddToList", "Log", "CallFunction", "Stop"]
+      },
+      {
+        "@id": "aimv:MCPServer",
+        "@type": "rdfs:Class",
+        "rdfs:label": "MCPServer",
+        "rdfs:comment": "Model Context Protocol server exposing AIMV capabilities as tools for AI agents.",
+        "aimv:builtinTools": ["search_documents", "add_document", "chunk_text", "execute_rule"],
+        "aimv:extensible": true,
+        "aimv:seeAlso": ".well-known/mcp-manifest.json"
+      },
+      {
+        "@id": "aimv:StorageBackend",
+        "@type": "rdfs:Class",
+        "rdfs:label": "StorageBackend",
+        "rdfs:comment": "Pluggable blob storage backend for encrypted model data.",
+        "aimv:providers": [
+          {"name": "Local", "feature": "default", "description": "XDG-compliant local filesystem", "config": ["base_path"]},
+          {"name": "S3", "feature": "s3", "description": "AWS S3", "config": ["bucket", "region", "prefix"]},
+          {"name": "Azure", "feature": "azure", "description": "Azure Blob Storage", "config": ["account", "container", "prefix"]},
+          {"name": "GCS", "feature": "cloud", "description": "Google Cloud Storage", "config": ["bucket", "project", "prefix"]}
+        ]
+      },
+      {
+        "@id": "aimv:BlockchainAudit",
+        "@type": "rdfs:Class",
+        "rdfs:label": "BlockchainAudit",
+        "rdfs:comment": "Append-only blockchain audit trail with Merkle tree proof of all operations.",
+        "aimv:components": ["AuditBlock", "AuditProof", "MerkleTree", "MerkleProof", "ChainVerification"]
+      },
+      {
+        "@id": "aimv:Federation",
+        "@type": "rdfs:Class",
+        "rdfs:label": "Federation",
+        "rdfs:comment": "Federated vault synchronization using vector clocks for causal ordering.",
+        "aimv:components": ["FederationManager", "PeerConfig", "SyncManifest", "VectorClock", "ConflictResolution"]
+      },
+      {
+        "@id": "aimv:ComplianceFramework",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ComplianceFramework",
+        "rdfs:comment": "Security compliance validation engine.",
+        "aimv:standards": [
+          {"name": "FIPS 140-3", "status": "Compliant", "scope": "AES-256-GCM, SHA-256, Argon2id, approved RNG"},
+          {"name": "CMMC 2.0 Level 2", "status": "Certified", "controls": ["AC.L2-3.1.1", "AC.L2-3.1.2", "AU.L2-3.3.1", "AU.L2-3.3.2", "IA.L2-3.5.1", "IA.L2-3.5.2", "SC.L2-3.13.1", "SC.L2-3.13.8"]},
+          {"name": "MITRE ATT&CK", "status": "Mitigated", "techniques": ["T1552 (Unsecured Credentials)", "T1486 (Data Encrypted for Impact)", "T1078 (Valid Accounts)", "T1005 (Data from Local System)"]}
+        ]
+      },
+      {
+        "@id": "aimv:Database",
+        "@type": "rdfs:Class",
+        "rdfs:label": "Database",
+        "rdfs:comment": "Pluggable persistence backends for RAG and version metadata.",
+        "aimv:backends": [
+          {"name": "InMemory", "feature": "default", "strengths": ["Zero-config", "Fast"], "weaknesses": ["No persistence"]},
+          {"name": "SQLite", "feature": "sqlite", "strengths": ["SQL queries", "Full-text search", "ACID"], "weaknesses": ["Single-writer"]},
+          {"name": "Sled", "feature": "kv-store", "strengths": ["Sub-ms latency", "Prefix scans", "Crash recovery"], "weaknesses": ["No SQL"]},
+          {"name": "Qdrant", "feature": "vector-db", "strengths": ["Vector similarity", "Filtering"], "weaknesses": ["External service"]},
+          {"name": "LanceDB", "feature": "vector-db", "strengths": ["Columnar vectors", "Embedded"], "weaknesses": ["Newer ecosystem"]}
+        ]
       }
-    },
-    {
-      "@id": "aimv:ModelMetadata",
-      "@type": "rdfs:Class",
-      "rdfs:label": "ModelMetadata",
-      "rdfs:comment": "Descriptive metadata attached to a model — name, format, description, framework, task, architecture, parameter count, custom fields.",
-      "aimv:builderPattern": "ModelMetadata::new(name, format).with_description(...).with_framework(...).with_task(...).with_architecture(...).with_parameters(u64).add_custom_field(k, v)"
-    },
-    {
-      "@id": "aimv:ModelFormat",
-      "@type": "rdfs:Class",
-      "rdfs:label": "ModelFormat",
-      "rdfs:comment": "Enum of 23+ supported AI model file formats.",
-      "aimv:variants": [
-        {"name": "Safetensors", "extensions": [".safetensors"], "category": "LLM", "ecosystem": "HuggingFace, Stable Diffusion"},
-        {"name": "GGUF", "extensions": [".gguf"], "category": "LLM", "ecosystem": "Ollama, LM Studio, llama.cpp"},
-        {"name": "PyTorch", "extensions": [".pt", ".pth", ".bin"], "category": "LLM", "ecosystem": "HuggingFace, research"},
-        {"name": "TensorRT", "extensions": [".plan"], "category": "LLM", "ecosystem": "NVIDIA TensorRT-LLM"},
-        {"name": "ONNX", "extensions": [".onnx"], "category": "LLM", "ecosystem": "Cross-platform"},
-        {"name": "MLX", "extensions": [".npz"], "category": "LLM", "ecosystem": "Apple Silicon"},
-        {"name": "CoreML", "extensions": [".mlmodel"], "category": "LLM", "ecosystem": "iOS/macOS"},
-        {"name": "TorchScript", "extensions": [".pt"], "category": "LLM", "ecosystem": "PyTorch production"},
-        {"name": "TFLite", "extensions": [".tflite"], "category": "LLM", "ecosystem": "Android/mobile"},
-        {"name": "TensorFlow", "extensions": [".pb"], "category": "GeneralDL", "ecosystem": "Google TensorFlow"},
-        {"name": "Keras", "extensions": [".h5", ".keras"], "category": "GeneralDL", "ecosystem": "Keras"},
-        {"name": "OpenVINO", "extensions": [".xml", ".bin"], "category": "GeneralDL", "ecosystem": "Intel CPU/GPU/VPU"},
-        {"name": "TVM", "extensions": [".so"], "category": "GeneralDL", "ecosystem": "Apache TVM"},
-        {"name": "NCNN", "extensions": [".param", ".bin"], "category": "GeneralDL", "ecosystem": "Tencent NCNN"},
-        {"name": "MNN", "extensions": [".mnn"], "category": "GeneralDL", "ecosystem": "Alibaba MNN"},
-        {"name": "RKNN", "extensions": [".rknn"], "category": "GeneralDL", "ecosystem": "Rockchip NPU"},
-        {"name": "Caffe", "extensions": [".caffemodel"], "category": "Legacy", "ecosystem": "Caffe"},
-        {"name": "MXNet", "extensions": [".params"], "category": "Legacy", "ecosystem": "Apache MXNet"},
-        {"name": "Darknet", "extensions": [".weights"], "category": "Legacy", "ecosystem": "Darknet/YOLO"},
-        {"name": "HDF5", "extensions": [".h5", ".hdf5"], "category": "Data", "ecosystem": "Scientific computing"},
-        {"name": "Pickle", "extensions": [".pkl"], "category": "Data", "ecosystem": "Python"},
-        {"name": "NumPy", "extensions": [".npy", ".npz"], "category": "Data", "ecosystem": "NumPy"}
-      ]
-    },
-    {
-      "@id": "aimv:ModelCard",
-      "@type": "rdfs:Class",
-      "rdfs:label": "ModelCard",
-      "rdfs:comment": "Structured documentation for responsible AI (Google/HuggingFace standard). Sections: ModelDetails, IntendedUse, TrainingData, Evaluation, EthicalConsiderations, CaveatsAndRecommendations.",
-      "aimv:exportFormats": ["JSON", "YAML", "Markdown"],
-      "aimv:sections": [
-        {"name": "ModelDetails", "fields": ["name", "version", "description", "authors", "license", "references", "citations"]},
-        {"name": "IntendedUse", "fields": ["primary_uses", "out_of_scope_uses", "target_users"]},
-        {"name": "TrainingData", "fields": ["datasets", "preprocessing", "augmentation"]},
-        {"name": "Evaluation", "fields": ["metrics (name/value/split/confidence_interval)", "performance_by_group"]},
-        {"name": "EthicalConsiderations", "fields": ["bias_risks", "mitigation_strategies", "environmental_impact (carbon_kg, energy_kwh, hardware, training_hours)"]},
-        {"name": "CaveatsAndRecommendations", "fields": ["known_limitations", "recommendations"]}
-      ]
-    },
-    {
-      "@id": "aimv:CryptoModule",
-      "@type": "rdfs:Class",
-      "rdfs:label": "CryptoModule",
-      "rdfs:comment": "FIPS 140-3 compliant cryptographic layer. AES-256-GCM encryption, Argon2id key derivation (64MB, 3 iter, 32-byte salt), SHA-256 checksums, secure memory zeroing.",
-      "aimv:algorithms": {
-        "encryption": "AES-256-GCM (12-byte nonce, 16-byte auth tag)",
-        "keyDerivation": "Argon2id (64MB memory, 3 iterations, 32-byte salt)",
-        "hashing": "SHA-256 (FIPS 180-4)",
-        "memoryProtection": "Zeroize (secure memory zeroing)"
-      }
-    },
-    {
-      "@id": "aimv:VersionControl",
-      "@type": "rdfs:Class",
-      "rdfs:label": "VersionControl",
-      "rdfs:comment": "Sequential versioning system with parent lineage, branching (A/B testing), instant rollback, and cleanup policies (keep-last-N, time-based, generation-based, tag-based).",
-      "aimv:operations": ["add_version", "get_version", "list_versions", "get_lineage", "delete_version", "cleanup_old_versions", "verify_checksum"]
-    },
-    {
-      "@id": "aimv:ConversionPipeline",
-      "@type": "rdfs:Class",
-      "rdfs:label": "ConversionPipeline",
-      "rdfs:comment": "Format conversion engine supporting validated conversion between model formats with optional quantization.",
-      "aimv:conversionPaths": [
-        "PyTorch → Safetensors",
-        "PyTorch → ONNX",
-        "PyTorch → TorchScript",
-        "PyTorch → CoreML",
-        "PyTorch → MLX",
-        "Safetensors → GGUF",
-        "ONNX → TensorRT",
-        "ONNX → OpenVINO",
-        "ONNX → TFLite",
-        "TensorFlow → TFLite"
+    ]
+  },
+
+  "aimv:stateMachines": {
+    "@comment": "Layer 2: State machines — what states entities can be in and what transitions are valid. Agents use this to determine what actions are possible.",
+
+    "vaultStateMachine": {
+      "@id": "aimv:VaultStateMachine",
+      "rdfs:label": "Vault Lifecycle State Machine",
+      "rdfs:comment": "Defines the valid states and transitions for a Vault entity. An agent should query vault state before attempting operations.",
+      "states": [
+        {
+          "@id": "aimv:Uninitialized",
+          "rdfs:label": "Uninitialized",
+          "rdfs:comment": "No vault exists at this path. Only `init` is allowed.",
+          "aimv:observable_properties": [],
+          "aimv:terminal": false
+        },
+        {
+          "@id": "aimv:Initialized",
+          "rdfs:label": "Initialized",
+          "rdfs:comment": "Vault exists but has never been unlocked. Passphrase has been set.",
+          "aimv:observable_properties": ["name", "created_at"],
+          "aimv:terminal": false
+        },
+        {
+          "@id": "aimv:Locked",
+          "rdfs:label": "Locked",
+          "rdfs:comment": "Vault exists and has been locked. Encryption key is zeroed from memory. Read-only metadata queries still work.",
+          "aimv:observable_properties": ["name", "created_at", "model_count"],
+          "aimv:terminal": false
+        },
+        {
+          "@id": "aimv:Unlocked",
+          "rdfs:label": "Unlocked",
+          "rdfs:comment": "Vault is unlocked. Encryption key is in memory. All operations are available.",
+          "aimv:observable_properties": ["name", "created_at", "model_count", "total_size_bytes", "unlocked_at", "session_operations"],
+          "aimv:terminal": false
+        },
+        {
+          "@id": "aimv:Error",
+          "rdfs:label": "Error",
+          "rdfs:comment": "Vault is in an error state (corrupted manifest, integrity failure, etc.). Recovery operations may be available.",
+          "aimv:observable_properties": ["name", "error_message", "error_code"],
+          "aimv:terminal": false
+        }
       ],
-      "aimv:quantizationSchemes": ["q4_0", "q4_k_m", "q5_k_m", "q8_0"]
-    },
-    {
-      "@id": "aimv:RAGSystem",
-      "@type": "rdfs:Class",
-      "rdfs:label": "RAGSystem",
-      "rdfs:comment": "Retrieval Augmented Generation system with document storage, vector similarity search (cosine), knowledge base with chunking, rule engine, and caching.",
-      "aimv:components": ["DocumentStore", "KnowledgeBase", "RuleEngine", "RetrievalCache", "MCPServer"]
-    },
-    {
-      "@id": "aimv:DocumentStore",
-      "@type": "rdfs:Class",
-      "rdfs:label": "DocumentStore",
-      "rdfs:comment": "In-memory document store with vector similarity search (cosine distance). Stores documents with optional embeddings and metadata.",
-      "aimv:operations": ["add_document", "get_document", "search_similar", "delete_document", "count", "clear", "get_all_documents"]
-    },
-    {
-      "@id": "aimv:KnowledgeBase",
-      "@type": "rdfs:Class",
-      "rdfs:label": "KnowledgeBase",
-      "rdfs:comment": "High-level RAG interface with text chunking, retrieval, and configurable similarity thresholds.",
-      "aimv:config": {
-        "embedding_dim": "Vector dimension",
-        "chunk_size": "Characters per chunk",
-        "chunk_overlap": "Overlap between chunks",
-        "max_results": "Maximum retrieval results",
-        "similarity_threshold": "Minimum cosine similarity"
-      }
-    },
-    {
-      "@id": "aimv:RuleEngine",
-      "@type": "rdfs:Class",
-      "rdfs:label": "RuleEngine",
-      "rdfs:comment": "Priority-based business rule execution engine with conditions (Equals, Contains, Matches, GreaterThan, LessThan, In, Custom) and actions (SetValue, AddToList, Log, CallFunction, Stop)."
-    },
-    {
-      "@id": "aimv:MCPServer",
-      "@type": "rdfs:Class",
-      "rdfs:label": "MCPServer",
-      "rdfs:comment": "Model Context Protocol server providing tool-based AI agent interaction. Registers tools with JSON Schema inputs, executes them in context, returns structured results.",
-      "aimv:builtinTools": ["search_documents", "add_document", "chunk_text", "execute_rule"],
-      "aimv:extensible": true
-    },
-    {
-      "@id": "aimv:StorageBackend",
-      "@type": "rdfs:Class",
-      "rdfs:label": "StorageBackend",
-      "rdfs:comment": "Pluggable storage backend for encrypted model data. Supports local filesystem, AWS S3, Azure Blob Storage, and Google Cloud Storage.",
-      "aimv:providers": [
-        {"name": "Local", "description": "XDG-compliant local filesystem storage"},
-        {"name": "S3", "feature": "s3", "config": ["bucket", "region", "prefix"]},
-        {"name": "Azure", "feature": "azure", "config": ["account", "container", "prefix"]},
-        {"name": "GCS", "feature": "cloud", "config": ["bucket", "project", "prefix"]}
+      "transitions": [
+        {"from": "aimv:Uninitialized", "to": "aimv:Initialized", "trigger": "init", "preconditions": ["valid passphrase provided"], "effects": ["vault directory created", "config written", "VaultCreated event emitted"]},
+        {"from": "aimv:Initialized", "to": "aimv:Unlocked", "trigger": "unlock", "preconditions": ["correct passphrase"], "effects": ["encryption key derived and held in memory", "VaultUnlocked event emitted"]},
+        {"from": "aimv:Locked", "to": "aimv:Unlocked", "trigger": "unlock", "preconditions": ["correct passphrase"], "effects": ["encryption key derived and held in memory", "VaultUnlocked event emitted"]},
+        {"from": "aimv:Unlocked", "to": "aimv:Locked", "trigger": "lock", "preconditions": [], "effects": ["encryption key zeroed from memory", "VaultLocked event emitted"]},
+        {"from": "aimv:Unlocked", "to": "aimv:Locked", "trigger": "timeout", "preconditions": ["session_timeout exceeded"], "effects": ["encryption key zeroed from memory", "VaultLocked event emitted"]},
+        {"from": "aimv:Unlocked", "to": "aimv:Unlocked", "trigger": "store", "preconditions": ["valid model data", "valid metadata"], "effects": ["model encrypted and persisted", "version incremented", "ModelStored event emitted"]},
+        {"from": "aimv:Unlocked", "to": "aimv:Unlocked", "trigger": "get", "preconditions": ["model exists", "version exists"], "effects": ["model decrypted", "checksum verified", "ModelRetrieved event emitted"]},
+        {"from": "aimv:Unlocked", "to": "aimv:Unlocked", "trigger": "delete", "preconditions": ["model exists", "version exists"], "effects": ["encrypted file removed", "version tombstoned", "ModelDeleted event emitted"]},
+        {"from": "aimv:Unlocked", "to": "aimv:Unlocked", "trigger": "convert", "preconditions": ["model exists", "conversion path exists"], "effects": ["new format version stored", "ModelConverted event emitted"]},
+        {"from": "aimv:Unlocked", "to": "aimv:Unlocked", "trigger": "change_passphrase", "preconditions": ["correct old passphrase", "valid new passphrase"], "effects": ["all models re-encrypted with new key"]},
+        {"from": "*", "to": "aimv:Error", "trigger": "corruption_detected", "preconditions": [], "effects": ["error state recorded", "IntegrityFailed event emitted"]}
       ]
     },
-    {
-      "@id": "aimv:BlockchainAudit",
-      "@type": "rdfs:Class",
-      "rdfs:label": "BlockchainAudit",
-      "rdfs:comment": "Append-only blockchain audit trail with Merkle tree verification. Provides cryptographic proof of all vault operations.",
-      "aimv:components": ["AuditBlock", "AuditProof", "MerkleTree", "MerkleProof", "ChainVerification", "ProofVerification"]
-    },
-    {
-      "@id": "aimv:Federation",
-      "@type": "rdfs:Class",
-      "rdfs:label": "Federation",
-      "rdfs:comment": "Federated vault synchronization using vector clocks for causal ordering and automatic conflict resolution.",
-      "aimv:components": ["FederationConfig", "FederationManager", "PeerConfig", "SyncManifest", "SyncConflict", "SyncResult", "VectorClock", "ConflictResolution"]
-    },
-    {
-      "@id": "aimv:ComplianceFramework",
-      "@type": "rdfs:Class",
-      "rdfs:label": "ComplianceFramework",
-      "rdfs:comment": "Security compliance validation against industry standards.",
-      "aimv:standards": [
-        {"name": "FIPS 140-3", "status": "Compliant", "scope": "AES-256-GCM, SHA-256, Argon2id, approved RNG"},
-        {"name": "CMMC 2.0 Level 2", "status": "Certified", "controls": "AC, AU, IA, SC (17 controls)"},
-        {"name": "MITRE ATT&CK", "status": "Mitigated", "techniques": ["T1552", "T1486", "T1078", "T1005"]}
-      ]
-    },
-    {
-      "@id": "aimv:Database",
-      "@type": "rdfs:Class",
-      "rdfs:label": "Database",
-      "rdfs:comment": "Pluggable database backends for RAG document persistence.",
-      "aimv:backends": [
-        {"name": "InMemory", "feature": "default", "strengths": "Zero-config, fast"},
-        {"name": "SQLite", "feature": "sqlite", "strengths": "SQL queries, full-text search, ACID"},
-        {"name": "Sled", "feature": "kv-store", "strengths": "Sub-ms latency, prefix scans, crash recovery"},
-        {"name": "Qdrant", "feature": "vector-db", "strengths": "Vector similarity search"},
-        {"name": "LanceDB", "feature": "vector-db", "strengths": "Columnar vector store"}
+
+    "modelLifecycle": {
+      "@id": "aimv:ModelLifecycle",
+      "rdfs:label": "Model Lifecycle State Machine",
+      "states": [
+        {"@id": "aimv:ModelAbsent", "rdfs:label": "Absent", "rdfs:comment": "Model does not exist in the vault"},
+        {"@id": "aimv:ModelStored", "rdfs:label": "Stored", "rdfs:comment": "Model has at least one version stored and encrypted"},
+        {"@id": "aimv:ModelConverting", "rdfs:label": "Converting", "rdfs:comment": "A format conversion is in progress"},
+        {"@id": "aimv:ModelSyncing", "rdfs:label": "Syncing", "rdfs:comment": "Model is being pushed/pulled to/from cloud"},
+        {"@id": "aimv:ModelTombstoned", "rdfs:label": "Tombstoned", "rdfs:comment": "All versions deleted but metadata retained for audit"}
+      ],
+      "transitions": [
+        {"from": "aimv:ModelAbsent", "to": "aimv:ModelStored", "trigger": "store"},
+        {"from": "aimv:ModelStored", "to": "aimv:ModelStored", "trigger": "store_new_version"},
+        {"from": "aimv:ModelStored", "to": "aimv:ModelConverting", "trigger": "convert_start"},
+        {"from": "aimv:ModelConverting", "to": "aimv:ModelStored", "trigger": "convert_complete"},
+        {"from": "aimv:ModelConverting", "to": "aimv:ModelStored", "trigger": "convert_failed"},
+        {"from": "aimv:ModelStored", "to": "aimv:ModelSyncing", "trigger": "cloud_push_start"},
+        {"from": "aimv:ModelStored", "to": "aimv:ModelSyncing", "trigger": "cloud_pull_start"},
+        {"from": "aimv:ModelSyncing", "to": "aimv:ModelStored", "trigger": "sync_complete"},
+        {"from": "aimv:ModelStored", "to": "aimv:ModelTombstoned", "trigger": "delete_all_versions"},
+        {"from": "aimv:ModelStored", "to": "aimv:ModelStored", "trigger": "delete_one_version"}
       ]
     }
-  ],
+  },
+
+  "aimv:events": {
+    "@comment": "Layer 3: Event taxonomy — what happens during operations. Agents can subscribe to these events via webhooks (REST API) or poll the event log.",
+
+    "eventTypes": [
+      {
+        "@id": "aimv:VaultCreated",
+        "rdfs:label": "VaultCreated",
+        "rdfs:comment": "Emitted when a new vault is initialized",
+        "aimv:category": "lifecycle",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "timestamp": {"@type": "xsd:dateTime"},
+          "config_hash": {"@type": "xsd:string", "description": "SHA-256 of vault configuration"}
+        }
+      },
+      {
+        "@id": "aimv:VaultUnlocked",
+        "rdfs:label": "VaultUnlocked",
+        "rdfs:comment": "Emitted when a vault is unlocked with correct passphrase",
+        "aimv:category": "security",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:VaultLocked",
+        "rdfs:label": "VaultLocked",
+        "rdfs:comment": "Emitted when a vault is locked (manual or timeout)",
+        "aimv:category": "security",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "timestamp": {"@type": "xsd:dateTime"},
+          "reason": {"@type": "xsd:string", "enum": ["manual", "timeout", "error"]}
+        }
+      },
+      {
+        "@id": "aimv:ModelStored",
+        "rdfs:label": "ModelStored",
+        "rdfs:comment": "Emitted when a model version is stored and encrypted",
+        "aimv:category": "data",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "model": {"@type": "xsd:string"},
+          "version": {"@type": "xsd:unsignedInt"},
+          "format": {"@type": "xsd:string"},
+          "size_bytes": {"@type": "xsd:unsignedLong"},
+          "compressed_size_bytes": {"@type": "xsd:unsignedLong"},
+          "checksum": {"@type": "xsd:string"},
+          "duration_ms": {"@type": "xsd:unsignedLong"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:ModelRetrieved",
+        "rdfs:label": "ModelRetrieved",
+        "rdfs:comment": "Emitted when a model is decrypted and retrieved",
+        "aimv:category": "data",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "model": {"@type": "xsd:string"},
+          "version": {"@type": "xsd:unsignedInt"},
+          "size_bytes": {"@type": "xsd:unsignedLong"},
+          "checksum_verified": {"@type": "xsd:boolean"},
+          "duration_ms": {"@type": "xsd:unsignedLong"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:ModelDeleted",
+        "rdfs:label": "ModelDeleted",
+        "rdfs:comment": "Emitted when a model version is deleted",
+        "aimv:category": "data",
+        "aimv:severity": "warning",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "model": {"@type": "xsd:string"},
+          "version": {"@type": "xsd:unsignedInt"},
+          "remaining_versions": {"@type": "xsd:unsignedInt"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:ModelConverted",
+        "rdfs:label": "ModelConverted",
+        "rdfs:comment": "Emitted when a model is converted between formats",
+        "aimv:category": "data",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "model": {"@type": "xsd:string"},
+          "from_format": {"@type": "xsd:string"},
+          "to_format": {"@type": "xsd:string"},
+          "quantization": {"@type": "xsd:string", "nullable": true},
+          "validation_passed": {"@type": "xsd:boolean"},
+          "conversion_path": {"@type": "xsd:string", "description": "Multi-hop path taken, e.g. 'PyTorch → ONNX → TensorRT'"},
+          "duration_ms": {"@type": "xsd:unsignedLong"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:IntegrityFailed",
+        "rdfs:label": "IntegrityFailed",
+        "rdfs:comment": "Emitted when a checksum verification fails — indicates corruption or tampering",
+        "aimv:category": "security",
+        "aimv:severity": "critical",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "model": {"@type": "xsd:string"},
+          "version": {"@type": "xsd:unsignedInt"},
+          "expected_checksum": {"@type": "xsd:string"},
+          "actual_checksum": {"@type": "xsd:string"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:ComplianceChecked",
+        "rdfs:label": "ComplianceChecked",
+        "rdfs:comment": "Emitted when compliance validation is run",
+        "aimv:category": "compliance",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "fips_passed": {"@type": "xsd:boolean"},
+          "cmmc_passed": {"@type": "xsd:boolean"},
+          "mitre_passed": {"@type": "xsd:boolean"},
+          "issues": {"@type": "xsd:string", "description": "Array of issue descriptions"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:CloudSynced",
+        "rdfs:label": "CloudSynced",
+        "rdfs:comment": "Emitted when a model is pushed to or pulled from cloud storage",
+        "aimv:category": "data",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "model": {"@type": "xsd:string"},
+          "provider": {"@type": "xsd:string", "enum": ["s3", "azure", "gcs"]},
+          "direction": {"@type": "xsd:string", "enum": ["push", "pull"]},
+          "bucket": {"@type": "xsd:string"},
+          "size_bytes": {"@type": "xsd:unsignedLong"},
+          "duration_ms": {"@type": "xsd:unsignedLong"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:FederationSynced",
+        "rdfs:label": "FederationSynced",
+        "rdfs:comment": "Emitted when federated vault sync completes with a peer",
+        "aimv:category": "replication",
+        "aimv:severity": "info",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "peer": {"@type": "xsd:string"},
+          "models_synced": {"@type": "xsd:unsignedInt"},
+          "conflicts_resolved": {"@type": "xsd:unsignedInt"},
+          "vector_clock": {"@type": "xsd:string"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      },
+      {
+        "@id": "aimv:PassphraseChanged",
+        "rdfs:label": "PassphraseChanged",
+        "rdfs:comment": "Emitted when the vault passphrase is changed (all models re-encrypted)",
+        "aimv:category": "security",
+        "aimv:severity": "warning",
+        "aimv:schema": {
+          "vault": {"@type": "xsd:string"},
+          "models_re_encrypted": {"@type": "xsd:unsignedInt"},
+          "duration_ms": {"@type": "xsd:unsignedLong"},
+          "timestamp": {"@type": "xsd:dateTime"}
+        }
+      }
+    ],
+
+    "eventDelivery": {
+      "mechanisms": [
+        {"name": "EventLog", "description": "Append-only log file, queryable via CLI or API", "reliability": "guaranteed"},
+        {"name": "BlockchainAudit", "description": "Merkle-chained blocks for tamper evidence", "reliability": "guaranteed"},
+        {"name": "Webhook", "description": "HTTP POST to configured endpoints (REST API mode)", "reliability": "at-least-once"},
+        {"name": "MCP Notification", "description": "MCP protocol notifications to connected agents", "reliability": "best-effort"},
+        {"name": "Polling", "description": "GET /api/v1/events?since={timestamp}", "reliability": "on-demand"}
+      ],
+      "ordering": "Events within a vault are strictly ordered by monotonic sequence number",
+      "retention": "Events are retained indefinitely in the audit log; blockchain blocks are immutable"
+    }
+  },
+
+  "aimv:affordances": {
+    "@comment": "Layer 4: Affordances — what actions are available given current state. An agent reads the vault state, then consults this section to know what it can do next.",
+
+    "byState": {
+      "Uninitialized": {
+        "available_actions": [
+          {
+            "action": "init",
+            "description": "Create a new encrypted vault",
+            "cli": "aim init [--name NAME]",
+            "mcp_tool": "vault_init",
+            "api": "POST /api/v1/vaults",
+            "required_input": ["passphrase"],
+            "optional_input": ["name"],
+            "produces": "VaultCreated event",
+            "transitions_to": "Initialized"
+          }
+        ]
+      },
+      "Initialized": {
+        "available_actions": [
+          {
+            "action": "unlock",
+            "description": "Unlock the vault with passphrase",
+            "cli": "aim unlock",
+            "required_input": ["passphrase"],
+            "produces": "VaultUnlocked event",
+            "transitions_to": "Unlocked"
+          }
+        ]
+      },
+      "Locked": {
+        "available_actions": [
+          {
+            "action": "unlock",
+            "description": "Unlock the vault with passphrase",
+            "cli": "aim unlock",
+            "required_input": ["passphrase"],
+            "produces": "VaultUnlocked event",
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "list",
+            "description": "List models (metadata only, no decryption needed)",
+            "cli": "aim list",
+            "mcp_tool": "vault_list",
+            "api": "GET /api/v1/models",
+            "required_input": [],
+            "transitions_to": "Locked",
+            "note": "Read-only operation available without unlock"
+          }
+        ]
+      },
+      "Unlocked": {
+        "available_actions": [
+          {
+            "action": "store",
+            "description": "Encrypt and store a model",
+            "cli": "aim store <NAME> <PATH> [-f FORMAT] [-d DESCRIPTION]",
+            "mcp_tool": "vault_store",
+            "api": "POST /api/v1/models",
+            "required_input": ["name", "file_path"],
+            "optional_input": ["format", "description", "framework", "task", "architecture", "parameters"],
+            "produces": "ModelStored event",
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "get",
+            "description": "Decrypt and retrieve a model",
+            "cli": "aim get <NAME> <OUTPUT> [-v VERSION]",
+            "mcp_tool": "vault_get",
+            "api": "GET /api/v1/models/{name}/data?version={v}",
+            "required_input": ["name", "output_path"],
+            "optional_input": ["version"],
+            "produces": "ModelRetrieved event",
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "delete",
+            "description": "Delete a specific model version",
+            "cli": "aim delete <NAME> <VERSION>",
+            "api": "DELETE /api/v1/models/{name}/versions/{version}",
+            "required_input": ["name", "version"],
+            "produces": "ModelDeleted event",
+            "transitions_to": "Unlocked",
+            "caution": "Irreversible — encrypted file is permanently removed"
+          },
+          {
+            "action": "convert",
+            "description": "Convert model to another format",
+            "cli": "aim convert <NAME> --to-format <FMT> [--quantization <Q>] [--validate]",
+            "mcp_tool": "model_convert",
+            "required_input": ["name", "target_format"],
+            "optional_input": ["quantization", "validate"],
+            "produces": "ModelConverted event",
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "list",
+            "description": "List all models with metadata",
+            "cli": "aim list",
+            "mcp_tool": "vault_list",
+            "api": "GET /api/v1/models",
+            "required_input": [],
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "versions",
+            "description": "List all versions of a model",
+            "cli": "aim versions <NAME>",
+            "mcp_tool": "vault_versions",
+            "api": "GET /api/v1/models/{name}/versions",
+            "required_input": ["name"],
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "lineage",
+            "description": "Show version ancestry graph",
+            "cli": "aim lineage <NAME> <VERSION>",
+            "mcp_tool": "vault_lineage",
+            "api": "GET /api/v1/models/{name}/versions/{v}/lineage",
+            "required_input": ["name", "version"],
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "stats",
+            "description": "Show vault storage statistics",
+            "cli": "aim stats",
+            "mcp_tool": "vault_stats",
+            "api": "GET /api/v1/stats",
+            "required_input": [],
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "compliance",
+            "description": "Run compliance checks (FIPS/CMMC/MITRE)",
+            "cli": "aim compliance [--verbose]",
+            "mcp_tool": "compliance_check",
+            "api": "GET /api/v1/compliance",
+            "required_input": [],
+            "optional_input": ["verbose"],
+            "produces": "ComplianceChecked event",
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "cloud_push",
+            "description": "Push model to cloud storage",
+            "cli": "aim cloud push <NAME> --provider <P> --bucket <B>",
+            "mcp_tool": "cloud_push",
+            "required_input": ["name", "provider", "bucket"],
+            "optional_input": ["prefix", "region"],
+            "produces": "CloudSynced event (direction: push)",
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "cloud_pull",
+            "description": "Pull model from cloud storage",
+            "cli": "aim cloud pull <NAME> --provider <P> --bucket <B> --remote-path <R>",
+            "mcp_tool": "cloud_pull",
+            "required_input": ["name", "provider", "bucket", "remote_path"],
+            "produces": "CloudSynced event (direction: pull)",
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "change_passphrase",
+            "description": "Change vault encryption passphrase (re-encrypts all models)",
+            "cli": "aim change-passphrase",
+            "required_input": ["old_passphrase", "new_passphrase"],
+            "produces": "PassphraseChanged event",
+            "transitions_to": "Unlocked",
+            "caution": "Re-encrypts all stored models — may take significant time for large vaults"
+          },
+          {
+            "action": "lock",
+            "description": "Lock the vault (zeroes encryption key from memory)",
+            "cli": "aim lock",
+            "required_input": [],
+            "produces": "VaultLocked event",
+            "transitions_to": "Locked"
+          },
+          {
+            "action": "analyze",
+            "description": "Analyze a stored model (format, size, metadata)",
+            "cli": "aim analyze <NAME>",
+            "mcp_tool": "model_analyze",
+            "required_input": ["name"],
+            "transitions_to": "Unlocked"
+          },
+          {
+            "action": "deduplicate",
+            "description": "Find and remove duplicate model data",
+            "cli": "aim deduplicate",
+            "mcp_tool": "model_deduplicate",
+            "required_input": [],
+            "transitions_to": "Unlocked"
+          }
+        ]
+      }
+    }
+  },
+
+  "aimv:constraints": {
+    "@comment": "Layer 5: Constraints and invariants — rules that must always hold. Agents should validate these before and after operations.",
+
+    "systemInvariants": [
+      {
+        "@id": "aimv:ConfidentialityInvariant",
+        "rdfs:label": "Confidentiality",
+        "description": "Plaintext model data NEVER persists on disk. All stored data is encrypted with AES-256-GCM.",
+        "verification": "All files in the models/ directory have .vault extension and are encrypted"
+      },
+      {
+        "@id": "aimv:IntegrityInvariant",
+        "rdfs:label": "Integrity",
+        "description": "Every model retrieval verifies SHA-256 checksum. Mismatch triggers IntegrityFailed event.",
+        "verification": "aim get <model> <output> — exits non-zero if checksum mismatch"
+      },
+      {
+        "@id": "aimv:AuditabilityInvariant",
+        "rdfs:label": "Auditability",
+        "description": "Every state-changing operation is recorded in the audit log. Log is append-only.",
+        "verification": "aim compliance --verbose — checks audit log completeness"
+      },
+      {
+        "@id": "aimv:ImmutabilityInvariant",
+        "rdfs:label": "Immutability",
+        "description": "Once a version is stored, its content never changes. Delete produces a tombstone; the version number is never reused.",
+        "verification": "Version numbers are monotonically increasing per model"
+      },
+      {
+        "@id": "aimv:AddressabilityInvariant",
+        "rdfs:label": "Addressability",
+        "description": "Every stored entity (vault, model, version, card) has a unique aimv:// URI that resolves deterministically.",
+        "verification": "aimv://{vault}/{model}@{version} always resolves to the same artifact"
+      },
+      {
+        "@id": "aimv:RecoverabilityInvariant",
+        "rdfs:label": "Recoverability",
+        "description": "Vault state is fully reconstructable from on-disk data (version manifest + encrypted blobs).",
+        "verification": "Delete config, re-init, unlock — all models still accessible"
+      }
+    ],
+
+    "operationPreconditions": {
+      "store": [
+        "Vault must be in Unlocked state",
+        "File at path must exist and be readable",
+        "File format must be one of the 23+ supported formats (auto-detected or specified)",
+        "Model name must be a valid identifier (alphanumeric, hyphens, underscores)"
+      ],
+      "get": [
+        "Vault must be in Unlocked state",
+        "Model must exist (at least one version)",
+        "Requested version must exist (or omit for latest)",
+        "Output directory must be writable"
+      ],
+      "delete": [
+        "Vault must be in Unlocked state",
+        "Model must exist",
+        "Version must exist and not already be tombstoned"
+      ],
+      "convert": [
+        "Vault must be in Unlocked state",
+        "Model must exist",
+        "A conversion path must exist from current format to target format",
+        "If quantization specified, target format must support it"
+      ],
+      "cloud_push": [
+        "Vault must be in Unlocked state",
+        "Model must exist",
+        "Cloud provider credentials must be configured (env vars or config)",
+        "Target bucket must exist and be writable"
+      ],
+      "cloud_pull": [
+        "Vault must be in Unlocked state",
+        "Cloud provider credentials must be configured",
+        "Remote object must exist at specified path"
+      ]
+    }
+  },
+
+  "aimv:metrics": {
+    "@comment": "Layer 6: Observable metrics — what an agent can measure and monitor. Available via CLI (aim stats), REST API (GET /api/v1/metrics), or MCP (vault_stats tool).",
+
+    "counters": [
+      {"name": "models_stored_total", "description": "Total models stored since vault creation", "unit": "count"},
+      {"name": "models_retrieved_total", "description": "Total successful retrievals", "unit": "count"},
+      {"name": "models_deleted_total", "description": "Total version deletions", "unit": "count"},
+      {"name": "conversions_total", "description": "Total format conversions performed", "unit": "count"},
+      {"name": "bytes_encrypted_total", "description": "Total bytes encrypted across all operations", "unit": "bytes"},
+      {"name": "bytes_decrypted_total", "description": "Total bytes decrypted across all operations", "unit": "bytes"},
+      {"name": "integrity_checks_passed", "description": "Successful checksum verifications", "unit": "count"},
+      {"name": "integrity_checks_failed", "description": "Failed checksum verifications (CRITICAL if > 0)", "unit": "count"},
+      {"name": "errors_total", "description": "Total operation errors", "unit": "count"},
+      {"name": "cloud_syncs_total", "description": "Total cloud push/pull operations", "unit": "count"}
+    ],
+
+    "gauges": [
+      {"name": "models_count", "description": "Current number of distinct models", "unit": "count"},
+      {"name": "versions_count", "description": "Current total versions across all models", "unit": "count"},
+      {"name": "storage_bytes_used", "description": "Total encrypted storage on disk", "unit": "bytes"},
+      {"name": "storage_bytes_deduped", "description": "Bytes saved by deduplication", "unit": "bytes"},
+      {"name": "vault_state", "description": "Current vault state enum value", "unit": "enum"},
+      {"name": "uptime_seconds", "description": "API server uptime (when running)", "unit": "seconds"},
+      {"name": "active_conversions", "description": "Number of conversions currently in progress", "unit": "count"}
+    ],
+
+    "histograms": [
+      {"name": "store_duration_ms", "description": "Time to encrypt and store a model", "unit": "milliseconds", "percentiles": ["p50", "p95", "p99"]},
+      {"name": "retrieve_duration_ms", "description": "Time to retrieve and decrypt a model", "unit": "milliseconds", "percentiles": ["p50", "p95", "p99"]},
+      {"name": "conversion_duration_ms", "description": "Time to convert between formats", "unit": "milliseconds", "percentiles": ["p50", "p95", "p99"]},
+      {"name": "model_size_bytes", "description": "Distribution of stored model sizes", "unit": "bytes", "percentiles": ["p50", "p95", "p99"]},
+      {"name": "compression_ratio", "description": "Ratio of compressed to original size", "unit": "ratio", "percentiles": ["p50", "p95", "p99"]}
+    ],
+
+    "healthChecks": [
+      {"name": "vault_accessible", "description": "Can the vault directory be read?", "check": "Test-Path on vault directory"},
+      {"name": "config_valid", "description": "Is the configuration parseable and valid?", "check": "Deserialize config file"},
+      {"name": "versions_consistent", "description": "Does version metadata match on-disk files?", "check": "Cross-reference versions.json with .vault files"},
+      {"name": "compliance_current", "description": "Has compliance been checked recently?", "check": "Last compliance check within configured interval"},
+      {"name": "audit_log_writable", "description": "Can the audit log be appended to?", "check": "Write test entry"}
+    ]
+  },
+
+  "aimv:errors": {
+    "@comment": "Layer 7: Structured error taxonomy — so agents can programmatically handle failures",
+
+    "errorTypes": [
+      {
+        "@id": "aimv:CryptoError",
+        "rdfs:label": "CryptoError",
+        "description": "Encryption, decryption, or key derivation failure",
+        "severity": "critical",
+        "causes": ["wrong passphrase", "corrupted ciphertext", "invalid nonce", "authentication tag mismatch"],
+        "recovery": ["retry with correct passphrase", "restore from backup", "check file integrity"],
+        "exit_code": 1
+      },
+      {
+        "@id": "aimv:StorageError",
+        "rdfs:label": "StorageError",
+        "description": "File system or cloud storage I/O failure",
+        "severity": "high",
+        "causes": ["disk full", "permission denied", "network timeout", "bucket not found", "file not found"],
+        "recovery": ["free disk space", "fix permissions (700/600)", "check network", "verify cloud credentials"],
+        "exit_code": 2
+      },
+      {
+        "@id": "aimv:VersionError",
+        "rdfs:label": "VersionError",
+        "description": "Version control operation failure",
+        "severity": "medium",
+        "causes": ["model not found", "version not found", "corrupt versions.json", "concurrent access conflict"],
+        "recovery": ["check model name spelling", "list available versions", "rebuild version index"],
+        "exit_code": 3
+      },
+      {
+        "@id": "aimv:FormatError",
+        "rdfs:label": "FormatError",
+        "description": "Model format detection or conversion failure",
+        "severity": "medium",
+        "causes": ["unsupported format", "corrupted model file", "no conversion path", "quantization not supported for target"],
+        "recovery": ["specify format explicitly with -f", "check supported formats (aim list-conversions)", "use intermediate format"],
+        "exit_code": 4
+      },
+      {
+        "@id": "aimv:ComplianceError",
+        "rdfs:label": "ComplianceError",
+        "description": "Compliance check failure",
+        "severity": "high",
+        "causes": ["weak encryption config", "missing audit log", "permission too broad", "key derivation below minimum"],
+        "recovery": ["run aim compliance --verbose for details", "reconfigure vault", "fix file permissions"],
+        "exit_code": 5
+      },
+      {
+        "@id": "aimv:IntegrityError",
+        "rdfs:label": "IntegrityError",
+        "description": "SHA-256 checksum mismatch — data corruption or tampering detected",
+        "severity": "critical",
+        "causes": ["bit rot", "incomplete write", "malicious modification", "disk hardware failure"],
+        "recovery": ["restore from backup", "re-store model from original source", "check disk health"],
+        "exit_code": 6
+      },
+      {
+        "@id": "aimv:ConfigError",
+        "rdfs:label": "ConfigError",
+        "description": "Configuration file parse or validation failure",
+        "severity": "medium",
+        "causes": ["malformed TOML/JSON", "missing required field", "invalid value range"],
+        "recovery": ["check config file syntax", "delete and re-initialize", "set environment variable override"],
+        "exit_code": 7
+      },
+      {
+        "@id": "aimv:AuthenticationError",
+        "rdfs:label": "AuthenticationError",
+        "description": "Authentication failure (passphrase, JWT, cloud credentials)",
+        "severity": "high",
+        "causes": ["wrong passphrase", "expired JWT token", "invalid cloud credentials", "revoked access key"],
+        "recovery": ["re-enter passphrase", "refresh JWT token", "update cloud credentials in environment"],
+        "exit_code": 8
+      }
+    ]
+  },
+
+  "aimv:causalModels": {
+    "@comment": "Layer 8: Causal models — if an agent does X, what effects should it expect? This enables planning and reasoning.",
+
+    "operations": [
+      {
+        "operation": "store",
+        "input": {"name": "string", "file_path": "string", "format": "?ModelFormat", "metadata": "?ModelMetadata"},
+        "effects": {
+          "state_changes": ["New ModelVersion created", "Version counter incremented", "Encrypted .vault file written to disk"],
+          "events_emitted": ["ModelStored"],
+          "metrics_affected": ["models_stored_total +1", "models_count +1 (if new model)", "versions_count +1", "storage_bytes_used +size", "bytes_encrypted_total +size"],
+          "disk_writes": ["models/{name}/v{version}.vault", "versions.json updated"],
+          "duration_estimate": "~1s per GB (limited by encryption throughput)",
+          "reversible": true,
+          "reversal": "aim delete <name> <version>"
+        }
+      },
+      {
+        "operation": "get",
+        "input": {"name": "string", "output_path": "string", "version": "?u32"},
+        "effects": {
+          "state_changes": ["None — read-only operation"],
+          "events_emitted": ["ModelRetrieved"],
+          "metrics_affected": ["models_retrieved_total +1", "bytes_decrypted_total +size", "integrity_checks_passed +1"],
+          "disk_writes": ["output_path written with decrypted model data"],
+          "duration_estimate": "~0.8s per GB (limited by decryption + I/O)",
+          "reversible": true,
+          "reversal": "Delete the output file"
+        }
+      },
+      {
+        "operation": "delete",
+        "input": {"name": "string", "version": "u32"},
+        "effects": {
+          "state_changes": ["Version tombstoned in metadata", "Encrypted .vault file removed from disk"],
+          "events_emitted": ["ModelDeleted"],
+          "metrics_affected": ["models_deleted_total +1", "versions_count -1", "storage_bytes_used -size", "models_count -1 (if last version)"],
+          "disk_writes": ["models/{name}/v{version}.vault deleted", "versions.json updated"],
+          "duration_estimate": "<100ms",
+          "reversible": false,
+          "reversal": "Cannot undo — re-store from original source"
+        }
+      },
+      {
+        "operation": "convert",
+        "input": {"name": "string", "target_format": "ModelFormat", "quantization": "?string", "validate": "?bool"},
+        "effects": {
+          "state_changes": ["New ModelVersion created in target format", "Original version unchanged"],
+          "events_emitted": ["ModelRetrieved (source)", "ModelConverted", "ModelStored (result)"],
+          "metrics_affected": ["conversions_total +1", "versions_count +1", "storage_bytes_used +new_size"],
+          "disk_writes": ["models/{name}/v{new_version}.vault"],
+          "duration_estimate": "Varies by format — typically 2-30s per GB",
+          "reversible": true,
+          "reversal": "aim delete <name> <new_version>"
+        }
+      },
+      {
+        "operation": "cloud_push",
+        "input": {"name": "string", "provider": "string", "bucket": "string"},
+        "effects": {
+          "state_changes": ["Model uploaded to cloud (encrypted blob)"],
+          "events_emitted": ["CloudSynced (direction: push)"],
+          "metrics_affected": ["cloud_syncs_total +1"],
+          "network_writes": ["Encrypted blob uploaded to {provider}://{bucket}/{prefix}/{name}"],
+          "duration_estimate": "Limited by upload bandwidth",
+          "reversible": true,
+          "reversal": "Delete object from cloud bucket"
+        }
+      },
+      {
+        "operation": "change_passphrase",
+        "input": {"old_passphrase": "string", "new_passphrase": "string"},
+        "effects": {
+          "state_changes": ["All model versions re-encrypted with new key", "Old key zeroed"],
+          "events_emitted": ["PassphraseChanged"],
+          "metrics_affected": ["bytes_encrypted_total +total_vault_size", "bytes_decrypted_total +total_vault_size"],
+          "disk_writes": ["Every .vault file rewritten"],
+          "duration_estimate": "~2s per GB of total vault size",
+          "reversible": false,
+          "reversal": "Cannot undo — change passphrase again with the new passphrase as old"
+        }
+      },
+      {
+        "operation": "compliance",
+        "input": {"verbose": "?bool"},
+        "effects": {
+          "state_changes": ["None — read-only check"],
+          "events_emitted": ["ComplianceChecked"],
+          "metrics_affected": [],
+          "disk_writes": ["None"],
+          "duration_estimate": "<1s",
+          "reversible": true,
+          "reversal": "N/A — read-only"
+        }
+      }
+    ]
+  },
+
+  "aimv:agentInterfaces": {
+    "@comment": "Summary of all interfaces available to agents, ordered by preference for autonomous operation.",
+
+    "interfaces": [
+      {
+        "name": "MCP (Model Context Protocol)",
+        "description": "Primary agent interface — structured tool calls with JSON Schema validation",
+        "manifest": ".well-known/mcp-manifest.json",
+        "strengths": ["Type-safe inputs", "Structured outputs", "Tool discovery", "Resource listing"],
+        "tools_count": 16,
+        "preferred_for": ["Autonomous agent workflows", "LLM function calling", "Multi-step pipelines"]
+      },
+      {
+        "name": "REST API",
+        "description": "HTTP API with OpenAPI 3.1 specification and JWT authentication",
+        "spec": ".well-known/openapi.yaml",
+        "base_url": "http://localhost:8080/api/v1",
+        "auth": "Bearer JWT token",
+        "strengths": ["Standard HTTP", "Webhook support", "OpenAPI codegen"],
+        "preferred_for": ["Web integrations", "CI/CD pipelines", "Monitoring systems"]
+      },
+      {
+        "name": "GraphQL API",
+        "description": "GraphQL endpoint with introspection and subscriptions",
+        "endpoint": "http://localhost:8080/graphql",
+        "strengths": ["Flexible queries", "Subscriptions for real-time events", "Introspectable schema"],
+        "preferred_for": ["Custom queries", "Real-time dashboards", "Complex data requirements"]
+      },
+      {
+        "name": "CLI",
+        "description": "Command-line interface via the `aim` binary",
+        "binary": "aim",
+        "strengths": ["Shell scripting", "Automation", "No server required"],
+        "preferred_for": ["Shell scripts", "CI/CD", "Manual operations", "Offline use"]
+      },
+      {
+        "name": "Rust Library",
+        "description": "Native Rust API via the ai_model_vault crate",
+        "crate": "ai-model-vault",
+        "docs": "https://docs.rs/ai-model-vault",
+        "strengths": ["Full API access", "Type safety", "Best performance"],
+        "preferred_for": ["Rust applications", "Custom tooling", "Embedded use"]
+      },
+      {
+        "name": "Python Library",
+        "description": "Python bindings via PyO3/maturin",
+        "package": "aimodelvault",
+        "feature_flag": "python",
+        "strengths": ["Python ecosystem integration", "Notebook workflows"],
+        "preferred_for": ["ML pipelines", "Jupyter notebooks", "Python toolchains"]
+      }
+    ]
+  },
 
   "aimv:relationships": [
     {"subject": "aimv:Vault", "predicate": "aimv:contains", "object": "aimv:ModelVersion"},
     {"subject": "aimv:ModelVersion", "predicate": "aimv:hasParent", "object": "aimv:ModelVersion"},
     {"subject": "aimv:ModelVersion", "predicate": "aimv:hasMetadata", "object": "aimv:ModelMetadata"},
+    {"subject": "aimv:ModelVersion", "predicate": "aimv:hasCard", "object": "aimv:ModelCard"},
     {"subject": "aimv:ModelMetadata", "predicate": "aimv:specifiesFormat", "object": "aimv:ModelFormat"},
     {"subject": "aimv:Vault", "predicate": "aimv:usesEncryption", "object": "aimv:CryptoModule"},
     {"subject": "aimv:Vault", "predicate": "aimv:usesVersioning", "object": "aimv:VersionControl"},
     {"subject": "aimv:Vault", "predicate": "aimv:storesIn", "object": "aimv:StorageBackend"},
+    {"subject": "aimv:Vault", "predicate": "aimv:emits", "object": "aimv:VaultEvent"},
+    {"subject": "aimv:Vault", "predicate": "aimv:hasState", "object": "aimv:VaultState"},
+    {"subject": "aimv:Vault", "predicate": "aimv:exposes", "object": "aimv:VaultMetrics"},
     {"subject": "aimv:MCPServer", "predicate": "aimv:registersTool", "object": "aimv:MCPTool"},
     {"subject": "aimv:KnowledgeBase", "predicate": "aimv:contains", "object": "aimv:Document"},
     {"subject": "aimv:ConversionPipeline", "predicate": "aimv:transforms", "object": "aimv:ModelFormat"},
@@ -289,6 +1199,8 @@
     {"subject": "aimv:RAGSystem", "predicate": "aimv:includes", "object": "aimv:DocumentStore"},
     {"subject": "aimv:RAGSystem", "predicate": "aimv:includes", "object": "aimv:KnowledgeBase"},
     {"subject": "aimv:RAGSystem", "predicate": "aimv:includes", "object": "aimv:RuleEngine"},
-    {"subject": "aimv:RAGSystem", "predicate": "aimv:includes", "object": "aimv:MCPServer"}
+    {"subject": "aimv:RAGSystem", "predicate": "aimv:includes", "object": "aimv:MCPServer"},
+    {"subject": "aimv:VaultEvent", "predicate": "aimv:recordedIn", "object": "aimv:BlockchainAudit"},
+    {"subject": "aimv:VaultEvent", "predicate": "aimv:triggers", "object": "aimv:RuleEngine"}
   ]
 }

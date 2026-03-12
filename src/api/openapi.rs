@@ -10,7 +10,7 @@ pub fn openapi_spec() -> serde_json::Value {
         "info": {
             "title": "AI Model Vault API",
             "description": "RESTful API for secure AI model storage, versioning, and format conversion.",
-            "version": "1.0.0",
+            "version": "1.2.0",
             "license": {
                 "name": "AGPL-3.0-or-later",
                 "url": "https://www.gnu.org/licenses/agpl-3.0.html"
@@ -187,6 +187,131 @@ pub fn openapi_spec() -> serde_json::Value {
                     }
                 }
             },
+            "/models/{name}/card": {
+                "get": {
+                    "summary": "Generate model card from vault metadata",
+                    "tags": ["model-cards"],
+                    "security": [{ "bearerAuth": [] }],
+                    "parameters": [
+                        { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
+                    ],
+                    "responses": {
+                        "200": { "description": "Model card JSON" },
+                        "404": { "description": "Model not found" }
+                    }
+                },
+                "post": {
+                    "summary": "Create or overwrite a custom model card",
+                    "tags": ["model-cards"],
+                    "security": [{ "bearerAuth": [] }],
+                    "parameters": [
+                        { "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }
+                    ],
+                    "requestBody": {
+                        "required": true,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "model_details": { "type": "object" },
+                                        "intended_use": { "type": "object" },
+                                        "metadata": { "type": "object" },
+                                        "created_at": { "type": "string", "format": "date-time" },
+                                        "updated_at": { "type": "string", "format": "date-time" }
+                                    },
+                                    "required": ["model_details", "intended_use"]
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "201": { "description": "Model card created" },
+                        "400": { "description": "Invalid model card JSON" },
+                        "404": { "description": "Model not found" }
+                    }
+                }
+            },
+            "/compliance": {
+                "get": {
+                    "summary": "Run FIPS 140-3, CVE, MITRE ATT&CK, and CMMC 2.0 compliance checks",
+                    "tags": ["compliance"],
+                    "security": [{ "bearerAuth": [] }],
+                    "responses": { "200": { "description": "Compliance report" } }
+                }
+            },
+            "/rag/search": {
+                "post": {
+                    "summary": "Search RAG knowledge base",
+                    "tags": ["rag"],
+                    "security": [{ "bearerAuth": [] }],
+                    "requestBody": {
+                        "required": true,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "query": { "type": "string" },
+                                        "limit": { "type": "integer" }
+                                    },
+                                    "required": ["query"]
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": { "description": "Search results" },
+                        "400": { "description": "Empty query" }
+                    }
+                }
+            },
+            "/rag/documents": {
+                "post": {
+                    "summary": "Add document to RAG knowledge base",
+                    "tags": ["rag"],
+                    "security": [{ "bearerAuth": [] }],
+                    "requestBody": {
+                        "required": true,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "content": { "type": "string" },
+                                        "metadata": { "type": "object" }
+                                    },
+                                    "required": ["content"]
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "201": { "description": "Document stored with ID and content_length" },
+                        "400": { "description": "Empty content" }
+                    }
+                }
+            },
+            "/metrics": {
+                "get": {
+                    "summary": "Prometheus-compatible metrics",
+                    "tags": ["system"],
+                    "security": [{ "bearerAuth": [] }],
+                    "responses": { "200": { "description": "Metrics in Prometheus text format" } }
+                }
+            },
+            "/events": {
+                "get": {
+                    "summary": "Event stream (recent audit events)",
+                    "description": "Returns recent events. Non-admin roles have security events filtered out.",
+                    "tags": ["system"],
+                    "security": [{ "bearerAuth": [] }],
+                    "parameters": [
+                        { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+                    ],
+                    "responses": { "200": { "description": "Event entries" } }
+                }
+            },
             "/stats": {
                 "get": {
                     "summary": "Vault statistics",
@@ -198,6 +323,7 @@ pub fn openapi_spec() -> serde_json::Value {
             "/audit": {
                 "get": {
                     "summary": "Audit log entries",
+                    "description": "Returns audit log. Non-admin roles have security events filtered out.",
                     "tags": ["system"],
                     "security": [{ "bearerAuth": [] }],
                     "parameters": [

@@ -45,7 +45,7 @@ All critical issues have been resolved. AI Model Vault is production-ready!
 
 ### Core Features: 100%
 - ✅ Secure vault with AES-256-GCM encryption
-- ✅ 22+ AI model format support
+- ✅ 23+ AI model format support
 - ✅ Version control with lineage tracking
 - ✅ Smart compression (Gzip/LZMA)
 - ✅ XDG-compliant cross-platform paths
@@ -134,7 +134,7 @@ All critical issues have been resolved. AI Model Vault is production-ready!
 
 ### Immediate Benefits
 1. **Military-Grade Security** - FIPS 140-3 compliant encryption
-2. **Universal Format Support** - 22+ AI model formats
+2. **Universal Format Support** - 23+ AI model formats
 3. **Version Control** - Never lose a checkpoint again
 4. **Model Utilities** - 8 tools for model management
 5. **Cloud Storage** - S3, Azure, GCS backends
@@ -275,10 +275,10 @@ cargo build --release --features full,cloud
 
 ## 📞 Contact
 
-**Project**: AI Model Vault (NeuronVault)  
-**Version**: 0.1.0  
-**License**: MIT  
-**Repository**: https://github.com/nervosys/aimodelvault  
+**Project**: AI Model Vault  
+**Version**: 1.1.0  
+**License**: AGPL-3.0-or-later  
+**Repository**: https://github.com/nervosys/AIModelVault  
 **Email**: dev@nervosys.ai
 
 ---

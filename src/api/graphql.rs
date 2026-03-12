@@ -10,9 +10,11 @@ use async_graphql::{
     Context, EmptySubscription, InputObject, Object, Result as GqlResult, Schema, SimpleObject, ID,
 };
 use axum::extract::State;
+use axum::http::HeaderMap;
 use chrono::{DateTime, Utc};
 use std::sync::Arc;
 
+use super::auth;
 use super::server::AppState;
 use crate::formats::ModelFormat;
 
@@ -369,6 +371,30 @@ impl QueryRoot {
 
 pub struct MutationRoot;
 
+/// Verify JWT auth from the HTTP headers passed through GraphQL context.
+fn require_gql_auth(ctx: &Context<'_>) -> GqlResult<()> {
+    let state = ctx.data::<Arc<AppState>>()?;
+    let headers = ctx.data::<HeaderMap>()?;
+
+    let auth_header = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| async_graphql::Error::new("Missing Authorization header"))?;
+
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .ok_or_else(|| async_graphql::Error::new("Invalid Authorization format"))?;
+
+    if token.is_empty() || token.len() > 4096 || token.chars().any(|c| c.is_control()) {
+        return Err(async_graphql::Error::new("Malformed token"));
+    }
+
+    auth::verify_token(token, &state.config.jwt_secret)
+        .map_err(|_| async_graphql::Error::new("Invalid or expired token"))?;
+
+    Ok(())
+}
+
 #[Object]
 impl MutationRoot {
     /// Store a new model or version
@@ -377,6 +403,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: StoreModelInput,
     ) -> GqlResult<StoreResult> {
+        require_gql_auth(ctx)?;
         use base64::{engine::general_purpose::STANDARD as B64, Engine};
 
         let state = ctx.data::<Arc<AppState>>()?;
@@ -409,6 +436,7 @@ impl MutationRoot {
 
     /// Delete a model (all versions)
     async fn delete_model(&self, ctx: &Context<'_>, name: String) -> GqlResult<DeleteResult> {
+        require_gql_auth(ctx)?;
         let state = ctx.data::<Arc<AppState>>()?;
         let mut vault = state.vault.write().await;
 
@@ -437,6 +465,7 @@ impl MutationRoot {
         name: String,
         version: i32,
     ) -> GqlResult<DeleteResult> {
+        require_gql_auth(ctx)?;
         let state = ctx.data::<Arc<AppState>>()?;
         let mut vault = state.vault.write().await;
 
@@ -452,9 +481,10 @@ impl MutationRoot {
     /// Note: For full conversion support, use the REST API /api/v1/convert endpoint
     async fn convert_model(
         &self,
-        _ctx: &Context<'_>,
+        ctx: &Context<'_>,
         _input: ConvertModelInput,
     ) -> GqlResult<ConversionResult> {
+        require_gql_auth(ctx)?;
         // Conversion requires external converters and isn't available via GraphQL
         // Use the REST API /api/v1/convert endpoint instead
         Err(async_graphql::Error::new(
@@ -472,6 +502,7 @@ impl MutationRoot {
 
     /// Lock the vault
     async fn lock(&self, ctx: &Context<'_>) -> GqlResult<bool> {
+        require_gql_auth(ctx)?;
         let state = ctx.data::<Arc<AppState>>()?;
         let mut vault = state.vault.write().await;
         vault.lock();
@@ -483,12 +514,44 @@ impl MutationRoot {
 // Axum Integration
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// GraphQL handler for Axum
+/// GraphQL handler for Axum — manually bridges axum 0.7 extractors
+/// to async-graphql, avoiding axum version conflicts with async-graphql-axum.
 pub async fn graphql_handler(
     State(schema): State<VaultSchema>,
-    req: async_graphql_axum::GraphQLRequest,
-) -> async_graphql_axum::GraphQLResponse {
-    schema.execute(req.into_inner()).await.into()
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> axum::response::Response {
+    use axum::http::StatusCode;
+    use axum::response::IntoResponse;
+
+    let request_str = match std::str::from_utf8(&body) {
+        Ok(s) => s,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Invalid UTF-8 in request body").into_response()
+        }
+    };
+
+    let gql_request: async_graphql::Request = match serde_json::from_str(request_str) {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                format!("Invalid GraphQL request: {e}"),
+            )
+                .into_response()
+        }
+    };
+
+    let gql_request = gql_request.data(headers);
+    let response = schema.execute(gql_request).await;
+    let json = serde_json::to_string(&response).unwrap_or_default();
+
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "application/json")],
+        json,
+    )
+        .into_response()
 }
 
 /// GraphQL Playground handler

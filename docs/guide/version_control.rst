@@ -1,7 +1,7 @@
 Version Control Guide
 =====================
 
-NeuralVault provides built-in version control for models with full lineage
+AI Model Vault provides built-in version control for models with full lineage
 tracking — no external VCS required.
 
 
@@ -12,7 +12,7 @@ Each call to ``store_model`` creates a new version:
 
 .. code-block:: python
 
-   from neuralvault import Vault, ModelMetadata
+   from aimodelvault import Vault, ModelMetadata
 
    vault = Vault()
    vault.unlock(b"passphrase")
@@ -65,7 +65,7 @@ Every version stores a SHA-256 checksum computed before encryption:
 
 .. code-block:: python
 
-   from neuralvault import sha256_hex
+   from aimodelvault import sha256_hex
 
    data = vault.get_model("gpt-finetune", version=2)
    v2 = vault.list_versions("gpt-finetune")[1]

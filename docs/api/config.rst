@@ -1,7 +1,7 @@
 VaultConfig API
 ===============
 
-.. module:: neuralvault
+.. module:: aimodelvault
    :noindex:
 
 .. class:: VaultConfig(vault_dir=None)
@@ -10,9 +10,9 @@ VaultConfig API
 
    By default, uses XDG-compliant directories:
 
-   - **Linux**: ``~/.local/share/neuralvault/``
-   - **macOS**: ``~/Library/Application Support/neuralvault/``
-   - **Windows**: ``%APPDATA%\neuralvault\``
+   - **Linux**: ``~/.local/share/aimodelvault/``
+   - **macOS**: ``~/Library/Application Support/aimodelvault/``
+   - **Windows**: ``%APPDATA%\aimodelvault\``
 
    :param vault_dir: Override the default vault directory.
    :type vault_dir: str or None
@@ -26,7 +26,7 @@ VaultConfig API
 
    .. code-block:: python
 
-      from neuralvault import Vault, VaultConfig
+      from aimodelvault import Vault, VaultConfig
 
       # Default XDG location
       vault = Vault()

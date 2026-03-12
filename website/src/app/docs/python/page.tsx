@@ -9,16 +9,16 @@ export default function PythonPage() {
       </p>
 
       <h2 className="text-2xl font-bold mt-10 mb-4" id="install">Installation</h2>
-      <CodeBlock language="bash">{`pip install neuralvault
+      <CodeBlock language="bash">{`pip install aimodelvault
 
 # With ML framework support
-pip install "neuralvault[ml]"
+pip install "aimodelvault[ml]"
 
 # With development tools
-pip install "neuralvault[dev]"`}</CodeBlock>
+pip install "aimodelvault[dev]"`}</CodeBlock>
 
       <h2 className="text-2xl font-bold mt-10 mb-4" id="basic">Basic Usage</h2>
-      <CodeBlock language="python">{`from neuralvault import Vault, VaultConfig, ModelFormat
+      <CodeBlock language="python">{`from aimodelvault import Vault, VaultConfig, ModelFormat
 
 # Create a vault with XDG-compliant paths
 config = VaultConfig()
@@ -62,7 +62,7 @@ vault.lock()`}</CodeBlock>
             {[
               ["Vault", "Main vault with store, get, list, delete, version control, and passphrase management"],
               ["VaultConfig", "XDG-compliant configuration with optional custom vault directory"],
-              ["ModelFormat", "22+ format detection with name and extension properties"],
+              ["ModelFormat", "23+ format detection with name and extension properties"],
               ["ModelMetadata", "Builder-style constructor for model metadata (name, format, description, framework, task)"],
             ].map(([cls, desc]) => (
               <tr key={cls} className="border-b border-[var(--color-border)]">
@@ -75,7 +75,7 @@ vault.lock()`}</CodeBlock>
       </div>
 
       <h2 className="text-2xl font-bold mt-10 mb-4" id="metadata">Model Metadata</h2>
-      <CodeBlock language="python">{`from neuralvault import ModelMetadata
+      <CodeBlock language="python">{`from aimodelvault import ModelMetadata
 
 metadata = ModelMetadata(
     name="my-model",

@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_gzip_compress_decompress() {
-        let data = b"Hello, NeuralVault! This is test data for compression.".repeat(100);
+        let data = b"Hello, AI Model Vault! This is test data for compression.".repeat(100);
         let compressed = compress(
             &data,
             CompressionAlgorithm::Gzip,
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_lzma_compress_decompress() {
-        let data = b"Hello, NeuralVault! This is test data for compression.".repeat(100);
+        let data = b"Hello, AI Model Vault! This is test data for compression.".repeat(100);
         let compressed = compress(
             &data,
             CompressionAlgorithm::Lzma,
@@ -133,5 +133,71 @@ mod tests {
 
         assert_eq!(data.to_vec(), decompressed);
         assert!(compressed.len() < data.len());
+    }
+
+    #[test]
+    fn test_none_compress_decompress() {
+        // Covers line 51 — CompressionAlgorithm::None path
+        let data = b"uncompressed data".to_vec();
+        let compressed =
+            compress(&data, CompressionAlgorithm::None, CompressionLevel::Fast).unwrap();
+        assert_eq!(compressed, data);
+        let decompressed = decompress(&compressed, CompressionAlgorithm::None).unwrap();
+        assert_eq!(decompressed, data);
+    }
+
+    #[test]
+    fn test_compression_levels() {
+        let data = b"Test data repeated for compression ".repeat(50);
+        // Test Fast level
+        let fast = compress(&data, CompressionAlgorithm::Gzip, CompressionLevel::Fast).unwrap();
+        let decompressed = decompress(&fast, CompressionAlgorithm::Gzip).unwrap();
+        assert_eq!(decompressed, data.to_vec());
+
+        // Test Maximum level
+        let max = compress(&data, CompressionAlgorithm::Gzip, CompressionLevel::Maximum).unwrap();
+        let decompressed = decompress(&max, CompressionAlgorithm::Gzip).unwrap();
+        assert_eq!(decompressed, data.to_vec());
+        // Maximum should generally compress better or equal to Fast
+        assert!(max.len() <= fast.len() + 10);
+    }
+
+    #[test]
+    fn test_lzma_with_different_levels() {
+        let data = b"LZMA test data with some content.".repeat(20);
+        for level in [
+            CompressionLevel::Fast,
+            CompressionLevel::Balanced,
+            CompressionLevel::Maximum,
+        ] {
+            let compressed = compress(&data, CompressionAlgorithm::Lzma, level).unwrap();
+            let decompressed = decompress(&compressed, CompressionAlgorithm::Lzma).unwrap();
+            assert_eq!(decompressed, data.to_vec());
+        }
+    }
+
+    #[test]
+    fn test_gzip_decompress_invalid_data() {
+        // Covers error path in decompress_gzip
+        let invalid = vec![0xFF, 0xFE, 0xFD, 0xFC];
+        let result = decompress(&invalid, CompressionAlgorithm::Gzip);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_lzma_decompress_invalid_data() {
+        // Covers error path in decompress_lzma
+        let invalid = vec![0xFF, 0xFE, 0xFD, 0xFC];
+        let result = decompress(&invalid, CompressionAlgorithm::Lzma);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_gzip_compress_level_none() {
+        // Covers CompressionLevel::None -> FlateCompression::none() conversion
+        let data = b"test data for level none compression".to_vec();
+        let compressed = compress(&data, CompressionAlgorithm::Gzip, CompressionLevel::None).unwrap();
+        let decompressed = decompress(&compressed, CompressionAlgorithm::Gzip).unwrap();
+        assert_eq!(decompressed, data);
     }
 }

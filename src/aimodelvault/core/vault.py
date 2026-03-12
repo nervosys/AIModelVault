@@ -1,5 +1,5 @@
 """
-NeuralVault Vault - Python interface to the AI Model Vault.
+AI Model Vault - Python interface to the AI Model Vault.
 
 This module provides a Python-friendly API wrapping the Rust `aim` CLI.
 For production use, this would use PyO3/maturin FFI bindings to the Rust library.
@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from neuralvault.core.config import VaultConfig
+from aimodelvault.core.config import VaultConfig
 
 
 class Vault:

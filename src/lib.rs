@@ -20,12 +20,16 @@ pub mod error;
 pub mod federation;
 pub mod formats;
 pub mod model_card;
+pub mod permissions;
 pub mod rag;
 pub mod storage;
 pub mod telemetry;
+pub mod traits;
 pub mod utils;
 pub mod vault;
 pub mod version;
+#[cfg(feature = "sqlite")]
+pub mod version_sqlite;
 
 #[cfg(feature = "python")]
 mod python;
@@ -35,7 +39,11 @@ pub use conversion::{
     ConversionOptions, ConversionPipeline, ConversionProgress, ConversionResult, Converter,
     ValidationCheck, ValidationReport,
 };
-pub use error::{Result, VaultError};
+pub use crypto::streaming::{
+    decrypt_chunked, encrypt_chunked, is_chunked_format, StreamHeader, DEFAULT_CHUNK_SIZE,
+    HEADER_SIZE, STREAM_MAGIC, STREAM_VERSION,
+};
+pub use error::{ConversionError, CryptoError, Result, StorageError, VaultError};
 pub use model_card::{
     CaveatsAndRecommendations, EnvironmentalImpact, EthicalConsiderations, Evaluation, IntendedUse,
     Metric, ModelCard, ModelDetails, TrainingData,
@@ -45,13 +53,21 @@ pub use rag::{
     MCPServer, MCPTool, RetrievalCache, Rule, RuleAction, RuleCondition, RuleEngine, ToolContext,
     ToolExecutor, ToolResult,
 };
+pub use traits::{
+    AimvUri, AsyncBlobStore, AsyncBlobStoreAdapter, AuditLogSubscriber, AuditSink, BlobInfo,
+    BlobReceipt, BlobStore, BlobStoreStats, CryptoProvider, EventBus, EventSubscriber,
+    MetricsSnapshot, MetricsSubscriber, NullAuditSink, VaultEvent, VaultMetrics, VaultState,
+    VersionRepo,
+};
 pub use utils::{
     CompressionAnalyzer, CompressionReport, ModelAnalysis, ModelAnalyzer, ModelArchive,
     ModelDeduplicator, ModelExporter, PruningInfo, PruningMethod, QuantizationInfo,
     QuantizationSavings, RetrievalOptimizer,
 };
-pub use vault::Vault;
+pub use vault::{Vault, VaultBuilder, VersionBackend};
 pub use version::{ModelVersion, VersionControl};
+#[cfg(feature = "sqlite")]
+pub use version_sqlite::SqliteVersionRepo;
 
 // Blockchain audit exports
 pub use blockchain::{

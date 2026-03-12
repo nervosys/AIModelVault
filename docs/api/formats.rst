@@ -1,7 +1,7 @@
 Format Detection API
 ====================
 
-.. module:: neuralvault
+.. module:: aimodelvault
    :noindex:
 
 ModelFormat
@@ -9,7 +9,7 @@ ModelFormat
 
 .. class:: ModelFormat(name)
 
-   AI model format identifier. Supports 22+ formats including PyTorch,
+   AI model format identifier. Supports 23+ formats including PyTorch,
    SafeTensors, ONNX, GGUF, TensorRT, CoreML, TFLite, and more.
 
    :param name: Format name string (e.g. ``"safetensors"``, ``"pytorch"``).

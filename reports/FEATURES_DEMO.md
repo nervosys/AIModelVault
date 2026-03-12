@@ -142,7 +142,7 @@ Retrieved data matches original: 100%
 ```
 
 ### 6. **Format Support** 🎯
-Supports 22+ AI model formats:
+Supports 23+ AI model formats:
 
 **LLM & Transformers**:
 - Safetensors (.safetensors) ✅
@@ -384,7 +384,7 @@ AI Model Vault provides:
 - ✅ **Versioning** - Complete history and lineage
 - ✅ **Metadata** - Rich model information
 - ✅ **Integrity** - Cryptographic verification
-- ✅ **Formats** - 22+ model types
+- ✅ **Formats** - 23+ model types
 - ✅ **Performance** - Fast encryption and compression
 - ✅ **Compliance** - CMMC 2.0 Level 2
 

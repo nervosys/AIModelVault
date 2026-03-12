@@ -11,7 +11,7 @@ export default function HomePage() {
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
           <div className="text-center">
             <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30 mb-6">
-              v1.0.0 — Production Release
+              v1.2.0 — Production Release
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
               AI Model Vault
@@ -171,7 +171,7 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-center mb-12">At a Glance</h2>
           <div className="grid md:grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold text-[var(--color-primary)] mb-2">331+</div>
+              <div className="text-4xl font-bold text-[var(--color-primary)] mb-2">1,609</div>
               <div className="text-[var(--color-text-secondary)]">Tests Passing</div>
             </div>
             <div>
@@ -194,9 +194,9 @@ export default function HomePage() {
               &copy; 2026 NervoSys. Licensed under AGPL-3.0-or-later.
             </div>
             <div className="flex gap-6 text-sm">
-              <a href="https://github.com/nervosys/ai-model-vault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">GitHub</a>
+              <a href="https://github.com/nervosys/AIModelVault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">GitHub</a>
               <a href="https://crates.io/crates/ai-model-vault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">crates.io</a>
-              <a href="https://pypi.org/project/neuralvault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">PyPI</a>
+              <a href="https://pypi.org/project/aimodelvault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">PyPI</a>
             </div>
           </div>
         </div>

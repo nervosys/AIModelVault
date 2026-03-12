@@ -209,3 +209,271 @@ impl Default for RuleEngine {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_rule(id: &str, key: &str, cond: RuleCondition, actions: Vec<RuleAction>) -> Rule {
+        let mut conditions = HashMap::new();
+        conditions.insert(key.to_string(), cond);
+        Rule {
+            id: id.to_string(),
+            name: format!("rule_{}", id),
+            conditions,
+            actions,
+            priority: 0,
+            enabled: true,
+        }
+    }
+
+    #[test]
+    fn test_rule_engine_default() {
+        let engine = RuleEngine::default();
+        assert!(engine.get_rules().is_empty());
+    }
+
+    #[test]
+    fn test_rule_engine_set_get_context() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("key".to_string(), "value".to_string());
+        assert_eq!(engine.get_context("key"), Some(&"value".to_string()));
+        assert_eq!(engine.get_context("missing"), None);
+    }
+
+    #[test]
+    fn test_evaluate_condition_equals() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("status".to_string(), "active".to_string());
+
+        let rule = make_rule(
+            "r1",
+            "status",
+            RuleCondition::Equals("active".to_string()),
+            vec![RuleAction::SetValue {
+                key: "result".to_string(),
+                value: "matched".to_string(),
+            }],
+        );
+        engine.add_rule(rule);
+        let executed = engine.execute().unwrap();
+        assert_eq!(executed, vec!["r1"]);
+        assert_eq!(engine.get_context("result"), Some(&"matched".to_string()));
+    }
+
+    #[test]
+    fn test_evaluate_condition_contains() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("text".to_string(), "hello world".to_string());
+
+        let rule = make_rule(
+            "r1",
+            "text",
+            RuleCondition::Contains("world".to_string()),
+            vec![],
+        );
+        engine.add_rule(rule);
+        let executed = engine.execute().unwrap();
+        assert_eq!(executed, vec!["r1"]);
+    }
+
+    #[test]
+    fn test_evaluate_condition_matches() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("name".to_string(), "test-model-v2".to_string());
+
+        let rule = make_rule(
+            "r1",
+            "name",
+            RuleCondition::Matches("model".to_string()),
+            vec![],
+        );
+        engine.add_rule(rule);
+        assert_eq!(engine.execute().unwrap(), vec!["r1"]);
+    }
+
+    #[test]
+    fn test_evaluate_condition_greater_than() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("score".to_string(), "85.5".to_string());
+
+        let rule = make_rule("r1", "score", RuleCondition::GreaterThan(80.0), vec![]);
+        engine.add_rule(rule);
+        assert_eq!(engine.execute().unwrap(), vec!["r1"]);
+    }
+
+    #[test]
+    fn test_evaluate_condition_less_than() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("latency".to_string(), "50".to_string());
+
+        let rule = make_rule("r1", "latency", RuleCondition::LessThan(100.0), vec![]);
+        engine.add_rule(rule);
+        assert_eq!(engine.execute().unwrap(), vec!["r1"]);
+    }
+
+    #[test]
+    fn test_evaluate_condition_in_list() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("format".to_string(), "onnx".to_string());
+
+        let rule = make_rule(
+            "r1",
+            "format",
+            RuleCondition::In(vec![
+                "safetensors".to_string(),
+                "onnx".to_string(),
+                "gguf".to_string(),
+            ]),
+            vec![],
+        );
+        engine.add_rule(rule);
+        assert_eq!(engine.execute().unwrap(), vec!["r1"]);
+    }
+
+    #[test]
+    fn test_evaluate_condition_custom() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("x".to_string(), "y".to_string());
+
+        let rule = make_rule(
+            "r1",
+            "x",
+            RuleCondition::Custom("custom_fn".to_string()),
+            vec![],
+        );
+        engine.add_rule(rule);
+        // Custom always returns false
+        assert!(engine.execute().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_action_add_to_list() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("status".to_string(), "go".to_string());
+
+        let rule = make_rule(
+            "r1",
+            "status",
+            RuleCondition::Equals("go".to_string()),
+            vec![
+                RuleAction::AddToList {
+                    key: "log".to_string(),
+                    value: "first".to_string(),
+                },
+                RuleAction::AddToList {
+                    key: "log".to_string(),
+                    value: "second".to_string(),
+                },
+            ],
+        );
+        engine.add_rule(rule);
+        engine.execute().unwrap();
+        assert_eq!(engine.get_context("log"), Some(&"first,second".to_string()));
+    }
+
+    #[test]
+    fn test_action_log_and_call_function() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("x".to_string(), "y".to_string());
+
+        let rule = make_rule(
+            "r1",
+            "x",
+            RuleCondition::Equals("y".to_string()),
+            vec![
+                RuleAction::Log {
+                    level: "info".to_string(),
+                    message: "matched".to_string(),
+                },
+                RuleAction::CallFunction {
+                    function: "noop".to_string(),
+                    args: vec![],
+                },
+            ],
+        );
+        engine.add_rule(rule);
+        assert_eq!(engine.execute().unwrap(), vec!["r1"]);
+    }
+
+    #[test]
+    fn test_action_stop() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("a".to_string(), "1".to_string());
+
+        let mut rule1 = make_rule(
+            "r1",
+            "a",
+            RuleCondition::Equals("1".to_string()),
+            vec![RuleAction::Stop],
+        );
+        rule1.priority = 10;
+
+        let mut rule2 = make_rule("r2", "a", RuleCondition::Equals("1".to_string()), vec![]);
+        rule2.priority = 5;
+
+        engine.add_rule(rule1);
+        engine.add_rule(rule2);
+
+        // Only r1 should execute since it has Stop
+        let executed = engine.execute().unwrap();
+        assert_eq!(executed, vec!["r1"]);
+    }
+
+    #[test]
+    fn test_disabled_rule_skipped() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("x".to_string(), "y".to_string());
+
+        let mut rule = make_rule("r1", "x", RuleCondition::Equals("y".to_string()), vec![]);
+        rule.enabled = false;
+        engine.add_rule(rule);
+
+        assert!(engine.execute().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_clear_rules() {
+        let mut engine = RuleEngine::new();
+        engine.add_rule(make_rule(
+            "r1",
+            "x",
+            RuleCondition::Equals("y".to_string()),
+            vec![],
+        ));
+        engine.clear_rules();
+        assert!(engine.get_rules().is_empty());
+    }
+
+    #[test]
+    fn test_missing_context_key() {
+        let mut engine = RuleEngine::new();
+        // No context set — condition on "missing_key" should fail
+        let rule = make_rule(
+            "r1",
+            "missing_key",
+            RuleCondition::Equals("val".to_string()),
+            vec![],
+        );
+        engine.add_rule(rule);
+        assert!(engine.execute().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_priority_ordering() {
+        let mut engine = RuleEngine::new();
+        engine.set_context("x".to_string(), "1".to_string());
+
+        let mut r1 = make_rule("low", "x", RuleCondition::Equals("1".to_string()), vec![]);
+        r1.priority = 1;
+        let mut r2 = make_rule("high", "x", RuleCondition::Equals("1".to_string()), vec![]);
+        r2.priority = 10;
+
+        engine.add_rule(r1);
+        engine.add_rule(r2);
+
+        let rules = engine.get_rules();
+        assert_eq!(rules[0].id, "high");
+        assert_eq!(rules[1].id, "low");
+    }
+}

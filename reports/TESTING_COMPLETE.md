@@ -56,7 +56,7 @@
 - FIPS 140-3 compliance
 - Authentication & tamper detection
 
-### ✅ Model Formats (22+)
+### ✅ Model Formats (23+)
 - LLM: Safetensors, GGUF, PyTorch
 - Production: TensorRT, ONNX, TFLite
 - Platform: MLX, Core ML, OpenVINO

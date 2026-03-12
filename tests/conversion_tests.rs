@@ -222,12 +222,12 @@ fn test_gguf_parser_rejects_invalid() {
     assert!(format!("{err}").contains("GGUF magic"));
 }
 
-// ── Shim converters ──────────────────────────────────────────────────────────
+// ── Real converter: SafeTensors → PyTorch ────────────────────────────────────
 
 #[test]
-fn test_shim_safetensors_to_pytorch_produces_plan() {
+fn test_safetensors_to_pytorch_produces_zip() {
     // Build a minimal safetensors file
-    let header = r#"{"__metadata__":{},"t":{"dtype":"U8","shape":[4],"data_offsets":[0,4]}}"#;
+    let header = r#"{"t":{"dtype":"U8","shape":[4],"data_offsets":[0,4]}}"#;
     let header_bytes = header.as_bytes();
     let mut data = Vec::new();
     data.extend_from_slice(&(header_bytes.len() as u64).to_le_bytes());
@@ -245,18 +245,17 @@ fn test_shim_safetensors_to_pytorch_produces_plan() {
         )
         .unwrap();
 
-    let plan: serde_json::Value = serde_json::from_slice(&result.data).unwrap();
-    assert_eq!(plan["converter"], "safetensors_to_pytorch");
-    assert!(plan["requires"]
-        .as_array()
-        .unwrap()
-        .contains(&"torch".into()));
+    // Should produce a valid ZIP archive (PyTorch .pt format)
+    assert!(result.data.len() > 4);
+    assert_eq!(&result.data[0..2], b"PK"); // ZIP magic bytes
 }
 
 #[test]
 fn test_shim_pytorch_to_onnx_custom_opset() {
-    let mut opts = ConversionOptions::default();
-    opts.opset_version = Some(15);
+    let opts = ConversionOptions {
+        opset_version: Some(15),
+        ..ConversionOptions::default()
+    };
 
     let pipeline = ConversionPipeline::with_builtins();
     let result = pipeline
@@ -270,8 +269,10 @@ fn test_shim_pytorch_to_onnx_custom_opset() {
 
 #[test]
 fn test_shim_safetensors_to_gguf_quantization() {
-    let mut opts = ConversionOptions::default();
-    opts.quantization = Some("q4_k_m".into());
+    let opts = ConversionOptions {
+        quantization: Some("q4_k_m".into()),
+        ..ConversionOptions::default()
+    };
 
     let pipeline = ConversionPipeline::with_builtins();
     let result = pipeline

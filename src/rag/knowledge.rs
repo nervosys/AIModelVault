@@ -127,3 +127,91 @@ impl KnowledgeBase {
         chunks
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_knowledge_base_config_default() {
+        let cfg = KnowledgeBaseConfig::default();
+        assert_eq!(cfg.embedding_dim, 384);
+        assert_eq!(cfg.chunk_size, 512);
+        assert_eq!(cfg.chunk_overlap, 50);
+        assert_eq!(cfg.max_results, 5);
+        assert!((cfg.similarity_threshold - 0.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_knowledge_base_add_and_retrieve() {
+        let kb = KnowledgeBase::new("test".to_string(), KnowledgeBaseConfig::default());
+        // Empty retrieve
+        let results = kb.retrieve(&[1.0, 0.0], None);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_knowledge_base_add_doc() {
+        let mut kb = KnowledgeBase::new("test".to_string(), KnowledgeBaseConfig::default());
+        let doc = Document {
+            id: "d1".to_string(),
+            content: "hello".to_string(),
+            metadata: HashMap::new(),
+            embedding: Some(vec![1.0, 0.0]),
+            chunk_info: None,
+        };
+        kb.add(doc).unwrap();
+        assert_eq!(kb.store.count(), 1);
+    }
+
+    #[test]
+    fn test_knowledge_base_retrieve_with_threshold() {
+        let cfg = KnowledgeBaseConfig {
+            similarity_threshold: 0.9,
+            ..KnowledgeBaseConfig::default()
+        };
+        let mut kb = KnowledgeBase::new("test".to_string(), cfg);
+
+        let doc = Document {
+            id: "d1".to_string(),
+            content: "hello".to_string(),
+            metadata: HashMap::new(),
+            embedding: Some(vec![1.0, 0.0]),
+            chunk_info: None,
+        };
+        kb.add(doc).unwrap();
+
+        // Query orthogonal — should be filtered by threshold
+        let results = kb.retrieve(&[0.0, 1.0], Some(10));
+        assert!(results.is_empty());
+
+        // Query same direction — should pass threshold
+        let results = kb.retrieve(&[1.0, 0.0], Some(10));
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn test_chunk_text() {
+        let cfg = KnowledgeBaseConfig {
+            chunk_size: 10,
+            chunk_overlap: 3,
+            ..KnowledgeBaseConfig::default()
+        };
+        let kb = KnowledgeBase::new("kb".to_string(), cfg);
+
+        let text = "abcdefghijklmnopqrstuvwxyz"; // 26 chars
+        let chunks = kb.chunk_text(text, "doc1");
+        assert!(chunks.len() >= 3);
+
+        // First chunk
+        assert_eq!(chunks[0].content.len(), 10);
+        assert_eq!(chunks[0].id, "doc1_chunk_0");
+
+        // Verify chunk_info
+        for chunk in &chunks {
+            let info = chunk.chunk_info.as_ref().unwrap();
+            assert_eq!(info.total_chunks, chunks.len());
+            assert_eq!(info.parent_id, Some("doc1".to_string()));
+        }
+    }
+}

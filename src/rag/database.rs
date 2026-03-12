@@ -152,7 +152,10 @@ fn validate_sql_identifier(name: &str) -> Result<()> {
     }
     // Only allow alphanumeric characters and underscores; must start with letter or underscore
     // Safety: empty case is handled above, so .expect() is unreachable
-    let first = name.chars().next().expect("BUG: empty check above should have returned");
+    let first = name
+        .chars()
+        .next()
+        .expect("BUG: empty check above should have returned");
     if !first.is_ascii_alphabetic() && first != '_' {
         return Err(VaultError::InvalidInput(format!(
             "SQL identifier '{}' must start with a letter or underscore",
@@ -200,9 +203,10 @@ impl SQLiteDatabase {
             validate_sql_identifier(col_type)?;
         }
 
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         let mut sql = format!("CREATE TABLE IF NOT EXISTS {} (", name);
         sql.push_str("id TEXT PRIMARY KEY, ");
@@ -222,9 +226,10 @@ impl SQLiteDatabase {
 
     /// Store a document in the database
     pub fn store_document(&self, doc: &Document) -> Result<()> {
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         // Ensure documents table exists
         conn.execute(
@@ -288,9 +293,10 @@ impl SQLiteDatabase {
 
     /// Retrieve a document by ID
     pub fn get_document(&self, id: &str) -> Result<Option<Document>> {
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         let mut stmt = conn.prepare(
             "SELECT id, content, metadata, embedding, chunk_parent_id, chunk_index, chunk_total, chunk_overlap 
@@ -350,9 +356,10 @@ impl SQLiteDatabase {
 
     /// Search for documents containing text
     pub fn search_documents(&self, query: &str, limit: usize) -> Result<Vec<Document>> {
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         let mut stmt = conn.prepare(
             "SELECT id, content, metadata, embedding, chunk_parent_id, chunk_index, chunk_total, chunk_overlap 
@@ -409,9 +416,10 @@ impl SQLiteDatabase {
 #[cfg(feature = "sqlite")]
 impl Database for SQLiteDatabase {
     fn query(&self, query: &str) -> Result<Vec<HashMap<String, String>>> {
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         let mut stmt = conn
             .prepare(query)
@@ -441,9 +449,10 @@ impl Database for SQLiteDatabase {
 
     fn insert(&mut self, table: &str, data: HashMap<String, String>) -> Result<()> {
         validate_sql_identifier(table)?;
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         let columns: Vec<String> = data.keys().cloned().collect();
         for col in &columns {
@@ -475,9 +484,10 @@ impl Database for SQLiteDatabase {
             validate_sql_identifier(col)?;
         }
 
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         let set_clause: Vec<String> = data.keys().map(|k| format!("{} = ?", k)).collect();
         let sql = format!(
@@ -498,9 +508,10 @@ impl Database for SQLiteDatabase {
     fn delete(&mut self, table: &str, id: &str) -> Result<()> {
         validate_sql_identifier(table)?;
 
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         let sql = format!("DELETE FROM {} WHERE id = ?", table);
         conn.execute(&sql, [id])
@@ -696,5 +707,399 @@ impl Database for SledDatabase {
             .map_err(|e| VaultError::StorageError(format!("Failed to flush: {}", e)))?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── InMemoryDatabase ──
+
+    #[test]
+    fn test_in_memory_create_and_insert() {
+        let mut db = InMemoryDatabase::new();
+        db.create_table("models".to_string());
+        let mut data = HashMap::new();
+        data.insert("id".to_string(), "m1".to_string());
+        data.insert("name".to_string(), "gpt".to_string());
+        db.insert("models", data).unwrap();
+
+        let results = db.query("models").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].get("name").unwrap(), "gpt");
+    }
+
+    #[test]
+    fn test_in_memory_update() {
+        let mut db = InMemoryDatabase::new();
+        db.create_table("t".to_string());
+        let mut data = HashMap::new();
+        data.insert("id".to_string(), "r1".to_string());
+        data.insert("val".to_string(), "old".to_string());
+        db.insert("t", data).unwrap();
+
+        let mut upd = HashMap::new();
+        upd.insert("val".to_string(), "new".to_string());
+        db.update("t", "r1", upd).unwrap();
+
+        let results = db.query("t").unwrap();
+        assert_eq!(results[0].get("val").unwrap(), "new");
+    }
+
+    #[test]
+    fn test_in_memory_delete() {
+        let mut db = InMemoryDatabase::new();
+        db.create_table("t".to_string());
+        let mut data = HashMap::new();
+        data.insert("id".to_string(), "r1".to_string());
+        db.insert("t", data).unwrap();
+
+        db.delete("t", "r1").unwrap();
+        let results = db.query("t").unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_in_memory_insert_missing_table() {
+        let mut db = InMemoryDatabase::new();
+        let data = HashMap::new();
+        let err = db.insert("nonexistent", data).unwrap_err();
+        assert!(format!("{err}").contains("not found"));
+    }
+
+    #[test]
+    fn test_in_memory_update_missing_table() {
+        let mut db = InMemoryDatabase::new();
+        let err = db.update("nonexistent", "x", HashMap::new()).unwrap_err();
+        assert!(format!("{err}").contains("not found"));
+    }
+
+    #[test]
+    fn test_in_memory_update_missing_row() {
+        let mut db = InMemoryDatabase::new();
+        db.create_table("t".to_string());
+        let err = db.update("t", "missing", HashMap::new()).unwrap_err();
+        assert!(format!("{err}").contains("not found"));
+    }
+
+    #[test]
+    fn test_in_memory_delete_missing_table() {
+        let mut db = InMemoryDatabase::new();
+        let err = db.delete("nonexistent", "x").unwrap_err();
+        assert!(format!("{err}").contains("not found"));
+    }
+
+    #[test]
+    fn test_in_memory_query_missing_table() {
+        let db = InMemoryDatabase::new();
+        let results = db.query("nonexistent").unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_in_memory_query_where() {
+        let mut db = InMemoryDatabase::new();
+        db.create_table("t".to_string());
+        let mut d1 = HashMap::new();
+        d1.insert("id".to_string(), "1".to_string());
+        d1.insert("color".to_string(), "red".to_string());
+        db.insert("t", d1).unwrap();
+
+        let mut d2 = HashMap::new();
+        d2.insert("id".to_string(), "2".to_string());
+        d2.insert("color".to_string(), "blue".to_string());
+        db.insert("t", d2).unwrap();
+
+        // WHERE color=red
+        let results = db.query("t WHERE color=red").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].get("color").unwrap(), "red");
+    }
+
+    // ── validate_sql_identifier ──
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_validate_sql_identifier_empty() {
+        let err = validate_sql_identifier("").unwrap_err();
+        assert!(format!("{err}").contains("cannot be empty"));
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_validate_sql_identifier_too_long() {
+        let long = "a".repeat(129);
+        let err = validate_sql_identifier(&long).unwrap_err();
+        assert!(format!("{err}").contains("too long"));
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_validate_sql_identifier_bad_start() {
+        let err = validate_sql_identifier("1abc").unwrap_err();
+        assert!(format!("{err}").contains("must start with"));
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_validate_sql_identifier_invalid_chars() {
+        let err = validate_sql_identifier("abc def").unwrap_err();
+        assert!(format!("{err}").contains("invalid characters"));
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_validate_sql_identifier_valid() {
+        assert!(validate_sql_identifier("_my_table_1").is_ok());
+        assert!(validate_sql_identifier("users").is_ok());
+    }
+
+    // ── SQLiteDatabase ──
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_sqlite_new_on_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.db");
+        let db = SQLiteDatabase::new(&path).unwrap();
+        assert!(path.exists());
+
+        // Verify we can create a table and insert
+        db.create_table("t", &[("name", "TEXT")]).unwrap();
+        let mut data = HashMap::new();
+        data.insert("id".to_string(), "1".to_string());
+        data.insert("name".to_string(), "alice".to_string());
+        let mut db = db;
+        db.insert("t", data).unwrap();
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_sqlite_in_memory() {
+        let db = SQLiteDatabase::in_memory().unwrap();
+        db.create_table("items", &[("val", "TEXT")]).unwrap();
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_sqlite_create_table_and_crud() {
+        let mut db = SQLiteDatabase::in_memory().unwrap();
+        db.create_table("users", &[("name", "TEXT"), ("age", "TEXT")])
+            .unwrap();
+
+        // Insert
+        let mut data = HashMap::new();
+        data.insert("id".to_string(), "u1".to_string());
+        data.insert("name".to_string(), "Alice".to_string());
+        data.insert("age".to_string(), "30".to_string());
+        db.insert("users", data).unwrap();
+
+        // Query
+        let rows = db.query("SELECT * FROM users").unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].get("name").unwrap(), "Alice");
+
+        // Update
+        let mut upd = HashMap::new();
+        upd.insert("name".to_string(), "Bob".to_string());
+        db.update("users", "u1", upd).unwrap();
+        let rows = db.query("SELECT name FROM users WHERE id='u1'").unwrap();
+        assert_eq!(rows[0].get("name").unwrap(), "Bob");
+
+        // Delete
+        db.delete("users", "u1").unwrap();
+        let rows = db.query("SELECT * FROM users").unwrap();
+        assert!(rows.is_empty());
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_sqlite_store_and_get_document() {
+        let db = SQLiteDatabase::in_memory().unwrap();
+        let doc = Document {
+            id: "d1".to_string(),
+            content: "Test document content".to_string(),
+            metadata: {
+                let mut m = HashMap::new();
+                m.insert("author".to_string(), "test".to_string());
+                m
+            },
+            embedding: Some(vec![1.0, 2.0, 3.0]),
+            chunk_info: Some(ChunkInfo {
+                parent_id: Some("parent1".to_string()),
+                chunk_index: 0,
+                total_chunks: 3,
+                overlap: 50,
+            }),
+        };
+        db.store_document(&doc).unwrap();
+
+        let retrieved = db.get_document("d1").unwrap().unwrap();
+        assert_eq!(retrieved.id, "d1");
+        assert_eq!(retrieved.content, "Test document content");
+        assert_eq!(retrieved.metadata.get("author").unwrap(), "test");
+        assert!(retrieved.embedding.is_some());
+        assert!(retrieved.chunk_info.is_some());
+        let ci = retrieved.chunk_info.unwrap();
+        assert_eq!(ci.parent_id.as_deref(), Some("parent1"));
+        assert_eq!(ci.chunk_index, 0);
+        assert_eq!(ci.total_chunks, 3);
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_sqlite_get_document_not_found() {
+        let db = SQLiteDatabase::in_memory().unwrap();
+        // Create documents table first
+        let dummy = Document {
+            id: "setup".to_string(),
+            content: "x".to_string(),
+            metadata: HashMap::new(),
+            embedding: None,
+            chunk_info: None,
+        };
+        db.store_document(&dummy).unwrap();
+
+        let result = db.get_document("nonexistent").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_sqlite_search_documents() {
+        let db = SQLiteDatabase::in_memory().unwrap();
+        let doc1 = Document {
+            id: "s1".to_string(),
+            content: "Machine learning with neural networks".to_string(),
+            metadata: HashMap::new(),
+            embedding: None,
+            chunk_info: None,
+        };
+        let doc2 = Document {
+            id: "s2".to_string(),
+            content: "Database management systems".to_string(),
+            metadata: HashMap::new(),
+            embedding: None,
+            chunk_info: None,
+        };
+        db.store_document(&doc1).unwrap();
+        db.store_document(&doc2).unwrap();
+
+        let results = db.search_documents("neural", 10).unwrap();
+        assert!(!results.is_empty());
+        assert!(results.iter().any(|d| d.id == "s1"));
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_sqlite_store_document_no_embedding_no_chunk() {
+        let db = SQLiteDatabase::in_memory().unwrap();
+        let doc = Document {
+            id: "plain".to_string(),
+            content: "Plain text".to_string(),
+            metadata: HashMap::new(),
+            embedding: None,
+            chunk_info: None,
+        };
+        db.store_document(&doc).unwrap();
+
+        let retrieved = db.get_document("plain").unwrap().unwrap();
+        assert_eq!(retrieved.content, "Plain text");
+        assert!(retrieved.embedding.is_none());
+        assert!(retrieved.chunk_info.is_none());
+    }
+
+    #[test]
+    fn test_sqlite_get_document_nonexistent() {
+        let db = SQLiteDatabase::in_memory().unwrap();
+        let doc = Document {
+            id: "existing".to_string(),
+            content: "some content".to_string(),
+            metadata: HashMap::new(),
+            embedding: None,
+            chunk_info: None,
+        };
+        db.store_document(&doc).unwrap();
+        let result = db.get_document("does_not_exist").unwrap();
+        assert!(result.is_none(), "Nonexistent document should return None");
+    }
+
+    #[test]
+    fn test_sqlite_database_crud() {
+        let mut db = SQLiteDatabase::in_memory().unwrap();
+        db.create_table("items", &[("name", "TEXT")]).unwrap();
+        let mut data = std::collections::HashMap::new();
+        data.insert("id".to_string(), "item1".to_string());
+        data.insert("name".to_string(), "widget".to_string());
+        db.insert("items", data).unwrap();
+        let rows = db.query("SELECT * FROM items").unwrap();
+        assert!(!rows.is_empty());
+        let mut upd = std::collections::HashMap::new();
+        upd.insert("name".to_string(), "gizmo".to_string());
+        db.update("items", "item1", upd).unwrap();
+        db.delete("items", "item1").unwrap();
+        let rows2 = db.query("SELECT * FROM items").unwrap();
+        assert!(rows2.is_empty());
+    }
+
+    #[test]
+    fn test_sqlite_search_documents_no_results() {
+        let db = SQLiteDatabase::in_memory().unwrap();
+        // Store a document first to create documents table
+        let doc = Document {
+            id: "seed".to_string(),
+            content: "seed content".to_string(),
+            metadata: HashMap::new(),
+            embedding: None,
+            chunk_info: None,
+        };
+        db.store_document(&doc).unwrap();
+        let results = db.search_documents("nonexistent query", 10).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_in_memory_default() {
+        let mut db = InMemoryDatabase::default();
+        db.create_table("t".to_string());
+        let mut data = std::collections::HashMap::new();
+        data.insert("id".to_string(), "1".to_string());
+        data.insert("col".to_string(), "v".to_string());
+        db.insert("t", data).unwrap();
+        let rows = db.query("t").unwrap();
+        assert_eq!(rows.len(), 1);
+    }
+
+    #[test]
+    fn test_in_memory_empty_query() {
+        let db = InMemoryDatabase::new();
+        let rows = db.query("").unwrap();
+        assert!(rows.is_empty());
+    }
+
+    #[cfg(feature = "sqlite")]
+    #[test]
+    fn test_sqlite_search_documents_with_embedding() {
+        let db = SQLiteDatabase::in_memory().unwrap();
+        db.create_table("items", &[("name", "TEXT")]).unwrap();
+        // Store document with embedding
+        let doc = crate::rag::documents::Document {
+            id: "doc_emb".to_string(),
+            content: "embedding search test".to_string(),
+            metadata: std::collections::HashMap::new(),
+            embedding: Some(vec![0.1, 0.2, 0.3]),
+            chunk_info: None,
+        };
+        db.store_document(&doc).unwrap();
+        // Search should hit the document and parse embedding
+        let results = db.search_documents("embedding", 10).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "doc_emb");
+        // Embedding roundtrip through BLOB
+        assert!(results[0].embedding.is_some());
+        let emb = results[0].embedding.as_ref().unwrap();
+        assert_eq!(emb.len(), 3);
+        assert!((emb[0] - 0.1).abs() < 1e-6);
     }
 }

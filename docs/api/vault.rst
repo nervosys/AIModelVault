@@ -1,7 +1,7 @@
 Vault API
 =========
 
-.. module:: neuralvault
+.. module:: aimodelvault
    :synopsis: Secure vault for AI model storage and management.
 
 The :class:`Vault` class is the primary interface for securely storing,

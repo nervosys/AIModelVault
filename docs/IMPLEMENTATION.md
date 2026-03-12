@@ -324,6 +324,6 @@ MIT License - See LICENSE file
 
 ## Contact
 
-- **Project**: https://github.com/nervosys/aimodelvault
+- **Project**: https://github.com/nervosys/AIModelVault
 - **Security**: security@nervosys.ai
 - **Support**: dev@nervosys.ai

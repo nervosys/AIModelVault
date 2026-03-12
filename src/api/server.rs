@@ -1,14 +1,24 @@
 //! Axum HTTP server for AI Model Vault.
 //!
 //! Start with [`serve`] or build a router with [`create_router`].
+//!
+//! ## TLS / HTTPS
+//!
+//! This server binds plain HTTP by default. For production deployments,
+//! terminate TLS at a reverse proxy (e.g., nginx, Caddy, AWS ALB) or use
+//! `axum-server` with `rustls` for direct TLS termination. Never expose
+//! the API over plain HTTP on untrusted networks.
 
 use axum::routing::{get, post};
 use axum::Router;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::config::VaultConfig;
@@ -24,17 +34,63 @@ pub struct AppState {
     pub vault: RwLock<Vault>,
     /// API configuration.
     pub config: ApiConfig,
+    /// Per-IP rate limiter for auth endpoints.
+    pub auth_rate_limiter: RateLimiter,
+}
+
+/// Simple sliding-window rate limiter keyed by IP address.
+pub struct RateLimiter {
+    /// Map of IP → (attempt count, window start).
+    state: std::sync::Mutex<HashMap<std::net::IpAddr, (u32, Instant)>>,
+    /// Maximum attempts per window.
+    max_attempts: u32,
+    /// Window duration.
+    window: Duration,
+}
+
+impl RateLimiter {
+    /// Create a new rate limiter.
+    pub fn new(max_attempts: u32, window: Duration) -> Self {
+        Self {
+            state: std::sync::Mutex::new(HashMap::new()),
+            max_attempts,
+            window,
+        }
+    }
+
+    /// Check if the given IP is allowed. Returns `true` if under the limit.
+    pub fn check(&self, ip: std::net::IpAddr) -> bool {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let now = Instant::now();
+
+        let entry = state.entry(ip).or_insert((0, now));
+
+        // Reset window if expired
+        if now.duration_since(entry.1) >= self.window {
+            *entry = (0, now);
+        }
+
+        entry.0 += 1;
+        entry.0 <= self.max_attempts
+    }
+
+    /// Prune expired entries to prevent unbounded memory growth.
+    pub fn prune(&self) {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let now = Instant::now();
+        state.retain(|_, (_, start)| now.duration_since(*start) < self.window);
+    }
 }
 
 /// Build the axum [`Router`] with all API routes.
 pub fn create_router(state: Arc<AppState>) -> Router {
+    // CORS: only permissive when explicitly configured; default is restrictive
     let cors = if state.config.cors_permissive {
         CorsLayer::permissive()
     } else {
+        // Restrictive CORS: no cross-origin requests allowed by default.
+        // Configure allowed_origins in ApiConfig for specific trusted domains.
         CorsLayer::new()
-            .allow_origin(Any)
-            .allow_methods(Any)
-            .allow_headers(Any)
     };
 
     let api = Router::new()
@@ -42,22 +98,28 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/auth/token", post(routes::auth_token))
         .route("/models", get(routes::list_models))
         .route(
-            "/models/{name}",
+            "/models/:name",
             get(routes::get_model).post(routes::store_model),
         )
-        .route("/models/{name}/versions", get(routes::list_versions))
         .route(
-            "/models/{name}/versions/{version}",
+            "/models/:name/card",
+            get(routes::get_model_card).post(routes::create_model_card),
+        )
+        .route("/models/:name/versions", get(routes::list_versions))
+        .route(
+            "/models/:name/versions/:version",
             get(routes::get_version).delete(routes::delete_version),
         )
-        .route(
-            "/models/{name}/lineage/{version}",
-            get(routes::get_lineage),
-        )
+        .route("/models/:name/lineage/:version", get(routes::get_lineage))
         .route("/conversions", get(routes::list_conversions))
         .route("/convert", post(routes::convert))
+        .route("/compliance", get(routes::compliance))
+        .route("/rag/search", post(routes::rag_search))
+        .route("/rag/documents", post(routes::rag_add_document))
         .route("/stats", get(routes::stats))
         .route("/audit", get(routes::audit_log))
+        .route("/metrics", get(routes::metrics))
+        .route("/events", get(routes::events))
         .route("/openapi.json", get(routes::openapi_json))
         .with_state(state.clone());
 
@@ -67,10 +129,29 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         Router::new()
     };
 
+    #[cfg(feature = "graphql")]
+    let graphql_routes = {
+        use super::graphql;
+        let schema = graphql::build_schema(state.clone());
+        Router::new()
+            .route(
+                "/graphql",
+                get(graphql::graphql_playground).post(graphql::graphql_handler),
+            )
+            .with_state(schema)
+    };
+    #[cfg(not(feature = "graphql"))]
+    let graphql_routes = Router::new();
+
     dashboard
+        .merge(graphql_routes)
         .nest("/api/v1", api)
         .layer(cors)
         .layer(RequestBodyLimitLayer::new(state.config.max_body_size))
+        .layer(TimeoutLayer::with_status_code(
+            axum::http::StatusCode::REQUEST_TIMEOUT,
+            Duration::from_secs(300),
+        ))
         .layer(TraceLayer::new_for_http())
 }
 
@@ -88,9 +169,20 @@ pub async fn serve(vault_config: VaultConfig, api_config: ApiConfig) -> Result<(
     let state = Arc::new(AppState {
         vault: RwLock::new(vault),
         config: api_config.clone(),
+        auth_rate_limiter: RateLimiter::new(5, Duration::from_secs(60)),
     });
 
-    let router = create_router(state);
+    let router = create_router(state.clone()).into_make_service_with_connect_info::<SocketAddr>();
+
+    // Spawn periodic cleanup of expired rate-limiter entries
+    let limiter = state.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(300)).await;
+            limiter.auth_rate_limiter.prune();
+        }
+    });
+
     let addr: SocketAddr = format!("{}:{}", api_config.host, api_config.port)
         .parse()
         .map_err(|e| VaultError::ConfigError(format!("Invalid bind address: {e}")))?;
@@ -103,7 +195,7 @@ pub async fn serve(vault_config: VaultConfig, api_config: ApiConfig) -> Result<(
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
-        .map_err(|e| VaultError::IoError(e))?;
+        .map_err(VaultError::IoError)?;
 
     axum::serve(listener, router)
         .await

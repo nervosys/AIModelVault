@@ -1,13 +1,13 @@
 [package]
 name = "ai-model-vault"
-version = "1.0.0"
+version = "1.2.0"
 edition = "2021"
 rust-version = "1.75"
 authors = ["NervoSys AI Team"]
 description = "Universal cross-platform XDG-compliant secure vault for AI model formats (Neural and Neurosymbolic)"
 license = "AGPL-3.0-or-later"
-repository = "https://github.com/nervosys/ai-model-vault"
-homepage = "https://github.com/nervosys/ai-model-vault"
+repository = "https://github.com/nervosys/AIModelVault"
+homepage = "https://github.com/nervosys/AIModelVault"
 documentation = "https://docs.rs/ai-model-vault"
 readme = "README.md"
 keywords = ["ai", "ml", "vault", "security", "encryption"]
@@ -27,7 +27,7 @@ lzma-rs = "0.3" # LZMA compression
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
+serde_yaml_ng = "0.10"
 toml = "0.8"
 
 # File I/O and paths
@@ -35,7 +35,7 @@ tokio = { version = "1.35", features = ["full"] } # Async runtime
 async-trait = "0.1"                               # Async trait support
 bytes = "1.5"
 tar = "0.4"                                       # TAR archive support
-zip = "0.6"                                       # ZIP archive support
+zip = "4"                                         # ZIP archive support
 
 # Cloud storage backends (optional)
 # Note: cloud-storage has unmaintained dependencies (ring 0.16, dotenv, instant)
@@ -45,7 +45,6 @@ aws-sdk-s3 = { version = "1.12", optional = true }
 azure_storage = { version = "0.19", optional = true }
 azure_storage_blobs = { version = "0.19", optional = true }
 # cloud-storage = { version = "0.11", optional = true }  # Disabled due to security issues
-futures = { version = "0.3", optional = true } # Reserved for future async stream handling
 
 # XDG compliance
 directories = "5.0" # XDG base directories
@@ -94,6 +93,7 @@ tower-http = { version = "0.6", features = [
     "cors",
     "trace",
     "limit",
+    "timeout",
 ], optional = true }
 jsonwebtoken = { version = "9.3", optional = true }
 utoipa = { version = "5", features = ["axum_extras"], optional = true }
@@ -111,7 +111,7 @@ async-graphql-axum = { version = "7.0", optional = true }
 ocl = { version = "0.19", optional = true }
 
 # Python bindings (optional)
-pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.24", features = ["extension-module"], optional = true }
 
 # Database support for RAG
 rusqlite = { version = "0.31", features = [
@@ -120,13 +120,15 @@ rusqlite = { version = "0.31", features = [
 ], optional = true }
 sled = { version = "0.34", optional = true }
 # Vector database support (optional)
-qdrant-client = { version = "1.7", optional = true }
-lancedb = { version = "0.4", optional = true }
+qdrant-client = { version = "1.13", optional = true }
+# lancedb removed: v0.4 depends on arrow-arith v51 which is incompatible with Rust 1.93+
 
 [dev-dependencies]
 tempfile = "3.8"
 criterion = "0.5"
 proptest = "1.4"
+assert_cmd = "2.1.2"
+predicates = "3.1.4"
 
 [features]
 default = ["safetensors", "ndarray", "sqlite"]
@@ -141,7 +143,7 @@ hdf5-support = ["hdf5"] # Separate feature for users with HDF5 installed
 # Database features
 sqlite = ["rusqlite"]
 kv-store = ["sled"]
-vector-db = ["qdrant-client", "lancedb"]
+vector-db = ["qdrant-client"]
 database = ["sqlite", "kv-store"]
 # Cloud storage features
 s3 = ["aws-config", "aws-sdk-s3"]
@@ -159,7 +161,7 @@ api = [
     "hyper",
 ]
 # GraphQL API (requires api)
-graphql = ["api", "async-graphql", "async-graphql-axum"]
+graphql = ["api", "async-graphql"]
 # GPU-accelerated encryption
 gpu = ["ocl"]
 # Python native bindings
@@ -189,3 +191,8 @@ harness = false
 [[bench]]
 name = "vault_bench"
 harness = false
+
+[[bench]]
+name = "api_bench"
+harness = false
+required-features = ["api"]

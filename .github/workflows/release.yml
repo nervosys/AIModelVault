@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -50,6 +54,10 @@ jobs:
       if: matrix.target == 'x86_64-unknown-linux-musl'
       run: sudo apt-get install -y musl-tools
 
+    - name: Run tests
+      if: matrix.target != 'aarch64-apple-darwin'
+      run: cargo test --release --target ${{ matrix.target }}
+
     - name: Build
       run: cargo build --release --target ${{ matrix.target }}
 
@@ -57,20 +65,19 @@ jobs:
       if: runner.os != 'Windows'
       run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
 
+    - name: Rename binary
+      shell: bash
+      run: |
+        cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} ${{ matrix.asset_name }}
+
+    - name: Generate SHA-256 checksum
+      shell: bash
+      run: |
+        sha256sum ${{ matrix.asset_name }} > ${{ matrix.asset_name }}.sha256
+
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v2
       with:
-        files: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-
-  publish-crate:
-    name: Publish to crates.io
-    needs: build-release
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Publish
-      run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
+        files: |
+          ${{ matrix.asset_name }}
+          ${{ matrix.asset_name }}.sha256

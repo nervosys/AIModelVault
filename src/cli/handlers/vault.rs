@@ -2,19 +2,21 @@
 
 use ai_model_vault::compliance::ComplianceChecker;
 use ai_model_vault::formats::{ModelFormat, ModelMetadata};
-use ai_model_vault::{Result, Vault, VaultConfig, VaultError};
+use ai_model_vault::{Result, VaultConfig, VaultError};
 use std::io::{self, Write};
 
-use crate::cli::helpers::prompt_passphrase;
+use crate::cli::helpers::{build_vault, prompt_passphrase};
 
-pub fn handle_init(name: String, config: VaultConfig) -> Result<()> {
+pub fn handle_init(name: String, config: VaultConfig, use_sqlite: bool) -> Result<()> {
     println!("Initializing vault: {}", name);
-    let vault = Vault::new(Some(config))?;
+    let vault = build_vault(config, use_sqlite)?;
     println!("✓ Vault '{}' initialized successfully", name);
+    println!("  Backend: {}", vault.version_backend_name());
     println!("Location: {:?}", vault.get_config().dirs.vault_dir);
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle_store(
     name: String,
     path: std::path::PathBuf,
@@ -23,6 +25,7 @@ pub fn handle_store(
     framework: Option<String>,
     task: Option<String>,
     config: VaultConfig,
+    use_sqlite: bool,
 ) -> Result<()> {
     // Read model file
     let data = std::fs::read(&path)?;
@@ -80,7 +83,7 @@ pub fn handle_store(
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
 
     // Store model
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
     let version = vault.store_model(&name, data, metadata, None)?;
 
@@ -101,10 +104,11 @@ pub fn handle_get(
     output: std::path::PathBuf,
     version: Option<u32>,
     config: VaultConfig,
+    use_sqlite: bool,
 ) -> Result<()> {
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
 
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
     let data = vault.get_model(&name, version)?;
@@ -116,10 +120,10 @@ pub fn handle_get(
     Ok(())
 }
 
-pub fn handle_list(config: VaultConfig) -> Result<()> {
+pub fn handle_list(config: VaultConfig, use_sqlite: bool) -> Result<()> {
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
 
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
     let models = vault.list_models();
@@ -136,8 +140,8 @@ pub fn handle_list(config: VaultConfig) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_versions(name: String, config: VaultConfig) -> Result<()> {
-    let vault = Vault::new(Some(config))?;
+pub fn handle_versions(name: String, config: VaultConfig, use_sqlite: bool) -> Result<()> {
+    let vault = build_vault(config, use_sqlite)?;
     let versions = vault.list_versions(&name);
 
     if versions.is_empty() {
@@ -157,8 +161,13 @@ pub fn handle_versions(name: String, config: VaultConfig) -> Result<()> {
     Ok(())
 }
 
-pub fn handle_lineage(name: String, version: u32, config: VaultConfig) -> Result<()> {
-    let vault = Vault::new(Some(config))?;
+pub fn handle_lineage(
+    name: String,
+    version: u32,
+    config: VaultConfig,
+    use_sqlite: bool,
+) -> Result<()> {
+    let vault = build_vault(config, use_sqlite)?;
     let lineage = vault.get_lineage(&name, version);
 
     if lineage.is_empty() {
@@ -178,7 +187,13 @@ pub fn handle_lineage(name: String, version: u32, config: VaultConfig) -> Result
     Ok(())
 }
 
-pub fn handle_delete(name: String, version: u32, force: bool, config: VaultConfig) -> Result<()> {
+pub fn handle_delete(
+    name: String,
+    version: u32,
+    force: bool,
+    config: VaultConfig,
+    use_sqlite: bool,
+) -> Result<()> {
     if !force {
         print!(
             "Are you sure you want to delete '{}' v{}? [y/N]: ",
@@ -197,7 +212,7 @@ pub fn handle_delete(name: String, version: u32, force: bool, config: VaultConfi
 
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
 
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
     if vault.delete_version(&name, version)? {
@@ -208,8 +223,8 @@ pub fn handle_delete(name: String, version: u32, force: bool, config: VaultConfi
     Ok(())
 }
 
-pub fn handle_stats(config: VaultConfig) -> Result<()> {
-    let vault = Vault::new(Some(config))?;
+pub fn handle_stats(config: VaultConfig, use_sqlite: bool) -> Result<()> {
+    let vault = build_vault(config, use_sqlite)?;
     let stats = vault.get_stats()?;
 
     println!("Vault Statistics:");
@@ -262,10 +277,7 @@ pub fn handle_compliance() -> Result<()> {
         for violation in status.violations {
             println!(
                 "  [{:?}] {} - {}: {}",
-                violation.severity,
-                violation.standard,
-                violation.control,
-                violation.description
+                violation.severity, violation.standard, violation.control, violation.description
             );
         }
     } else {
@@ -274,7 +286,7 @@ pub fn handle_compliance() -> Result<()> {
     Ok(())
 }
 
-pub fn handle_change_passphrase(config: VaultConfig) -> Result<()> {
+pub fn handle_change_passphrase(config: VaultConfig, use_sqlite: bool) -> Result<()> {
     let old_passphrase = prompt_passphrase("Enter current vault passphrase: ")?;
     let new_passphrase = prompt_passphrase("Enter new vault passphrase: ")?;
     let confirm_passphrase = prompt_passphrase("Confirm new vault passphrase: ")?;
@@ -285,7 +297,7 @@ pub fn handle_change_passphrase(config: VaultConfig) -> Result<()> {
         ));
     }
 
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(old_passphrase)?;
     let count = vault.change_passphrase(new_passphrase)?;
 

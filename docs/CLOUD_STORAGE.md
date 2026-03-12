@@ -1,6 +1,6 @@
 # Cloud Storage Guide
 
-**NeuronVault Cloud Storage Integration**
+**AI Model Vault Cloud Storage Integration**
 
 Store and sync your AI models across AWS S3, Azure Blob Storage, and Google Cloud Storage with the same security and encryption as local storage.
 
@@ -127,7 +127,7 @@ use ai_model_vault::storage::{StorageConfig, StorageBackend};
 #[tokio::main]
 async fn main() -> Result<()> {
     let config = StorageConfig::S3 {
-        bucket: "neuronvault-models".to_string(),
+        bucket: "AI Model Vault-models".to_string(),
         region: "us-east-1".to_string(),
         prefix: Some("production".to_string()), // Optional folder
     };
@@ -149,7 +149,7 @@ async fn main() -> Result<()> {
 # Configure S3 remote
 aim remote add s3-prod \
     --provider s3 \
-    --bucket neuronvault-models \
+    --bucket AI Model Vault-models \
     --region us-east-1 \
     --prefix production
 
@@ -171,7 +171,7 @@ aim remote list s3-prod
 ```bash
 # Use S3 Intelligent-Tiering
 aws s3api put-bucket-intelligent-tiering-configuration \
-    --bucket neuronvault-models \
+    --bucket AI Model Vault-models \
     --id archive-old-models \
     --intelligent-tiering-configuration '{
         "Id": "archive-old-models",
@@ -186,7 +186,7 @@ aws s3api put-bucket-intelligent-tiering-configuration \
 
 # Lifecycle policy for old versions
 aws s3api put-bucket-lifecycle-configuration \
-    --bucket neuronvault-models \
+    --bucket AI Model Vault-models \
     --lifecycle-configuration file://lifecycle.json
 ```
 
@@ -221,19 +221,19 @@ aws s3api put-bucket-lifecycle-configuration \
 az login
 
 # Create resource group
-az group create --name neuronvault-rg --location eastus
+az group create --name AI Model Vault-rg --location eastus
 
 # Create storage account
 az storage account create \
-    --name neuronvaultstorage \
-    --resource-group neuronvault-rg \
+    --name AI Model Vaultstorage \
+    --resource-group AI Model Vault-rg \
     --location eastus \
     --sku Standard_LRS
 
 # Create container
 az storage container create \
     --name models \
-    --account-name neuronvaultstorage
+    --account-name AI Model Vaultstorage
 ```
 
 ### Authentication
@@ -242,10 +242,10 @@ az storage container create \
 ```bash
 # Get account key
 az storage account keys list \
-    --account-name neuronvaultstorage \
+    --account-name AI Model Vaultstorage \
     --query '[0].value' -o tsv
 
-export AZURE_STORAGE_ACCOUNT="neuronvaultstorage"
+export AZURE_STORAGE_ACCOUNT="AI Model Vaultstorage"
 export AZURE_STORAGE_KEY="your-account-key"
 ```
 
@@ -253,13 +253,13 @@ export AZURE_STORAGE_KEY="your-account-key"
 ```bash
 # Generate SAS token (read/write for 1 year)
 az storage container generate-sas \
-    --account-name neuronvaultstorage \
+    --account-name AI Model Vaultstorage \
     --name models \
     --permissions rwdl \
     --expiry 2025-12-31 \
     --https-only
 
-export AZURE_STORAGE_ACCOUNT="neuronvaultstorage"
+export AZURE_STORAGE_ACCOUNT="AI Model Vaultstorage"
 export AZURE_STORAGE_SAS_TOKEN="your-sas-token"
 ```
 
@@ -271,7 +271,7 @@ use ai_model_vault::storage::{StorageConfig, StorageBackend};
 #[tokio::main]
 async fn main() -> Result<()> {
     let config = StorageConfig::Azure {
-        account: "neuronvaultstorage".to_string(),
+        account: "AI Model Vaultstorage".to_string(),
         container: "models".to_string(),
         prefix: Some("production".to_string()),
     };
@@ -293,7 +293,7 @@ async fn main() -> Result<()> {
 # Configure Azure remote
 aim remote add azure-prod \
     --provider azure \
-    --account neuronvaultstorage \
+    --account AI Model Vaultstorage \
     --container models \
     --prefix production
 
@@ -309,14 +309,14 @@ aim pull llama-7b --remote azure-prod
 ```bash
 # Move to cool tier (30+ day retention)
 az storage blob set-tier \
-    --account-name neuronvaultstorage \
+    --account-name AI Model Vaultstorage \
     --container-name models \
     --name production/llama-7b/v1 \
     --tier Cool
 
 # Move to archive tier (rare access)
 az storage blob set-tier \
-    --account-name neuronvaultstorage \
+    --account-name AI Model Vaultstorage \
     --container-name models \
     --name production/old-model/v1 \
     --tier Archive
@@ -341,34 +341,34 @@ az storage blob set-tier \
 gcloud auth login
 
 # Create project (if needed)
-gcloud projects create neuronvault-project
+gcloud projects create AI Model Vault-project
 
 # Set project
-gcloud config set project neuronvault-project
+gcloud config set project AI Model Vault-project
 
 # Create bucket
-gsutil mb -l us-east1 gs://neuronvault-models
+gsutil mb -l us-east1 gs://AI Model Vault-models
 
 # Create service account
-gcloud iam service-accounts create neuronvault-sa \
-    --display-name "NeuronVault Service Account"
+gcloud iam service-accounts create AI Model Vault-sa \
+    --display-name "AI Model Vault Service Account"
 
 # Grant permissions
 gsutil iam ch \
-    serviceAccount:neuronvault-sa@neuronvault-project.iam.gserviceaccount.com:objectAdmin \
-    gs://neuronvault-models
+    serviceAccount:AI Model Vault-sa@AI Model Vault-project.iam.gserviceaccount.com:objectAdmin \
+    gs://AI Model Vault-models
 
 # Create key file
 gcloud iam service-accounts keys create \
-    ~/neuronvault-key.json \
-    --iam-account neuronvault-sa@neuronvault-project.iam.gserviceaccount.com
+    ~/AI Model Vault-key.json \
+    --iam-account AI Model Vault-sa@AI Model Vault-project.iam.gserviceaccount.com
 ```
 
 ### Authentication
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="$HOME/neuronvault-key.json"
-export GCP_PROJECT="neuronvault-project"
+export GOOGLE_APPLICATION_CREDENTIALS="$HOME/AI Model Vault-key.json"
+export GCP_PROJECT="AI Model Vault-project"
 ```
 
 ### Configuration
@@ -379,8 +379,8 @@ use ai_model_vault::storage::{StorageConfig, StorageBackend};
 #[tokio::main]
 async fn main() -> Result<()> {
     let config = StorageConfig::Gcs {
-        bucket: "neuronvault-models".to_string(),
-        project: "neuronvault-project".to_string(),
+        bucket: "AI Model Vault-models".to_string(),
+        project: "AI Model Vault-project".to_string(),
         prefix: Some("production".to_string()),
     };
 
@@ -401,8 +401,8 @@ async fn main() -> Result<()> {
 # Configure GCS remote
 aim remote add gcs-prod \
     --provider gcs \
-    --bucket neuronvault-models \
-    --project neuronvault-project \
+    --bucket AI Model Vault-models \
+    --project AI Model Vault-project \
     --prefix production
 
 # Push to GCS
@@ -437,7 +437,7 @@ cat > lifecycle.json <<EOF
 }
 EOF
 
-gsutil lifecycle set lifecycle.json gs://neuronvault-models
+gsutil lifecycle set lifecycle.json gs://AI Model Vault-models
 ```
 
 ---
@@ -627,12 +627,12 @@ aim remote check gpt-3-v1 --remote s3-backup
 
 # S3 bucket versioning
 aws s3api put-bucket-versioning \
-    --bucket neuronvault-models \
+    --bucket AI Model Vault-models \
     --versioning-configuration Status=Enabled
 
 # S3 MFA delete (requires root account)
 aws s3api put-bucket-versioning \
-    --bucket neuronvault-models \
+    --bucket AI Model Vault-models \
     --versioning-configuration Status=Enabled,MFADelete=Enabled \
     --mfa "arn:aws:iam::ACCOUNT:mfa/root-account-mfa-device XXXXXX"
 ```
@@ -647,7 +647,7 @@ aws s3api put-bucket-versioning \
 
 # S3 transfer acceleration
 aws s3api put-bucket-accelerate-configuration \
-    --bucket neuronvault-models \
+    --bucket AI Model Vault-models \
     --accelerate-configuration Status=Enabled
 ```
 
@@ -675,7 +675,7 @@ aws ce get-cost-and-usage \
 
 # S3 cross-region replication
 aws s3api put-bucket-replication \
-    --bucket neuronvault-models \
+    --bucket AI Model Vault-models \
     --replication-configuration file://replication.json
 ```
 
@@ -688,10 +688,10 @@ aws s3api put-bucket-replication \
 **Error: "Access Denied"**
 ```bash
 # Check IAM permissions
-aws iam get-user-policy --user-name neuronvault --policy-name S3Access
+aws iam get-user-policy --user-name AI Model Vault --policy-name S3Access
 
 # Verify bucket policy
-aws s3api get-bucket-policy --bucket neuronvault-models
+aws s3api get-bucket-policy --bucket AI Model Vault-models
 
 # Test credentials
 aws sts get-caller-identity
@@ -708,7 +708,7 @@ cat ~/.aws/credentials
 cat ~/.aws/config
 
 # Test with AWS CLI
-aws s3 ls s3://neuronvault-models
+aws s3 ls s3://AI Model Vault-models
 ```
 
 ### Azure Issues
@@ -716,16 +716,16 @@ aws s3 ls s3://neuronvault-models
 **Error: "Authentication failed"**
 ```bash
 # Check account key
-az storage account keys list --account-name neuronvaultstorage
+az storage account keys list --account-name AI Model Vaultstorage
 
 # Verify SAS token expiry
 az storage container show \
-    --account-name neuronvaultstorage \
+    --account-name AI Model Vaultstorage \
     --name models
 
 # Test connection
 az storage blob list \
-    --account-name neuronvaultstorage \
+    --account-name AI Model Vaultstorage \
     --container-name models
 ```
 
@@ -743,7 +743,7 @@ gcloud iam service-accounts list
 gcloud auth application-default print-access-token
 
 # Verify bucket access
-gsutil ls gs://neuronvault-models
+gsutil ls gs://AI Model Vault-models
 ```
 
 ### Network Issues
@@ -751,7 +751,7 @@ gsutil ls gs://neuronvault-models
 ```bash
 # Test connectivity
 curl -I https://s3.amazonaws.com
-curl -I https://neuronvaultstorage.blob.core.windows.net
+curl -I https://AI Model Vaultstorage.blob.core.windows.net
 curl -I https://storage.googleapis.com
 
 # Use proxy if behind firewall
@@ -784,8 +784,7 @@ export RUST_LOG=cloud_storage=debug
 - [AWS S3 Documentation](https://docs.aws.amazon.com/s3/)
 - [Azure Blob Storage Documentation](https://docs.microsoft.com/azure/storage/blobs/)
 - [Google Cloud Storage Documentation](https://cloud.google.com/storage/docs)
-- [NeuronVault Security Guide](./SECURITY.md)
-- [NeuronVault API Reference](./API.md)
+- [AI Model Vault Security Guide](../SECURITY.md)
 
 ---
 

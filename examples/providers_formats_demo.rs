@@ -172,7 +172,7 @@ fn demonstrate_model_formats() {
     ];
 
     for file in test_files {
-        let ext = file.split('.').last().unwrap();
+        let ext = file.split('.').next_back().unwrap();
         let format = ModelFormat::from_extension(ext);
         println!("  {} → {}", file, format.name());
     }

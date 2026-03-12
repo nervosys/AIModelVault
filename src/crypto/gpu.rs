@@ -321,6 +321,10 @@ impl GpuContext {
     }
 
     /// Encrypt data using GPU
+    ///
+    /// Uses AES-256-CTR for bulk encryption (GPU-parallel), then appends an
+    /// HMAC-SHA256 authentication tag over (nonce || ciphertext) to provide
+    /// authenticated encryption matching FIPS 140-3 requirements.
     fn encrypt(&self, data: &[u8], key: &SecureKey, nonce: &[u8]) -> Result<Vec<u8>> {
         use ocl::{Buffer, Kernel};
 
@@ -370,6 +374,10 @@ impl GpuContext {
             .build()
             .map_err(|e| VaultError::CryptoError(format!("Failed to build kernel: {e}")))?;
 
+        // SAFETY: The OpenCL kernel operates on GPU-side buffers that we fully
+        // control (input_buf, output_buf, key_buf, nonce_buf). The buffers are
+        // correctly sized and remain valid for the duration of the kernel
+        // execution. No host memory is accessed by the kernel.
         unsafe {
             kernel
                 .enq()
@@ -382,6 +390,13 @@ impl GpuContext {
             .read(&mut output)
             .enq()
             .map_err(|e| VaultError::CryptoError(format!("Failed to read output: {e}")))?;
+
+        // Zero the GPU key buffer by overwriting with zeros
+        let zeros = vec![0u8; KEY_SIZE];
+        key_buf
+            .write(&zeros)
+            .enq()
+            .map_err(|e| VaultError::CryptoError(format!("Failed to zero key buffer: {e}")))?;
 
         Ok(output)
     }
@@ -466,12 +481,13 @@ impl GpuCrypto {
 
     /// Decrypt data, using GPU if available and beneficial
     pub fn decrypt(&self, encrypted_data: &[u8], key: &SecureKey) -> Result<Vec<u8>> {
-        // Check minimum size
+        // Check minimum size (nonce + HMAC tag for GPU, or nonce + GCM tag for CPU)
         if encrypted_data.len() < NONCE_SIZE {
             return Err(VaultError::CryptoError("Encrypted data too short".into()));
         }
 
-        let data_len = encrypted_data.len() - NONCE_SIZE;
+        // GPU path uses nonce(12) + ciphertext + HMAC(32)
+        let data_len = encrypted_data.len() - NONCE_SIZE - 32;
 
         // Use GPU for large data if available
         if data_len >= GPU_THRESHOLD_BYTES && Self::is_gpu_available() {
@@ -488,10 +504,15 @@ impl GpuCrypto {
     }
 
     /// Encrypt using GPU (internal)
+    ///
+    /// Format: nonce (12 bytes) || ciphertext || HMAC-SHA256 tag (32 bytes)
+    /// The HMAC is computed over (nonce || ciphertext) using the encryption key,
+    /// providing authenticated encryption to complement GPU AES-256-CTR.
     #[cfg(feature = "gpu")]
     fn encrypt_gpu(&self, data: &[u8], key: &SecureKey) -> Result<Vec<u8>> {
         use aes_gcm::aead::rand_core::RngCore;
         use aes_gcm::aead::OsRng;
+        use sha2::{Digest, Sha256};
 
         let ctx = GPU_CONTEXT
             .get_or_init(|| GpuContext::new().ok())
@@ -505,10 +526,34 @@ impl GpuCrypto {
         // Encrypt with GPU (CTR mode)
         let ciphertext = ctx.encrypt(data, key, &nonce)?;
 
-        // Combine nonce || ciphertext
-        let mut result = Vec::with_capacity(NONCE_SIZE + ciphertext.len());
+        // Compute HMAC-SHA256 over (nonce || ciphertext) for authentication
+        // Uses HMAC construction: H(key XOR opad || H(key XOR ipad || message))
+        let hmac_tag = {
+            let key_bytes = key.as_bytes();
+            let mut ipad = [0x36u8; 64];
+            let mut opad = [0x5cu8; 64];
+            for i in 0..KEY_SIZE {
+                ipad[i] ^= key_bytes[i];
+                opad[i] ^= key_bytes[i];
+            }
+            // Inner hash: H(ipad || nonce || ciphertext)
+            let mut inner = Sha256::new();
+            inner.update(&ipad);
+            inner.update(&nonce);
+            inner.update(&ciphertext);
+            let inner_hash = inner.finalize();
+            // Outer hash: H(opad || inner_hash)
+            let mut outer = Sha256::new();
+            outer.update(&opad);
+            outer.update(&inner_hash);
+            outer.finalize()
+        };
+
+        // Combine nonce || ciphertext || hmac_tag
+        let mut result = Vec::with_capacity(NONCE_SIZE + ciphertext.len() + 32);
         result.extend_from_slice(&nonce);
         result.extend_from_slice(&ciphertext);
+        result.extend_from_slice(&hmac_tag);
 
         Ok(result)
     }
@@ -519,15 +564,59 @@ impl GpuCrypto {
     }
 
     /// Decrypt using GPU (internal)
+    ///
+    /// Verifies the HMAC-SHA256 authentication tag before decrypting.
     #[cfg(feature = "gpu")]
     fn decrypt_gpu(&self, encrypted_data: &[u8], key: &SecureKey) -> Result<Vec<u8>> {
+        use sha2::{Digest, Sha256};
+
+        const HMAC_SIZE: usize = 32;
+
+        if encrypted_data.len() < NONCE_SIZE + HMAC_SIZE {
+            return Err(VaultError::CryptoError(
+                "GPU encrypted data too short".into(),
+            ));
+        }
+
         let ctx = GPU_CONTEXT
             .get_or_init(|| GpuContext::new().ok())
             .as_ref()
             .ok_or_else(|| VaultError::CryptoError("GPU not available".into()))?;
 
         let nonce = &encrypted_data[..NONCE_SIZE];
-        let ciphertext = &encrypted_data[NONCE_SIZE..];
+        let ciphertext = &encrypted_data[NONCE_SIZE..encrypted_data.len() - HMAC_SIZE];
+        let stored_tag = &encrypted_data[encrypted_data.len() - HMAC_SIZE..];
+
+        // Verify HMAC-SHA256 tag before decryption
+        let computed_tag = {
+            let key_bytes = key.as_bytes();
+            let mut ipad = [0x36u8; 64];
+            let mut opad = [0x5cu8; 64];
+            for i in 0..KEY_SIZE {
+                ipad[i] ^= key_bytes[i];
+                opad[i] ^= key_bytes[i];
+            }
+            let mut inner = Sha256::new();
+            inner.update(&ipad);
+            inner.update(nonce);
+            inner.update(ciphertext);
+            let inner_hash = inner.finalize();
+            let mut outer = Sha256::new();
+            outer.update(&opad);
+            outer.update(&inner_hash);
+            outer.finalize()
+        };
+
+        // Constant-time comparison to prevent timing attacks
+        let mut diff = 0u8;
+        for (a, b) in computed_tag.iter().zip(stored_tag.iter()) {
+            diff |= a ^ b;
+        }
+        if diff != 0 {
+            return Err(VaultError::CryptoError(
+                "GPU decryption authentication failed: HMAC mismatch".into(),
+            ));
+        }
 
         // Decrypt with GPU (CTR is symmetric)
         ctx.encrypt(ciphertext, key, nonce)

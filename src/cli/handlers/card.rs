@@ -1,12 +1,13 @@
 //! Model card command handlers (create, show, validate, convert, template, attach, extract, generate).
 
 use ai_model_vault::model_card::*;
-use ai_model_vault::{Result, Vault, VaultConfig, VaultError};
+use ai_model_vault::{Result, VaultConfig, VaultError};
 use std::io::{self, Write};
 
 use crate::cli::args::CardCommands;
+use crate::cli::helpers::build_vault;
 
-pub fn handle_card(command: CardCommands, config: VaultConfig) -> Result<()> {
+pub fn handle_card(command: CardCommands, config: VaultConfig, use_sqlite: bool) -> Result<()> {
     match command {
         CardCommands::Create {
             name,
@@ -428,7 +429,7 @@ pub fn handle_card(command: CardCommands, config: VaultConfig) -> Result<()> {
             let card_json = model_card.to_json()?;
 
             // Open vault
-            let mut vault = Vault::new(Some(config.clone()))?;
+            let mut vault = build_vault(config.clone(), use_sqlite)?;
 
             // Get the specified version or latest
             let version_num = if let Some(v) = version {
@@ -463,7 +464,7 @@ pub fn handle_card(command: CardCommands, config: VaultConfig) -> Result<()> {
             println!("   Output: {}", output.display());
 
             // Open vault
-            let vault = Vault::new(Some(config.clone()))?;
+            let vault = build_vault(config.clone(), use_sqlite)?;
 
             // Get the specified version or latest
             let version_num = if let Some(v) = version {
@@ -522,7 +523,7 @@ pub fn handle_card(command: CardCommands, config: VaultConfig) -> Result<()> {
             println!("   Output: {}", output.display());
 
             // Open vault
-            let vault = Vault::new(Some(config.clone()))?;
+            let vault = build_vault(config.clone(), use_sqlite)?;
 
             // Get the specified version or latest
             let version_num = if let Some(v) = version {

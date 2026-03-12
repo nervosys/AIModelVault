@@ -1,12 +1,13 @@
-# AI Model Vault (NeuronVault)
+# AI Model Vault
 
 > Universal cross-platform secure vault for AI model storage, versioning, and management with military-grade encryption and comprehensive utilities.
 
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-1609%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![Coverage](https://img.shields.io/badge/coverage-83.83%25-brightgreen.svg)](docs/PERFORMANCE.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
 
 A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, compression, and advanced model utilities.
@@ -14,6 +15,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ## ✨ Top 10 Features Users Love
 
 ### 1. 🔐 Military-Grade Security (FIPS 140-3)
+
 **Why it matters**: Your AI models are valuable IP that needs protection
 - AES-256-GCM encryption with Argon2id key derivation
 - CMMC 2.0 Level 2 certified for defense contractors
@@ -21,6 +23,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - Comprehensive audit logging for compliance
 
 ### 2. 🎯 Universal Format Support (23+ Formats)
+
 **Why it matters**: Works with any AI model, any framework
 - **LLM Formats**: Safetensors, GGUF, PyTorch, TensorRT, ONNX, MLX, Core ML, TorchScript, TFLite
 - **General DL**: TensorFlow, Keras, OpenVINO, TVM, NCNN, MNN, RKNN
@@ -30,6 +33,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - See: [Providers & Formats Guide](docs/PROVIDERS_FORMATS.md) | [Quick Ref](docs/PROVIDERS_FORMATS_QUICKREF.md)
 
 ### 3. 🕐 Version Control & Time Travel
+
 **Why it matters**: Never lose a training checkpoint again
 - **Complete version history** with automatic checksums
 - **Lineage tracking** shows evolution of your models (parent-child relationships)
@@ -41,6 +45,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - See: [Version Control Demo](#version-control-demo)
 
 ### 4. 🛠️ Model Utilities Suite (8 Tools)
+
 **Why it matters**: Everything you need for model management
 - **Archive/Extract**: Backup models to TAR/ZIP with one command
 - **Deduplication**: Find and remove duplicate models (saves storage)
@@ -52,6 +57,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - **Compression Analysis**: Predict compression ratios by format
 
 ### 5. 🤖 RAG & AI Agent Integration
+
 **Why it matters**: Build intelligent systems with your models
 - Document store with vector embeddings for semantic search
 - Knowledge base with automatic text chunking
@@ -60,6 +66,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - Rule engine for business logic and automation
 
 ### 6. 💻 CLI + Library API (Dual Interface)
+
 **Why it matters**: Use it your way - command line or code
 - **15+ CLI Commands**: `aim store`, `aim get`, `aim archive`, etc.
 - **Full Rust API**: Complete programmatic control
@@ -67,6 +74,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - **Interactive**: Quick operations from terminal
 
 ### 7. ⚡ Performance Optimization
+
 **Why it matters**: Fast operations even with multi-GB models
 - LRU caching for frequently accessed models
 - Smart compression (gzip/LZMA) reduces storage by 50-90%
@@ -74,6 +82,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - Format-specific optimization recommendations
 
 ### 8. 🌍 Cross-Platform Support + XDG Compliance
+
 **Why it matters**: One tool for all your machines, organized properly
 - Windows, Linux, macOS fully supported
 - **100% XDG Base Directory compliant** (9/9 checks passed)
@@ -84,6 +93,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - See: [XDG Compliance Guide](docs/XDG_COMPLIANCE.md) | [Quick Ref](docs/XDG_QUICKREF.md)
 
 ### 9. 📊 Model Analysis & Insights
+
 **Why it matters**: Understand your models at a glance
 - Human-readable sizes (7.5 GB, not 8053063680 bytes)
 - Parameter counting (7B, 13B, 70B)
@@ -92,8 +102,9 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 - Storage optimization recommendations
 
 ### 10. 🔄 Production-Ready Reliability
+
 **Why it matters**: Trust it with your most important models
-- 246 comprehensive tests (100% passing)
+- 1,609 comprehensive tests (100% passing)
 - Type-safe Rust implementation (no memory bugs)
 - Comprehensive error handling
 - Detailed logging and debugging support
@@ -103,32 +114,42 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 
 ## 🎯 Quick Feature Comparison
 
-| Feature                   | Status     | CLI          | Library API |
-| ------------------------- | ---------- | ------------ | ----------- |
-| Encryption (AES-256-GCM)  | ✅ Complete | ✅            | ✅           |
-| 23+ Format Support        | ✅ Complete | ✅            | ✅           |
-| Version Control           | ✅ Complete | ✅            | ✅           |
-| **Model Cards (NEW)**     | ✅ Complete | ✅ 8 commands | ✅           |
-| Model Utilities (8 tools) | ✅ Complete | ✅            | ✅           |
-| RAG & MCP Tools           | ✅ Complete | ⚠️ Partial    | ✅           |
-| **Cloud Storage (NEW)**   | ✅ Complete | ✅ 4 commands | ✅           |
-| **Format Conversion**     | ✅ Complete | ✅            | ✅           |
-| Cross-Platform            | ✅ Complete | ✅            | ✅           |
-| LRU Caching               | ✅ Complete | ⚠️ Info only  | ✅           |
-| Compression               | ✅ Complete | ✅            | ✅           |
+| Feature                   | Status     | CLI           | Library API |
+| ------------------------- | ---------- | ------------- | ----------- |
+| Encryption (AES-256-GCM)  | ✅ Complete | ✅             | ✅           |
+| 23+ Format Support        | ✅ Complete | ✅             | ✅           |
+| Version Control           | ✅ Complete | ✅             | ✅           |
+| Model Cards               | ✅ Complete | ✅ 8 commands  | ✅           |
+| Model Utilities (8 tools) | ✅ Complete | ✅             | ✅           |
+| RAG & MCP Tools           | ✅ Complete | ⚠️ Partial     | ✅           |
+| Cloud Storage             | ✅ Complete | ✅ 4 commands  | ✅           |
+| Format Conversion         | ✅ Complete | ✅             | ✅           |
+| REST API (Axum + JWT)     | ✅ Complete | ✅ `aim serve` | ✅           |
+| GraphQL API               | ✅ Complete | —             | ✅           |
+| Streaming Encryption      | ✅ Complete | ✅ Auto        | ✅           |
+| SQLite Version Backend    | ✅ Complete | ✅ Flag        | ✅           |
+| Blockchain Audit Trail    | ✅ Complete | —             | ✅           |
+| Federated Vault Sync      | ✅ Complete | —             | ✅           |
+| GPU Encryption (OpenCL)   | ✅ Complete | ✅ Auto        | ✅           |
+| Python Bindings (PyO3)    | ✅ Complete | —             | ✅           |
+| Cross-Platform            | ✅ Complete | ✅             | ✅           |
+| LRU Caching               | ✅ Complete | ⚠️ Info only   | ✅           |
+| Compression               | ✅ Complete | ✅             | ✅           |
 
 ---
 
-## ☁️ Cloud Storage Support (NEW!)
+## ☁️ Cloud Storage Support
 
 **Store and sync your models across AWS S3, Azure Blob Storage, and Google Cloud Storage with CLI commands**
 
 ### Supported Providers
+
 - **AWS S3**: Industry-standard object storage ✅
 - **Azure Blob Storage**: Microsoft Azure cloud storage ✅
 - **Google Cloud Storage**: GCP cloud storage ⚠️ (temporarily disabled for security)
 
-### CLI Commands (NEW in v0.1.0)
+### CLI Commands
+
 ```bash
 # Configure credentials
 aim cloud config --provider s3 --show
@@ -144,6 +165,7 @@ aim cloud pull gpt2-finetuned --provider s3 --bucket my-models --remote-path gpt
 ```
 
 ### Key Features
+
 - **End-to-end encryption**: Models encrypted before upload
 - **Multiple backends**: Mix local and cloud storage
 - **CLI integration**: Simple commands for push/pull/list
@@ -191,7 +213,7 @@ cargo build --release --features gcs
 
 ---
 
-## 📝 Model Cards (NEW!)
+## 📝 Model Cards
 
 **Industry-standard model documentation following Google's Model Cards and HuggingFace specifications**
 
@@ -205,6 +227,7 @@ Model cards provide transparent, standardized documentation for AI models includ
 - **Risk assessment** and mitigation strategies
 
 ### Key Features
+
 - **8 comprehensive sections**: Details, use, training, evaluation, ethics, caveats
 - **Multiple export formats**: JSON, YAML, Markdown (HuggingFace-compatible)
 - **Fairness analysis**: Performance by demographic groups
@@ -247,6 +270,7 @@ let markdown = card.to_markdown();       // HuggingFace Hub
 ### Real-World Examples
 
 **LLM Documentation**:
+
 ```rust
 // Track environmental impact
 let environmental = EnvironmentalImpact {
@@ -258,6 +282,7 @@ let environmental = EnvironmentalImpact {
 ```
 
 **Medical AI (High-Risk)**:
+
 ```rust
 // Clear warnings for clinical use
 let intended_use = IntendedUse {
@@ -276,6 +301,7 @@ let ethical = EthicalConsiderations {
 ```
 
 **Fairness Analysis**:
+
 ```rust
 // Performance by demographic groups
 performance_by_group: {
@@ -317,6 +343,7 @@ cargo run --example model_card_demo --release
 ```
 
 Demonstrates:
+
 1. **LLM card**: Complete documentation with metrics
 2. **Medical imaging**: Clinical warnings and fairness
 3. **Environmental impact**: Carbon tracking for large models
@@ -330,31 +357,50 @@ Demonstrates:
 ## 🔥 Additional Capabilities
 
 ### Security & Compliance
+
 - **FIPS 140-3**: Approved cryptographic module
 - **CMMC 2.0 Level 2**: 17 security controls implemented
 - **MITRE ATT&CK**: Defense against T1552, T1486, T1078, T1005
 - **Audit Logging**: Complete security event tracking
 
+### Architecture v2 (Advanced)
+
+- **Trait-based DI**: `CryptoProvider`, `BlobStore`, `VersionRepo`, `AuditSink` traits for swappable backends
+- **VaultBuilder**: Fluent builder pattern with `.config()`, `.sqlite_versions()`, `.subscriber()`
+- **Event System**: `EventBus` with `VaultEvent` dispatching, `AuditLogSubscriber`, `MetricsSubscriber`
+- **Streaming Encryption**: Chunked AES-256-GCM for large models (constant 8 MiB memory)
+- **SQLite Version Backend**: ACID-compliant version storage with auto-migration from JSON
+- **REST API**: 20 Axum endpoints with JWT auth + RBAC, OpenAPI 3.1 spec, web dashboard
+- **GraphQL API**: async-graphql 7.0 with queries, mutations, and playground
+- **Blockchain Audit**: Append-only audit trail with Merkle tree proofs
+- **Federation**: Vector clock sync across vault peers
+- **GPU Encryption**: OpenCL-accelerated AES-256-CTR with automatic CPU fallback
+- **`aimv://` URIs**: Agent-addressable URI scheme for vault resources
+
 ## Security Standards Compliance
 
 ### FIPS 140-3
+
 - AES-256-GCM encryption for data at rest
-- PBKDF2 for key derivation
+- Argon2id for key derivation (64MB memory, 3 iterations)
 - Secure random number generation
 - Cryptographic module validation
 
 ### CVE Protection
+
 - Regular dependency scanning
 - Automated vulnerability assessments
 - Security patch management
 
 ### MITRE ATT&CK Framework
+
 - Defense against credential access (T1552)
 - Data encryption for impact mitigation (T1486)
 - Access control and auditing
 - Secure key management
 
 ### CMMC 2.0 Level 2
+
 - Access control (AC)
 - Identification and authentication (IA)
 - System and communications protection (SC)
@@ -362,18 +408,36 @@ Demonstrates:
 
 ## Architecture
 
-```
+```shell
 AI Model Vault/
 ├── src/
-│   ├── core/           # Core vault operations
-│   ├── crypto/         # Encryption and security
-│   ├── formats/        # Model format converters
-│   ├── storage/        # Storage backend
-│   ├── version/        # Version control
-│   └── compliance/     # Security compliance
-├── tests/              # Test suite
-├── docs/               # Documentation
-└── config/             # Configuration files
+│   ├── cli/               # CLI dispatcher + command handlers
+│   ├── crypto/            # AES-256-GCM, Argon2id, streaming encryption
+│   ├── rag/               # RAG system (7 submodules)
+│   ├── api.rs             # REST API (Axum) + GraphQL (async-graphql)
+│   ├── vault.rs           # Core vault logic + VaultBuilder
+│   ├── traits.rs          # Core traits, event system, URI parser, metrics
+│   ├── storage.rs         # Encrypted storage backends
+│   ├── version.rs         # Version control (JSON backend)
+│   ├── version_sqlite.rs  # Version control (SQLite backend)
+│   ├── formats.rs         # 23+ format detection
+│   ├── conversion.rs      # Format conversion pipeline (10 converters)
+│   ├── model_card.rs      # Model Cards (Google/HuggingFace standard)
+│   ├── blockchain.rs      # Blockchain audit trail with Merkle proofs
+│   ├── federation.rs      # Federated vault sync with vector clocks
+│   ├── compliance.rs      # FIPS/CMMC/MITRE compliance checks
+│   ├── audit.rs           # Security audit logging
+│   ├── telemetry.rs       # Anonymous usage telemetry (opt-in)
+│   ├── config.rs          # XDG-compliant configuration
+│   ├── utils.rs           # Model utilities (8 tools)
+│   └── python.rs          # Python bindings (PyO3)
+├── tests/                 # 1,609 comprehensive tests
+├── docs/                  # Documentation
+├── website/               # Next.js documentation site
+├── deploy/                # Dockerfile & Helm chart
+├── examples/              # 11 usage examples
+├── scripts/               # Coverage analysis & utility scripts
+└── benches/               # Performance benchmarks
 ```
 
 ## 🚀 Quick Start
@@ -384,29 +448,29 @@ Run interactive demonstrations to see AI Model Vault in action:
 
 ```powershell
 # Windows - Quick 2-minute demo
-.\demo.ps1 -Quick
+.\docs\demo.ps1 -Quick
 
 # Windows - Full demo with all features
-.\demo.ps1 -Full
+.\docs\demo.ps1 -Full
 
 # Windows - Specific feature demos
-.\demo.ps1 -HuggingFace
-.\demo.ps1 -Security
+.\docs\demo.ps1 -HuggingFace
+.\docs\demo.ps1 -Security
 ```
 
 ```bash
 # Linux/macOS - Quick 2-minute demo
-./demo.sh --quick
+./docs/demo.sh --quick
 
 # Linux/macOS - Full demo with all features
-./demo.sh --full
+./docs/demo.sh --full
 
 # Linux/macOS - Specific feature demos
-./demo.sh --huggingface
-./demo.sh --security
+./docs/demo.sh --huggingface
+./docs/demo.sh --security
 ```
 
-See **[DEMO_GUIDE.md](DEMO_GUIDE.md)** for complete demo documentation.
+See **[DEMO_GUIDE.md](docs/DEMO_GUIDE.md)** for complete demo documentation.
 
 ### PyTorch Integration Demo
 
@@ -414,23 +478,24 @@ Demonstrate AI Model Vault integration with PyTorch using `uv` for fast dependen
 
 ```powershell
 # Windows - Install dependencies and run demo
-.\setup_pytorch.ps1 -Install -Run
+.\docs\setup_pytorch.ps1 -Install -Run
 
 # Or step by step
-.\setup_pytorch.ps1 -Install  # Install PyTorch with uv
-.\setup_pytorch.ps1 -Run      # Run the demo
+.\docs\setup_pytorch.ps1 -Install  # Install PyTorch with uv
+.\docs\setup_pytorch.ps1 -Run      # Run the demo
 ```
 
 ```bash
 # Linux/macOS - Install dependencies and run demo
-./setup_pytorch.sh --install --run
+./docs/setup_pytorch.sh --install --run
 
 # Or step by step
-./setup_pytorch.sh --install  # Install PyTorch with uv
-./setup_pytorch.sh --run      # Run the demo
+./docs/setup_pytorch.sh --install  # Install PyTorch with uv
+./docs/setup_pytorch.sh --run      # Run the demo
 ```
 
 The PyTorch demo showcases:
+
 - ✅ Saving PyTorch models to the vault
 - ✅ Loading and versioning checkpoints
 - ✅ Fine-tuning workflow with lineage tracking
@@ -545,23 +610,26 @@ cargo run --example xdg_demo --release
 **Documentation:**
 - 📖 [Complete XDG Guide](docs/XDG_COMPLIANCE.md) - Full documentation
 - 📋 [Quick Reference](docs/XDG_QUICKREF.md) - Cheat sheet
-- 📝 [AIMV Path Update](AIMV_PATH_UPDATE.md) - New structure guide
+- 📝 [AIMV Path Update](reports/AIMV_PATH_UPDATE.md) - New structure guide
 
 ### Installation
 
 #### From crates.io (when published)
+
 ```bash
 cargo install ai-model-vault
 ```
 
 #### From source
+
 ```bash
-git clone https://github.com/nervosys/aimodelvault.git
-cd aimodelvault
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
 cargo build --release
 ```
 
 #### Using build scripts
+
 ```bash
 # Windows
 .\build.ps1 release
@@ -571,6 +639,7 @@ cargo build --release
 ```
 
 #### Optional: HDF5 Support
+
 HDF5 format support requires the HDF5 library. See [HDF5 Support Guide](docs/HDF5_SUPPORT.md) for installation instructions.
 
 ```bash
@@ -747,19 +816,26 @@ let result = server.execute_tool(
 
 ## 📚 Documentation
 
-| Document                                    | Description                           |
-| ------------------------------------------- | ------------------------------------- |
-| [Quick Start Guide](docs/QUICKSTART.md)     | Get started in 5 minutes              |
-| [CLI Reference](docs/CLI.md)                | Complete command-line documentation   |
-| [Utilities Guide](docs/UTILITIES.md)        | Model utilities and advanced features |
-| [RAG Guide](docs/RAG.md)                    | RAG and rule-based systems            |
-| [MCP Tools Guide](docs/MCP_TOOLS.md)        | Model Context Protocol and tools      |
-| [MCP Quick Reference](docs/MCP_QUICKREF.md) | MCP tools quick reference card        |
-| [Formats Guide](FORMATS.md)                 | Supported model formats (22+)         |
-| [Development Guide](DEVELOPMENT.md)         | For contributors and developers       |
-| [Security Policy](SECURITY.md)              | Security standards and reporting      |
-| [Test Coverage](reports/TEST_COVERAGE.md)   | Test suite documentation (331 tests)  |
-| [Documentation Website](website/)           | Next.js documentation site            |
+| Document                                         | Description                            |
+| ------------------------------------------------ | -------------------------------------- |
+| [Quick Start Guide](docs/QUICKSTART.md)          | Get started in 5 minutes               |
+| [Architecture](docs/ARCHITECTURE.md)             | System design and components           |
+| [CLI Reference](docs/CLI.md)                     | Complete command-line documentation    |
+| [Formats Guide](FORMATS.md)                      | Supported model formats (23+)          |
+| [Providers & Formats](docs/PROVIDERS_FORMATS.md) | Provider ecosystem and format details  |
+| [Version Control](docs/VERSION_CONTROL.md)       | Complete version control guide         |
+| [Cloud Storage](docs/CLOUD_STORAGE.md)           | S3, Azure, GCS integration             |
+| [Utilities Guide](docs/UTILITIES.md)             | Model utilities and advanced features  |
+| [RAG Guide](docs/RAG.md)                         | RAG and rule-based systems             |
+| [MCP Tools Guide](docs/MCP_TOOLS.md)             | Model Context Protocol and tools       |
+| [Model Cards Guide](docs/MODEL_CARDS.md)         | Model card documentation standard      |
+| [XDG Compliance](docs/XDG_COMPLIANCE.md)         | Directory structure and organization   |
+| [Development Guide](DEVELOPMENT.md)              | For contributors and developers        |
+| [Security Policy](SECURITY.md)                   | Security standards and reporting       |
+| [Roadmap](ROADMAP.md)                            | Full development roadmap               |
+| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,609 tests) |
+| [Changelog](CHANGELOG.md)                        | Version history and changes            |
+| [Documentation Website](website/)                | Next.js documentation site             |
 
 ## 🔐 Security & Compliance
 
@@ -819,56 +895,46 @@ User Passphrase
 ## 🧪 Testing & Quality
 
 ```bash
-# Run all tests (331 tests)
-cargo test --all --features api
+# Run all tests (1,609 tests)
+cargo test
 
 # Run specific test suites
 cargo test --test crypto_tests      # Cryptography (14 tests)
 cargo test --test format_tests      # Format detection (15 tests)
 cargo test --test utils_tests       # Utilities (38 tests)
 cargo test --test integration_tests # Integration (8 tests)
+cargo test --test cli_tests         # CLI (17 tests)
+cargo test --test vault_builder_tests # VaultBuilder + metrics (30 tests)
+cargo test --test conversion_tests  # Format conversion (31 tests)
+cargo test --test api_tests         # REST API integration (22 tests)
 
 # Security audit
 cargo audit
 
-# Performance benchmarks
+# Performance benchmarks (all 3 suites)
 cargo bench
+
+# Individual benchmark suites
+cargo bench --bench crypto_bench              # AES-256-GCM, Argon2id, hashing
+cargo bench --bench vault_bench               # Store/retrieve/list operations
+cargo bench --bench api_bench --features api  # REST API endpoint latency
 ```
 
-**Test Coverage**: 331 tests, all passing ✅
-- Unit tests: 40
-- Config/Error tests: 22
+**Test Coverage**: 1,609 tests, all passing ✅
+- Library unit tests: 447
+- Coverage & edge case tests: 873
+- Conversion tests: 31
 - Crypto tests: 14
 - Format tests: 15
 - Integration tests: 8
-- Model card integration: 4
-- Model card tests: 48
+- CLI tests: 17
+- VaultBuilder tests: 30
+- Config/error tests: 22
+- Model card tests: 52 (48 + 4 integration)
 - RAG tests: 38 (includes 23 MCP tests)
 - Utilities tests: 38
-- Coverage gap tests: 19
-
-## 📦 Project Structure
-
-```
-aimodelvault/
-├── src/
-│   ├── cli/                # CLI dispatcher + command handlers
-│   ├── rag/                # RAG system (7 submodules)
-│   ├── vault.rs            # Core vault logic
-│   ├── storage.rs          # Encrypted storage
-│   ├── version.rs          # Version control
-│   ├── formats.rs          # Format detection
-│   ├── utils.rs            # Model utilities ⭐
-│   ├── crypto/             # FIPS cryptography
-│   ├── audit.rs            # Security logging
-│   └── compliance.rs       # Compliance checks
-├── website/                # Next.js documentation site
-├── deploy/                 # Dockerfile & Helm chart
-├── tests/                  # 331 comprehensive tests
-├── docs/                   # Documentation
-├── examples/               # Usage examples
-└── benches/                # Performance benchmarks
-```
+- API integration tests: 22
+- Doc tests: 2
 
 ## 🤝 Contributing
 
@@ -878,8 +944,8 @@ Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guideli
 
 ```bash
 # Clone repository
-git clone https://github.com/nervosys/aimodelvault.git
-cd aimodelvault
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
 
 # Build and test
 cargo build
@@ -890,7 +956,17 @@ cargo fmt
 cargo clippy
 
 # Run examples
-cargo run --example basic_usage
+cargo run --example basic_usage                # Core vault operations
+cargo run --example api_demo --features api   # REST API server + client
+cargo run --example security_demo             # Compliance & audit
+cargo run --example rag_demo                  # RAG document store
+cargo run --example model_card_demo           # Model card creation
+cargo run --example version_control_demo      # Version control
+cargo run --example providers_formats_demo    # Format detection
+cargo run --example utilities_demo            # Model utilities
+cargo run --example xdg_demo                  # XDG directory layout
+cargo run --example huggingface_demo          # HuggingFace integration
+cargo run --example mcp_tools_demo            # MCP tool usage
 ```
 
 ## 📄 License
@@ -910,51 +986,11 @@ Do NOT open public issues for security concerns.
 
 See [SECURITY.md](SECURITY.md) for our security policy.
 
-## 🌟 Features Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
-
-## � Documentation
-
-### Core Guides
-- **[Architecture](docs/ARCHITECTURE.md)** - System design and components
-- **[Quick Start](docs/QUICKSTART.md)** - Get up and running in 5 minutes
-- **[CLI Guide](docs/CLI.md)** - Command-line interface reference
-
-### Feature Documentation
-- **[XDG Compliance](docs/XDG_COMPLIANCE.md)** - Directory structure and organization ([Quick Ref](docs/XDG_QUICKREF.md))
-- **[Providers & Formats](docs/PROVIDERS_FORMATS.md)** - 23+ format support guide ([Quick Ref](docs/PROVIDERS_FORMATS_QUICKREF.md))
-- **[Version Control](docs/VERSION_CONTROL.md)** - Complete version control guide ([Quick Ref](docs/VERSION_CONTROL_QUICKREF.md))
-- **[Cloud Storage](docs/CLOUD_STORAGE.md)** - S3, Azure, GCS integration
-- **[RAG System](docs/RAG.md)** - Retrieval-Augmented Generation ([Quick Ref](docs/RAG_QUICKREF.md))
-- **[MCP Tools](docs/MCP_TOOLS.md)** - Model Context Protocol integration ([Quick Ref](docs/MCP_QUICKREF.md))
-- **[Utilities](docs/UTILITIES.md)** - Model management utilities ([Quick Ref](docs/UTILITIES_QUICKREF.md), [Summary](docs/UTILITIES_SUMMARY.md))
-
-### Examples
-- **[Basic Usage](examples/basic_usage.rs)** - Store, retrieve, list models
-- **[XDG Demo](examples/xdg_demo.rs)** - XDG compliance demonstration
-- **[Providers & Formats Demo](examples/providers_formats_demo.rs)** - 23+ format support
-- **[Version Control Demo](examples/version_control_demo.rs)** - Complete version control workflow
-- **[RAG Demo](examples/rag_demo.rs)** - RAG system usage
-- **[MCP Tools Demo](examples/mcp_tools_demo.rs)** - MCP integration
-- **[Security Demo](examples/security_demo.rs)** - Encryption and compliance
-- **[Utilities Demo](examples/utilities_demo.rs)** - Model utilities showcase
-
-### Project Information
-- **[Examples Guide](docs/EXAMPLES_GUIDE.md)** - Overview of all examples
-- **[Contributing](CONTRIBUTING.md)** - How to contribute
-- **[Security Policy](SECURITY.md)** - Security practices and reporting
-- **[Testing](reports/TESTING_COMPLETE.md)** - Test coverage and practices ([Coverage Report](reports/TEST_COVERAGE.md))
-- **[Development](DEVELOPMENT.md)** - Development setup and guidelines
-- **[Changelog](CHANGELOG.md)** - Version history and changes
-
----
-
-## �📞 Support & Community
+## 📞 Support & Community
 
 - 📖 [Documentation](website/) | [Online](https://aimodelvault.nervosys.ai)
-- 💬 [GitHub Discussions](https://github.com/nervosys/aimodelvault/discussions)
-- 🐛 [Issue Tracker](https://github.com/nervosys/aimodelvault/issues)
+- 💬 [GitHub Discussions](https://github.com/nervosys/AIModelVault/discussions)
+- 🐛 [Issue Tracker](https://github.com/nervosys/AIModelVault/issues)
 - 📧 Email: dev@nervosys.ai
 
 ---

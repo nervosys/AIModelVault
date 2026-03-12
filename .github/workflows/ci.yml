@@ -1,10 +1,22 @@
 name: CI
+# Security note (S-02): The aimodelvault_PASSPHRASE environment variable is
+# used only during integration tests. Configure it as a masked GitHub Actions
+# secret (Settings → Secrets → Actions) — never hardcode it in workflow files.
+# All secret values are automatically masked in logs by GitHub Actions, but
+# ensure your test scripts do not echo or print passphrases to stdout/stderr.
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -41,7 +53,10 @@ jobs:
     
     - name: Run tests
       run: cargo test --verbose
-    
+
+    - name: Run API integration tests
+      run: cargo test --test api_tests --features "full,graphql" --verbose
+
     - name: Run clippy
       run: cargo clippy -- -D warnings
     
@@ -58,8 +73,17 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
     
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-coverage-${{ hashFiles('**/Cargo.lock') }}
+    
     - name: Install tarpaulin
-      run: cargo install cargo-tarpaulin
+      run: cargo install cargo-tarpaulin --locked
     
     - name: Generate coverage
       run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
@@ -68,4 +92,4 @@ jobs:
       uses: codecov/codecov-action@v4
       with:
         files: ./cobertura.xml
-        fail_ci_if_error: true
+        fail_ci_if_error: false

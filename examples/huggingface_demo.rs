@@ -221,7 +221,7 @@ fn main() -> ai_model_vault::Result<()> {
     println!("   ✓ Data integrity verification (BLAKE3 checksums)");
     println!("   ✓ Efficient retrieval and decompression");
     println!("\nProduction features available:");
-    println!("   • 22+ model formats (PyTorch, ONNX, GGUF, etc.)");
+    println!("   • 23+ model formats (PyTorch, ONNX, GGUF, etc.)");
     println!("   • Cloud storage (S3, Azure)");
     println!("   • 8 model utilities (dedupe, analyze, archive, etc.)");
     println!("   • RAG system for documentation");

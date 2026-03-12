@@ -1,10 +1,14 @@
 //! Telemetry and analytics module for AI Model Vault.
 //!
 //! Collects anonymous usage data to help improve the product.
-//! **Enabled by default** — users can opt out via:
+//! **Disabled by default** — users can opt in via:
+//! - Config file: `telemetry.enabled = true`
+//! - CLI: `aim telemetry enable`
+//!
+//! To disable (if previously enabled):
 //! - Config file: `telemetry.enabled = false`
-//! - Environment variable: `AIM_TELEMETRY_ENABLED=false`
-//! - CLI flag: `--no-telemetry`
+//! - Environment variable: `AIM_TELEMETRY_ENABLED=false` or `AIM_TELEMETRY_DISABLED=1`
+//! - Environment variable: `DO_NOT_TRACK=1`
 //!
 //! ## Data Collected
 //!
@@ -79,7 +83,7 @@ fn default_flush_interval() -> u64 {
 impl Default for TelemetryConfig {
     fn default() -> Self {
         Self {
-            enabled: true, // Enabled by default
+            enabled: false, // Opt-in: disabled by default for privacy
             device_id: generate_device_id(),
             endpoint: default_endpoint(),
             batch_size: default_batch_size(),
@@ -184,6 +188,9 @@ impl TelemetryClient {
         std::env::var("AIM_TELEMETRY_ENABLED")
             .map(|v| v.to_lowercase() == "false" || v == "0")
             .unwrap_or(false)
+            || std::env::var("AIM_TELEMETRY_DISABLED")
+                .map(|v| v == "1" || v.to_lowercase() == "true")
+                .unwrap_or(false)
             || std::env::var("DO_NOT_TRACK")
                 .map(|v| v == "1" || v.to_lowercase() == "true")
                 .unwrap_or(false)
@@ -373,13 +380,14 @@ impl TelemetryClient {
         let queue_file = Self::get_queue_file_path();
         if let Some(queue_dir) = queue_file.parent() {
             fs::create_dir_all(queue_dir)?;
+            let _ = crate::permissions::restrict_dir(queue_dir);
         }
 
-        let mut file = fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(queue_file)?;
+        let mut options = fs::OpenOptions::new();
+        options.create(true).append(true);
+        crate::permissions::set_create_mode(&mut options);
 
+        let mut file = options.open(queue_file)?;
         writeln!(file, "{}", body)?;
         Ok(())
     }
@@ -420,7 +428,7 @@ fn load_or_create_config(config_dir: Option<&PathBuf>) -> Result<TelemetryConfig
     if let Some(path) = &config_path {
         if path.exists() {
             let contents = fs::read_to_string(path)?;
-            let config: TelemetryConfig = serde_yaml::from_str(&contents)?;
+            let config: TelemetryConfig = serde_yaml_ng::from_str(&contents)?;
             return Ok(config);
         }
     }
@@ -432,7 +440,7 @@ fn load_or_create_config(config_dir: Option<&PathBuf>) -> Result<TelemetryConfig
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let contents = serde_yaml::to_string(&config)?;
+        let contents = serde_yaml_ng::to_string(&config)?;
         fs::write(&path, contents)?;
     }
 
@@ -557,8 +565,9 @@ pub fn track_feature(feature: &str, detail: Option<&str>) {
 }
 
 /// Collect enabled feature flags
+#[allow(unused_mut, clippy::vec_init_then_push)]
 fn collect_enabled_features() -> Vec<String> {
-    let mut features = Vec::new();
+    let mut features: Vec<String> = vec![];
 
     #[cfg(feature = "api")]
     features.push("api".to_string());
@@ -605,14 +614,17 @@ mod tests {
     #[test]
     fn test_telemetry_config_default() {
         let config = TelemetryConfig::default();
-        assert!(config.enabled);
+        assert!(!config.enabled);
         assert!(!config.device_id.is_empty());
         assert!(config.endpoint.contains("telemetry"));
     }
 
     #[test]
     fn test_telemetry_client_disable() {
-        let config = TelemetryConfig::default();
+        let config = TelemetryConfig {
+            enabled: true,
+            ..TelemetryConfig::default()
+        };
         let client = TelemetryClient::new(config);
 
         assert!(client.is_enabled());

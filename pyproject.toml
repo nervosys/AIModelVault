@@ -3,8 +3,8 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "neuralvault"
-version = "1.0.0"
+name = "aimodelvault"
+version = "1.1.0"
 description = "Universal cross-platform XDG-compliant secure vault for AI model formats"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -25,11 +25,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nervosys/ai-model-vault"
-Documentation = "https://github.com/nervosys/ai-model-vault/tree/master/docs"
-Repository = "https://github.com/nervosys/ai-model-vault"
-Issues = "https://github.com/nervosys/ai-model-vault/issues"
-Changelog = "https://github.com/nervosys/ai-model-vault/blob/master/CHANGELOG.md"
+Homepage = "https://github.com/nervosys/AIModelVault"
+Documentation = "https://github.com/nervosys/AIModelVault/tree/master/docs"
+Repository = "https://github.com/nervosys/AIModelVault"
+Issues = "https://github.com/nervosys/AIModelVault/issues"
+Changelog = "https://github.com/nervosys/AIModelVault/blob/master/CHANGELOG.md"
 
 dependencies = [
     "cryptography>=42.0.0", # FIPS 140-3 compliant crypto
@@ -65,14 +65,21 @@ security = [
     "bandit>=1.7.5",    # Security linting
     "pip-audit>=2.6.0", # Dependency vulnerability scanning
 ]
-docs = ["sphinx>=7.0.0", "sphinx-rtd-theme>=1.3.0"]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=1.3.0",
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-minify-plugin>=0.8.0",
+    "pymdown-extensions>=10.7.0",
+]
 
 [project.scripts]
-neuralvault = "neuralvault.cli:main"
+aimodelvault = "aimodelvault.cli:main"
 
 [tool.maturin]
 python-source = "src"
-module-name = "neuralvault._native"
+module-name = "aimodelvault._native"
 features = ["pyo3/extension-module", "python"]
 manifest-path = "Cargo.toml"
 bindings = "pyo3"
@@ -80,7 +87,7 @@ bindings = "pyo3"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=neuralvault --cov-report=html --cov-report=term"
+addopts = "-v --cov=aimodelvault --cov-report=html --cov-report=term"
 
 [tool.black]
 line-length = 100

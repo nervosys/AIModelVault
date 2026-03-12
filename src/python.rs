@@ -295,7 +295,9 @@ impl PyVaultConfig {
     #[pyo3(signature = (vault_dir=None))]
     fn new(vault_dir: Option<String>) -> PyResult<Self> {
         let cfg = if let Some(dir) = vault_dir {
-            let path = std::path::PathBuf::from(&dir);
+            let path = std::path::PathBuf::from(&dir)
+                .canonicalize()
+                .map_err(|e| PyIOError::new_err(format!("Invalid vault directory: {e}")))?;
             let dirs = crate::config::DirectoryPaths {
                 config_dir: path.join("config"),
                 data_dir: path.clone(),
@@ -335,7 +337,7 @@ impl PyVaultConfig {
 ///
 /// Example::
 ///
-///     from neuralvault import Vault, VaultConfig, ModelMetadata
+///     from aimodelvault import Vault, VaultConfig, ModelMetadata
 ///
 ///     vault = Vault()
 ///     vault.unlock(b"my-passphrase")
@@ -525,7 +527,7 @@ impl PyVault {
 ///
 /// Example::
 ///
-///     from neuralvault import ModelCard
+///     from aimodelvault import ModelCard
 ///
 ///     card = ModelCard(
 ///         name="my-model", version="1.0",
@@ -676,7 +678,6 @@ impl PyModelCard {
     }
 }
 
-
 // ── PyModelStream ────────────────────────────────────────────────────────────
 
 /// Iterator that yields fixed-size `bytes` chunks of a model.
@@ -719,6 +720,87 @@ impl PyModelStream {
         self.inner.total_size()
     }
 }
+
+// ── PyVaultBuilder ───────────────────────────────────────────────────────────
+
+/// Builder for configuring a `Vault` with optional backends.
+///
+/// Example::
+///
+///     from aimodelvault import VaultBuilder, VaultConfig
+///
+///     vault = VaultBuilder() \
+///         .config(VaultConfig()) \
+///         .sqlite_versions() \
+///         .build()
+///     vault.unlock(b"my-passphrase")
+#[pyclass(name = "VaultBuilder")]
+struct PyVaultBuilder {
+    config: Option<VaultConfig>,
+    use_sqlite: bool,
+    default_subscribers: bool,
+}
+
+#[pymethods]
+impl PyVaultBuilder {
+    #[new]
+    fn new() -> Self {
+        Self {
+            config: None,
+            use_sqlite: false,
+            default_subscribers: true,
+        }
+    }
+
+    /// Set a custom `VaultConfig`.
+    fn config(mut slf: PyRefMut<'_, Self>, config: &PyVaultConfig) -> PyRefMut<'_, Self> {
+        slf.config = Some(config.inner.clone());
+        slf
+    }
+
+    /// Use SQLite for version storage instead of JSON files.
+    fn sqlite_versions(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
+        slf.use_sqlite = true;
+        slf
+    }
+
+    /// Disable built-in audit and metrics event subscribers.
+    fn no_default_subscribers(mut slf: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
+        slf.default_subscribers = false;
+        slf
+    }
+
+    /// Build and return a configured `Vault`.
+    fn build(&self) -> PyResult<PyVault> {
+        let mut builder = crate::vault::VaultBuilder::new();
+        if let Some(cfg) = &self.config {
+            builder = builder.config(cfg.clone());
+        }
+        #[cfg(feature = "sqlite")]
+        if self.use_sqlite {
+            builder = builder.sqlite_versions();
+        }
+        #[cfg(not(feature = "sqlite"))]
+        if self.use_sqlite {
+            return Err(PyRuntimeError::new_err(
+                "SQLite version backend requires the 'sqlite' feature",
+            ));
+        }
+        if !self.default_subscribers {
+            builder = builder.no_default_subscribers();
+        }
+        let vault = builder.build().map_err(to_py_err)?;
+        Ok(PyVault { inner: vault })
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "VaultBuilder(sqlite={}, default_subscribers={})",
+            self.use_sqlite, self.default_subscribers
+        )
+    }
+}
+
 // ── PyVaultError wrapper ─────────────────────────────────────────────────────
 
 /// Standalone utility: SHA-256 hex digest of data.
@@ -735,10 +817,10 @@ fn version() -> &'static str {
 
 // ── module init ──────────────────────────────────────────────────────────────
 
-/// The `neuralvault._native` extension module.
+/// The `aimodelvault._native` extension module.
 #[pymodule]
 #[pyo3(name = "_native")]
-fn neuralvault_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn aimodelvault_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyModelFormat>()?;
     m.add_class::<PyModelMetadata>()?;
     m.add_class::<PyModelVersion>()?;

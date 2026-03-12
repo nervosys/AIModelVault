@@ -13,7 +13,7 @@ AI Model Vault is a **production-ready**, **FIPS 140-3 compliant** secure storag
 
 ### Key Highlights
 - ✅ **148 tests passing** (100% success rate)
-- ✅ **22+ AI model formats** supported
+- ✅ **23+ AI model formats** supported
 - ✅ **FIPS 140-3 compliant** security
 - ✅ **5,000+ lines** of documentation
 - ✅ **8 model utilities** fully implemented
@@ -31,7 +31,7 @@ AI Model Vault is a **production-ready**, **FIPS 140-3 compliant** secure storag
 | Secure Vault         | ✅ Production | 37/37   | Complete      |
 | Encryption (AES-GCM) | ✅ FIPS 140-3 | 14/14   | Complete      |
 | Version Control      | ✅ Production | 8/8     | Complete      |
-| Format Support (22+) | ✅ Production | 15/15   | Complete      |
+| Format Support (23+) | ✅ Production | 15/15   | Complete      |
 | Compression          | ✅ Production | 14/14   | Complete      |
 | XDG Compliance       | ✅ Production | 22/22   | Complete      |
 | **Total Core**       | **✅ Ready**  | **110** | **Complete**  |
@@ -79,7 +79,7 @@ AI Model Vault is a **production-ready**, **FIPS 140-3 compliant** secure storag
 - **Audit logging** for compliance
 
 ### 3. Production-Ready Features
-- **22+ model formats** - Works with any AI framework
+- **23+ model formats** - Works with any AI framework
 - **Version control** - Never lose a checkpoint
 - **Cloud storage** - S3, Azure, GCS backends
 - **Model utilities** - 8 tools for management
@@ -187,7 +187,7 @@ AI Model Vault is a **production-ready**, **FIPS 140-3 compliant** secure storag
 
 ### Immediate Value
 1. **Secure AI Model Storage** - Military-grade encryption
-2. **Universal Format Support** - 22+ formats work out-of-box
+2. **Universal Format Support** - 23+ formats work out-of-box
 3. **Version Control** - Track model evolution
 4. **Cloud Backup** - S3, Azure, GCS integration
 5. **Model Tools** - 8 utilities for management
@@ -207,8 +207,8 @@ cargo build --features cloud
 cargo build --features hdf5-support
 
 # From source
-git clone https://github.com/nervosys/aimodelvault.git
-cd aimodelvault && cargo build --release
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault && cargo build --release
 ```
 
 ---
@@ -300,11 +300,11 @@ cd aimodelvault && cargo build --release
 
 ## 📞 Support & Contact
 
-**Repository**: https://github.com/nervosys/aimodelvault  
+**Repository**: https://github.com/nervosys/AIModelVault  
 **Documentation**: https://aimodelvault.nervosys.ai  
 **Email**: dev@nervosys.ai  
 **Security**: security@nervosys.ai  
-**License**: MIT  
+**License**: AGPL-3.0-or-later  
 
 ---
 

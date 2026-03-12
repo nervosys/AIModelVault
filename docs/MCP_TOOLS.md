@@ -2,7 +2,7 @@
 
 ## Overview
 
-NeuronVault provides comprehensive support for **Model Context Protocol (MCP)** and tool-based interactions, enabling AI agents and applications to execute structured operations on RAG systems, knowledge bases, and custom workflows.
+AI Model Vault provides comprehensive support for **Model Context Protocol (MCP)** and tool-based interactions, enabling AI agents and applications to execute structured operations on RAG systems, knowledge bases, and custom workflows.
 
 ## Table of Contents
 
@@ -45,7 +45,7 @@ println!("Results: {:?}", result.data);
 
 ### What is MCP?
 
-Model Context Protocol (MCP) provides a standardized way for AI models and agents to interact with external tools and services. In NeuronVault, MCP enables:
+Model Context Protocol (MCP) provides a standardized way for AI models and agents to interact with external tools and services. In AI Model Vault, MCP enables:
 
 - **Structured Tool Invocation**: Define tools with clear input/output schemas
 - **Context Management**: Pass contextual information to tools
@@ -170,7 +170,7 @@ if result.success {
 
 ## Built-in Tools
 
-NeuronVault includes 4 built-in RAG tools:
+AI Model Vault includes 4 built-in RAG tools:
 
 ### 1. search_documents
 

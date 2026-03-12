@@ -1,7 +1,7 @@
 Utilities API
 =============
 
-.. module:: neuralvault
+.. module:: aimodelvault
    :noindex:
 
 Standalone utility functions available from the native bindings.
@@ -21,7 +21,7 @@ sha256_hex
 
    .. code-block:: python
 
-      from neuralvault import sha256_hex
+      from aimodelvault import sha256_hex
 
       digest = sha256_hex(b"Hello, world!")
       print(digest)  # "315f5bdb76d0..."
@@ -41,5 +41,5 @@ version
 
    .. code-block:: python
 
-      import neuralvault
-      print(neuralvault.version())  # "0.1.0"
+      import aimodelvault
+      print(aimodelvault.version())  # "1.1.0"

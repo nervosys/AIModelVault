@@ -400,3 +400,229 @@ impl Default for MCPServer {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tool_result_success_and_failure() {
+        let ok = ToolResult::success(serde_json::json!({"key": "val"}));
+        assert!(ok.success);
+        assert!(ok.error.is_none());
+
+        let err = ToolResult::failure("bad input".to_string());
+        assert!(!err.success);
+        assert_eq!(err.error.as_deref(), Some("bad input"));
+    }
+
+    #[test]
+    fn test_tool_result_with_metadata() {
+        let tr = ToolResult::success(serde_json::json!("data"))
+            .with_metadata("k".to_string(), "v".to_string());
+        assert!(!tr.metadata.is_empty());
+        assert_eq!(tr.metadata["k"], "v");
+    }
+
+    #[test]
+    fn test_mcp_tool_builder() {
+        let tool = MCPTool::new("search".to_string(), "Search docs".to_string())
+            .add_parameter("query", "string", "The query", true)
+            .add_parameter("limit", "integer", "Max results", false)
+            .with_metadata("version".to_string(), "1.0".to_string());
+        assert_eq!(tool.name, "search");
+        assert_eq!(tool.input_schema["properties"]["query"]["type"], "string");
+        assert!(tool.input_schema["required"]
+            .as_array()
+            .unwrap()
+            .contains(&"query".into()));
+        assert!(!tool.metadata.is_empty());
+    }
+
+    #[test]
+    fn test_tool_context_builder() {
+        let ctx = ToolContext::new()
+            .with_data("key1".to_string(), "value1".to_string())
+            .with_data("key2".to_string(), "42".to_string());
+        assert_eq!(ctx.data["key1"], "value1");
+        assert_eq!(ctx.data["key2"], "42");
+    }
+
+    #[test]
+    fn test_mcp_server_register_and_list() {
+        let mut server = MCPServer::new();
+        let tool = MCPTool::new("test_tool".to_string(), "A test tool".to_string());
+        server
+            .register_tool(tool, |_params, _ctx| {
+                Ok(ToolResult::success(serde_json::json!("done")))
+            })
+            .unwrap();
+
+        let tools = server.list_tools();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0].name, "test_tool");
+
+        let retrieved = server.get_tool("test_tool").unwrap();
+        assert_eq!(retrieved.name, "test_tool");
+    }
+
+    #[test]
+    fn test_mcp_server_execute_tool() {
+        let mut server = MCPServer::new();
+        let tool = MCPTool::new("echo".to_string(), "Echo tool".to_string());
+        server
+            .register_tool(tool, |params, _ctx| {
+                let msg = params.get("msg").and_then(|v| v.as_str()).unwrap_or("none");
+                Ok(ToolResult::success(serde_json::json!({"echo": msg})))
+            })
+            .unwrap();
+
+        let ctx = ToolContext::new();
+        let params = serde_json::json!({"msg": "hello"});
+        let result = server.execute_tool("echo", params, &ctx).unwrap();
+        assert!(result.success);
+        assert_eq!(result.data["echo"], "hello");
+    }
+
+    #[test]
+    fn test_mcp_server_execute_nonexistent() {
+        let server = MCPServer::new();
+        let ctx = ToolContext::new();
+        let result = server.execute_tool("ghost", serde_json::json!({}), &ctx);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mcp_server_register_builtins() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let tools = server.list_tools();
+        assert!(tools.len() >= 4);
+
+        // Verify builtin tool names
+        let names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
+        assert!(names.contains(&"search_documents"));
+        assert!(names.contains(&"add_document"));
+        assert!(names.contains(&"chunk_text"));
+        assert!(names.contains(&"execute_rule"));
+    }
+
+    #[test]
+    fn test_builtin_chunk_text() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let params = serde_json::json!({
+            "text": "Hello world. This is a test. Another sentence here.",
+            "chunk_size": 20,
+            "overlap": 5,
+        });
+        let result = server.execute_tool("chunk_text", params, &ctx).unwrap();
+        assert!(result.success);
+        let chunks = result.data["chunks"].as_array().unwrap();
+        assert!(!chunks.is_empty());
+    }
+
+    #[test]
+    fn test_builtin_execute_rule() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let params = serde_json::json!({
+            "rule_id": "test_rule",
+            "context": {"key": "value"},
+        });
+        let result = server.execute_tool("execute_rule", params, &ctx).unwrap();
+        assert!(result.success);
+        assert_eq!(result.data["rule_id"], "test_rule");
+        assert_eq!(result.data["status"], "accepted");
+    }
+
+    #[test]
+    fn test_builtin_search_documents() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let params = serde_json::json!({
+            "query": "test query",
+            "top_k": 5,
+        });
+        let result = server
+            .execute_tool("search_documents", params, &ctx)
+            .unwrap();
+        assert!(result.success);
+    }
+
+    #[test]
+    fn test_builtin_add_document() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let params = serde_json::json!({
+            "id": "doc1",
+            "content": "Some document content",
+            "metadata": {"source": "test"},
+        });
+        let result = server.execute_tool("add_document", params, &ctx).unwrap();
+        assert!(result.success);
+    }
+
+    #[test]
+    fn test_builtin_search_documents_missing_query() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let result = server.execute_tool("search_documents", serde_json::json!({}), &ctx);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_builtin_add_document_missing_id() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let result = server.execute_tool("add_document", serde_json::json!({}), &ctx);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_builtin_add_document_missing_content() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let result = server.execute_tool("add_document", serde_json::json!({"id": "x"}), &ctx);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_builtin_chunk_text_missing_text() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let result = server.execute_tool("chunk_text", serde_json::json!({}), &ctx);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_builtin_execute_rule_missing_rule_id() {
+        let mut server = MCPServer::new();
+        server.register_builtin_tools().unwrap();
+        let ctx = ToolContext::new();
+        let result = server.execute_tool("execute_rule", serde_json::json!({"context": {}}), &ctx);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_tool_context_default_impl() {
+        let ctx = ToolContext::default();
+        assert!(ctx.document_store.is_none());
+        assert!(ctx.knowledge_base.is_none());
+        assert!(ctx.data.is_empty());
+    }
+
+    #[test]
+    fn test_mcp_server_default_impl() {
+        let server = MCPServer::default();
+        assert!(server.list_tools().is_empty());
+    }
+}

@@ -23,6 +23,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use zeroize::Zeroize;
 
 use crate::error::{Result, VaultError};
 
@@ -143,6 +144,14 @@ pub struct PeerConfig {
     pub api_key: Option<String>,
     /// Whether sync is enabled for this peer
     pub enabled: bool,
+}
+
+impl Drop for PeerConfig {
+    fn drop(&mut self) {
+        if let Some(ref mut key) = self.api_key {
+            key.zeroize();
+        }
+    }
 }
 
 /// Sync state for a model
@@ -711,7 +720,18 @@ impl FederationManager {
         };
 
         let json = serde_json::to_string_pretty(&saved)?;
-        std::fs::write(&state.state_file, json)?;
+
+        // Write with restrictive permissions
+        {
+            use std::io::Write;
+            let mut opts = std::fs::OpenOptions::new();
+            opts.write(true).create(true).truncate(true);
+            crate::permissions::set_create_mode(&mut opts);
+            let mut f = opts.open(&state.state_file)?;
+            f.write_all(json.as_bytes())?;
+        }
+        crate::permissions::restrict_file(&state.state_file)?;
+
         Ok(())
     }
 

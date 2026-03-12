@@ -55,6 +55,13 @@ impl ApiError {
             message: msg.into(),
         }
     }
+
+    pub fn rate_limited(msg: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::TOO_MANY_REQUESTS,
+            message: msg.into(),
+        }
+    }
 }
 
 impl IntoResponse for ApiError {
@@ -74,11 +81,15 @@ impl From<VaultError> for ApiError {
                 ApiError::not_found(err.to_string())
             }
             VaultError::AuthenticationFailed => ApiError::unauthorized(err.to_string()),
-            VaultError::SecurityViolation(_) => ApiError::unauthorized(err.to_string()),
+            VaultError::SecurityViolation(_) => ApiError::unauthorized("Access denied"),
             VaultError::InvalidInput(_) | VaultError::UnsupportedFormat(_) => {
                 ApiError::bad_request(err.to_string())
             }
-            _ => ApiError::internal(err.to_string()),
+            // Don't leak internal error details to clients
+            _ => {
+                tracing::error!("Internal error: {err}");
+                ApiError::internal("An internal error occurred")
+            }
         }
     }
 }

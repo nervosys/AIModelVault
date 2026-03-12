@@ -58,7 +58,7 @@
 ### 2. Format Support
 **Files**: `src/formats.rs`
 
-✅ **22+ Model Formats**:
+✅ **23+ Model Formats**:
 - PyTorch (.pt, .pth, .bin)
 - TensorFlow (.pb, .h5, .keras)
 - ONNX (.onnx)
@@ -237,7 +237,7 @@
    - Vulnerability reporting
 
 8. **FORMATS.md**
-   - All 22+ formats
+   - All 23+ formats
    - Magic numbers
    - Framework mappings
 
@@ -384,7 +384,7 @@
 - [x] Secure encryption system
 - [x] Model storage/retrieval
 - [x] Version control
-- [x] Format support (22+)
+- [x] Format support (23+)
 - [x] Compression
 
 ### Phase 2: Utilities ✅
@@ -482,7 +482,7 @@
 NeuronVault is a **production-ready**, **feature-complete** AI model vault with:
 
 - ✅ **148 tests** (100% passing)
-- ✅ **22+ model formats** supported
+- ✅ **23+ model formats** supported
 - ✅ **8 utility components** fully implemented
 - ✅ **5 RAG components** (NEW)
 - ✅ **15 CLI commands** all working

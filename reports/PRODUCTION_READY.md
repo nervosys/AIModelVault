@@ -101,7 +101,7 @@ Warnings: 2 (optional dependencies only)
 - **Version Control** - Complete history, lineage tracking
 - **RAG System** - Document store, vector search, MCP
 - **8 Utilities** - Archive, dedupe, analyze, export, cache, etc.
-- **22+ Formats** - PyTorch, ONNX, Safetensors, GGUF, etc.
+- **23+ Formats** - PyTorch, ONNX, Safetensors, GGUF, etc.
 
 ### ⚠️ Optional (Low-Risk Warnings)
 
@@ -281,7 +281,7 @@ cargo build --features hdf5    # HDF5 support (requires system lib)
 ### What You Get
 
 ✅ **Enterprise-grade security** - FIPS 140-3, CMMC 2.0 Level 2  
-✅ **Universal compatibility** - 22+ model formats  
+✅ **Universal compatibility** - 23+ model formats  
 ✅ **Complete version control** - Time travel for AI models  
 ✅ **Production hardened** - Zero critical vulnerabilities  
 ✅ **Cloud-ready** - S3 and Azure support  

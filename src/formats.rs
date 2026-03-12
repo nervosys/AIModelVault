@@ -303,6 +303,7 @@ mod tests {
         assert_eq!(ModelFormat::Safetensors.extension(), "safetensors");
         assert_eq!(ModelFormat::GGUF.extension(), "gguf");
         assert_eq!(ModelFormat::PyTorch.extension(), "pt");
+        assert_eq!(ModelFormat::TensorRT.extension(), "plan");
         assert_eq!(ModelFormat::ONNX.extension(), "onnx");
         assert_eq!(ModelFormat::TFLite.extension(), "tflite");
         assert_eq!(ModelFormat::CoreML.extension(), "mlmodel");
@@ -315,5 +316,155 @@ mod tests {
         assert_eq!(ModelFormat::TensorRT.name(), "TensorRT");
         assert_eq!(ModelFormat::CoreML.name(), "Core ML");
         assert_eq!(ModelFormat::TFLite.name(), "TensorFlow Lite");
+    }
+
+    #[test]
+    fn test_format_extension_all_variants() {
+        // Cover lines 111, 114, 116, 119 — TorchScript, TensorFlow, Keras, TVM
+        assert_eq!(ModelFormat::TorchScript.extension(), "pt");
+        assert_eq!(ModelFormat::TensorFlow.extension(), "pb");
+        assert_eq!(ModelFormat::Keras.extension(), "h5");
+        assert_eq!(ModelFormat::TVM.extension(), "so");
+        assert_eq!(ModelFormat::OpenVINO.extension(), "xml");
+        assert_eq!(ModelFormat::NCNN.extension(), "param");
+        assert_eq!(ModelFormat::MNN.extension(), "mnn");
+        assert_eq!(ModelFormat::RKNN.extension(), "rknn");
+        assert_eq!(ModelFormat::HDF5.extension(), "h5");
+        assert_eq!(ModelFormat::NumPy.extension(), "npy");
+        assert_eq!(ModelFormat::Custom("custom".into()).extension(), "custom");
+    }
+
+    #[test]
+    fn test_format_name_all_variants() {
+        // Cover line 146 — TorchScript name
+        assert_eq!(ModelFormat::TorchScript.name(), "TorchScript");
+        assert_eq!(ModelFormat::TensorFlow.name(), "TensorFlow");
+        assert_eq!(ModelFormat::Keras.name(), "Keras");
+        assert_eq!(ModelFormat::TVM.name(), "TVM");
+        assert_eq!(ModelFormat::Custom("custom".into()).name(), "custom");
+    }
+
+    #[test]
+    fn test_model_metadata_new() {
+        // Cover line 175 — ModelMetadata::new
+        let meta = ModelMetadata::new("model".to_string(), ModelFormat::PyTorch);
+        assert_eq!(meta.name, "model");
+        assert!(meta.description.is_none());
+    }
+
+    #[test]
+    fn test_format_converter_register_and_convert() {
+        // Cover line 258 — converter(data)
+        let mut fc = FormatConverter::new();
+        fc.register(ModelFormat::PyTorch, ModelFormat::ONNX, |data| {
+            Ok(data.to_vec())
+        });
+        assert!(fc.can_convert(ModelFormat::PyTorch, ModelFormat::ONNX));
+        let result = fc
+            .convert(b"test", ModelFormat::PyTorch, ModelFormat::ONNX)
+            .unwrap();
+        assert_eq!(result, b"test");
+    }
+
+    #[test]
+    fn test_format_converter_same_format() {
+        let fc = FormatConverter::new();
+        let result = fc
+            .convert(b"data", ModelFormat::PyTorch, ModelFormat::PyTorch)
+            .unwrap();
+        assert_eq!(result, b"data");
+    }
+
+    #[test]
+    fn test_format_display() {
+        let s = format!("{}", ModelFormat::Safetensors);
+        assert_eq!(s, "Safetensors");
+    }
+
+    #[test]
+    fn test_from_extension_all_variants() {
+        // Cover all from_extension branches
+        assert_eq!(ModelFormat::from_extension("mlx"), ModelFormat::MLX);
+        assert_eq!(ModelFormat::from_extension("pb"), ModelFormat::TensorFlow);
+        assert_eq!(ModelFormat::from_extension("h5"), ModelFormat::Keras);
+        assert_eq!(ModelFormat::from_extension("keras"), ModelFormat::Keras);
+        assert_eq!(ModelFormat::from_extension("xml"), ModelFormat::OpenVINO);
+        assert_eq!(ModelFormat::from_extension("param"), ModelFormat::NCNN);
+        assert_eq!(ModelFormat::from_extension("mnn"), ModelFormat::MNN);
+        assert_eq!(ModelFormat::from_extension("rknn"), ModelFormat::RKNN);
+        assert_eq!(
+            ModelFormat::from_extension("caffemodel"),
+            ModelFormat::Caffe
+        );
+        assert_eq!(ModelFormat::from_extension("params"), ModelFormat::MXNet);
+        assert_eq!(ModelFormat::from_extension("weights"), ModelFormat::Darknet);
+        assert_eq!(ModelFormat::from_extension("hdf5"), ModelFormat::HDF5);
+        assert_eq!(ModelFormat::from_extension("pkl"), ModelFormat::Pickle);
+        assert_eq!(ModelFormat::from_extension("pickle"), ModelFormat::Pickle);
+        assert_eq!(ModelFormat::from_extension("npy"), ModelFormat::NumPy);
+        assert_eq!(ModelFormat::from_extension("npz"), ModelFormat::NumPy);
+        assert_eq!(ModelFormat::from_extension("pth"), ModelFormat::PyTorch);
+        assert_eq!(ModelFormat::from_extension("bin"), ModelFormat::PyTorch);
+        assert_eq!(ModelFormat::from_extension("mlmodelc"), ModelFormat::CoreML);
+        assert_eq!(
+            ModelFormat::from_extension("xyz"),
+            ModelFormat::Custom("xyz".to_string())
+        );
+    }
+
+    #[test]
+    fn test_name_all_remaining_variants() {
+        assert_eq!(ModelFormat::NCNN.name(), "NCNN");
+        assert_eq!(ModelFormat::MNN.name(), "MNN");
+        assert_eq!(ModelFormat::RKNN.name(), "RKNN");
+        assert_eq!(ModelFormat::Caffe.name(), "Caffe");
+        assert_eq!(ModelFormat::MXNet.name(), "MXNet");
+        assert_eq!(ModelFormat::Darknet.name(), "Darknet");
+        assert_eq!(ModelFormat::HDF5.name(), "HDF5");
+        assert_eq!(ModelFormat::Pickle.name(), "Pickle");
+        assert_eq!(ModelFormat::NumPy.name(), "NumPy");
+        assert_eq!(ModelFormat::MLX.name(), "MLX");
+        assert_eq!(ModelFormat::OpenVINO.name(), "OpenVINO");
+    }
+
+    #[test]
+    fn test_model_metadata_builder_chain() {
+        let meta = ModelMetadata::new("m".to_string(), ModelFormat::ONNX)
+            .with_description("desc".to_string())
+            .with_framework("pytorch".to_string())
+            .with_task("classification".to_string())
+            .with_architecture("ResNet".to_string())
+            .with_parameters(1_000_000)
+            .add_custom_field("license".to_string(), "MIT".to_string());
+
+        assert_eq!(meta.description, Some("desc".to_string()));
+        assert_eq!(meta.framework, Some("pytorch".to_string()));
+        assert_eq!(meta.task, Some("classification".to_string()));
+        assert_eq!(meta.architecture, Some("ResNet".to_string()));
+        assert_eq!(meta.parameters, Some(1_000_000));
+        assert_eq!(meta.custom_fields.get("license"), Some(&"MIT".to_string()));
+    }
+
+    #[test]
+    fn test_format_converter_missing_conversion() {
+        let fc = FormatConverter::new();
+        let result = fc.convert(b"data", ModelFormat::PyTorch, ModelFormat::ONNX);
+        assert!(result.is_err());
+        assert!(!fc.can_convert(ModelFormat::PyTorch, ModelFormat::ONNX));
+    }
+
+    #[test]
+    fn test_format_converter_default() {
+        let fc = FormatConverter::default();
+        assert!(!fc.can_convert(ModelFormat::PyTorch, ModelFormat::ONNX));
+    }
+
+    #[test]
+    fn test_extension_all_remaining() {
+        assert_eq!(ModelFormat::Caffe.extension(), "caffemodel");
+        assert_eq!(ModelFormat::MXNet.extension(), "params");
+        assert_eq!(ModelFormat::Darknet.extension(), "weights");
+        assert_eq!(ModelFormat::Pickle.extension(), "pkl");
+        assert_eq!(ModelFormat::MLX.extension(), "npz");
     }
 }

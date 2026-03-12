@@ -1,9 +1,9 @@
 //! Archive and extract command handlers.
 
 use ai_model_vault::utils::ModelArchive;
-use ai_model_vault::{Result, Vault, VaultConfig};
+use ai_model_vault::{Result, VaultConfig};
 
-use crate::cli::helpers::prompt_passphrase;
+use crate::cli::helpers::{build_vault, prompt_passphrase};
 
 pub fn handle_archive(
     models: Vec<String>,
@@ -11,10 +11,11 @@ pub fn handle_archive(
     format: String,
     versions: Option<Vec<u32>>,
     config: VaultConfig,
+    use_sqlite: bool,
 ) -> Result<()> {
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
 
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
     println!("Archiving {} models...", models.len());

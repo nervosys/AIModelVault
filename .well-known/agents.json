@@ -17,12 +17,14 @@
 
   "discovery": {
     "ontology": ".well-known/ontology.jsonld",
+    "ontology_version": "2.0.0",
     "mcp_manifest": ".well-known/mcp-manifest.json",
     "ai_plugin": ".well-known/ai-plugin.json",
     "openapi": ".well-known/openapi.yaml",
     "readme": "README.md",
     "changelog": "CHANGELOG.md",
-    "architecture": "docs/ARCHITECTURE.md"
+    "architecture": "docs/ARCHITECTURE_V2.md",
+    "architecture_legacy": "docs/ARCHITECTURE.md"
   },
 
   "agent_interfaces": [

@@ -68,8 +68,8 @@ cargo install cargo-watch
 
 ```bash
 # Clone repository
-git clone https://github.com/nervosys/aimodelvault.git
-cd aimodelvault
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
 
 # Build
 cargo build

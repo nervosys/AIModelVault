@@ -41,6 +41,9 @@ export default function Header() {
             <Link href="/docs" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
               Docs
             </Link>
+            <a href="/mkdocs/" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
+              Full Docs
+            </a>
             <Link href="/demos" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
               Demos
             </Link>
@@ -51,7 +54,7 @@ export default function Header() {
               Quick Start
             </Link>
             <a
-              href="https://github.com/nervosys/ai-model-vault"
+              href="https://github.com/nervosys/AIModelVault"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
@@ -62,7 +65,7 @@ export default function Header() {
 
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-              v1.0.0
+              v1.2.0
             </span>
             <a
               href="https://crates.io/crates/ai-model-vault"

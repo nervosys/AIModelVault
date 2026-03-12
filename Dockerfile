@@ -11,7 +11,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1 — Builder (uses Rust slim to compile the binary)
 # ---------------------------------------------------------------------------
-FROM rust:1.82-slim-bookworm AS builder
+FROM rust:1.85-slim-bookworm AS builder
 
 ARG FEATURES=""
 
@@ -30,9 +30,9 @@ COPY tests/ tests/
 
 # Build the release binary (statically linked via musl)
 RUN if [ -z "$FEATURES" ]; then \
-      cargo build --release --target x86_64-unknown-linux-musl; \
+    cargo build --release --target x86_64-unknown-linux-musl; \
     else \
-      cargo build --release --target x86_64-unknown-linux-musl --features "$FEATURES"; \
+    cargo build --release --target x86_64-unknown-linux-musl --features "$FEATURES"; \
     fi
 
 # ---------------------------------------------------------------------------
@@ -64,10 +64,10 @@ EXPOSE 8080
 VOLUME ["/data", "/config", "/cache"]
 
 LABEL org.opencontainers.image.title="AI Model Vault" \
-      org.opencontainers.image.description="Universal secure vault for AI model formats" \
-      org.opencontainers.image.version="1.0.0" \
-      org.opencontainers.image.source="https://github.com/nervosys/ai-model-vault" \
-      org.opencontainers.image.licenses="AGPL-3.0-or-later"
+    org.opencontainers.image.description="Universal secure vault for AI model formats" \
+    org.opencontainers.image.version="1.1.0" \
+    org.opencontainers.image.source="https://github.com/nervosys/AIModelVault" \
+    org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 # ---------------------------------------------------------------------------
 # Stage 2b — Debian runtime (for environments requiring glibc)
@@ -100,7 +100,7 @@ EXPOSE 8080
 VOLUME ["/data", "/config", "/cache"]
 
 LABEL org.opencontainers.image.title="AI Model Vault" \
-      org.opencontainers.image.description="Universal secure vault for AI model formats" \
-      org.opencontainers.image.version="1.0.0" \
-      org.opencontainers.image.source="https://github.com/nervosys/ai-model-vault" \
-      org.opencontainers.image.licenses="AGPL-3.0-or-later"
+    org.opencontainers.image.description="Universal secure vault for AI model formats" \
+    org.opencontainers.image.version="1.0.0" \
+    org.opencontainers.image.source="https://github.com/nervosys/ai-model-vault" \
+    org.opencontainers.image.licenses="AGPL-3.0-or-later"

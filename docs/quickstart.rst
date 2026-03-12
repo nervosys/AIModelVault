@@ -8,24 +8,24 @@ Installation
 
 .. code-block:: bash
 
-   pip install neuralvault
+   pip install aimodelvault
 
 **From source (requires Rust toolchain):**
 
 .. code-block:: bash
 
    pip install maturin
-   git clone https://github.com/nervosys/ai-model-vault.git
-   cd ai-model-vault
+   git clone https://github.com/nervosys/AIModelVault.git
+   cd AIModelVault
    maturin develop --features python
 
 **Verify installation:**
 
 .. code-block:: python
 
-   import neuralvault
-   print(neuralvault.version())       # e.g. "0.1.0"
-   print(neuralvault._NATIVE)         # True if native bindings loaded
+   import aimodelvault
+   print(aimodelvault.version())       # e.g. "1.1.0"
+   print(aimodelvault._NATIVE)         # True if native bindings loaded
 
 
 Basic Usage
@@ -36,7 +36,7 @@ Create a Vault, Store a Model
 
 .. code-block:: python
 
-   from neuralvault import Vault, VaultConfig, ModelMetadata
+   from aimodelvault import Vault, VaultConfig, ModelMetadata
 
    # Create or open a vault (XDG-compliant default location)
    vault = Vault()
@@ -85,7 +85,7 @@ Format Detection
 
 .. code-block:: python
 
-   from neuralvault import ModelFormat
+   from aimodelvault import ModelFormat
 
    fmt = ModelFormat.detect("weights.safetensors")
    print(fmt.name)       # "Safetensors"
@@ -97,7 +97,7 @@ Model Cards
 
 .. code-block:: python
 
-   from neuralvault import ModelCard
+   from aimodelvault import ModelCard
 
    card = ModelCard(
        "my-model", "1.0", "transformer",
@@ -140,7 +140,7 @@ Cryptographic Utilities
 
 .. code-block:: python
 
-   from neuralvault import sha256_hex
+   from aimodelvault import sha256_hex
 
    digest = sha256_hex(b"model bytes here")
    print(digest)  # 64-char hex SHA-256

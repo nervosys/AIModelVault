@@ -1,7 +1,7 @@
 Model Card API
 ==============
 
-.. module:: neuralvault
+.. module:: aimodelvault
    :noindex:
 
 .. class:: ModelCard(name, version, model_type, *, description=None, developers=None, license=None, primary_use=None, out_of_scope=None)
@@ -100,7 +100,7 @@ Model Card API
 
    .. code-block:: python
 
-      from neuralvault import ModelCard
+      from aimodelvault import ModelCard
 
       card = ModelCard(
           "llama-finetune", "2.0", "transformer",

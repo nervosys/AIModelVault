@@ -38,4 +38,7 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# mkdocs build output (generated from ../docs/ via mkdocs build)
+/public/mkdocs/
 next-env.d.ts

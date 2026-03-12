@@ -1,11 +1,11 @@
 //! Cloud storage command handlers (push, pull, list, config).
 
-use ai_model_vault::{Result, Vault, VaultConfig, VaultError};
+use ai_model_vault::{Result, VaultConfig, VaultError};
 
 use crate::cli::args::CloudCommands;
-use crate::cli::helpers::prompt_passphrase;
+use crate::cli::helpers::{build_vault, prompt_passphrase};
 
-pub fn handle_cloud(command: CloudCommands, config: VaultConfig) -> Result<()> {
+pub fn handle_cloud(command: CloudCommands, config: VaultConfig, use_sqlite: bool) -> Result<()> {
     match command {
         CloudCommands::Push {
             model,
@@ -19,7 +19,7 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig) -> Result<()> {
             println!("   Bucket: {}", bucket);
 
             // Open vault and get model
-            let mut vault = Vault::new(Some(config.clone()))?;
+            let mut vault = build_vault(config.clone(), use_sqlite)?;
             let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
             vault.unlock(passphrase)?;
 
@@ -48,8 +48,7 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig) -> Result<()> {
                 .ok_or_else(|| VaultError::VersionNotFound(version_num, model.clone()))?;
 
             // Construct remote path
-            let _remote_path =
-                format!("{}/{}/v{}.vault", model, model_version.format, version_num);
+            let _remote_path = format!("{}/{}/v{}.vault", model, model_version.format, version_num);
 
             // Push to cloud based on provider
             match provider.to_lowercase().as_str() {
@@ -58,8 +57,8 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig) -> Result<()> {
                     {
                         use ai_model_vault::storage::StorageConfig;
                         println!("📤 Uploading to S3...");
-                        let region = std::env::var("AWS_REGION")
-                            .unwrap_or_else(|_| "us-east-1".to_string());
+                        let region =
+                            std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
                         println!("   Region: {}", region);
                         println!("   Path: {}", _remote_path);
                         println!("   Size: {} bytes", _data.len());
@@ -160,8 +159,8 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig) -> Result<()> {
                     #[cfg(feature = "s3")]
                     {
                         use ai_model_vault::storage::StorageConfig;
-                        let region = std::env::var("AWS_REGION")
-                            .unwrap_or_else(|_| "us-east-1".to_string());
+                        let region =
+                            std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
                         println!("📥 Downloading from S3...");
 
                         let storage_config = StorageConfig::S3 {
@@ -182,7 +181,7 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig) -> Result<()> {
 
                         // Store into vault
                         let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
-                        let mut vault = Vault::new(Some(config.clone()))?;
+                        let mut vault = build_vault(config.clone(), use_sqlite)?;
                         vault.unlock(passphrase)?;
 
                         let model_format = ModelFormat::from_extension(
@@ -232,7 +231,7 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig) -> Result<()> {
 
                         // Store into vault
                         let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
-                        let mut vault = Vault::new(Some(config.clone()))?;
+                        let mut vault = build_vault(config.clone(), use_sqlite)?;
                         vault.unlock(passphrase)?;
 
                         let model_format = ModelFormat::from_extension(
@@ -285,8 +284,8 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig) -> Result<()> {
                     #[cfg(feature = "s3")]
                     {
                         use ai_model_vault::storage::StorageConfig;
-                        let region = std::env::var("AWS_REGION")
-                            .unwrap_or_else(|_| "us-east-1".to_string());
+                        let region =
+                            std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
 
                         let storage_config = StorageConfig::S3 {
                             bucket: bucket.clone(),

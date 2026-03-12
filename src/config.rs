@@ -80,6 +80,16 @@ pub struct StorageSettings {
     pub max_versions: u32,
     pub auto_cleanup: bool,
     pub checkpoint_format: String,
+    /// Models larger than this threshold (in bytes) use chunked streaming
+    /// encryption instead of monolithic encryption. Default: 16 MiB.
+    /// Set to 0 to always use streaming, or `u64::MAX` to disable.
+    #[serde(default = "default_streaming_threshold")]
+    pub streaming_threshold: u64,
+}
+
+/// Default streaming threshold: 16 MiB.
+fn default_streaming_threshold() -> u64 {
+    16 * 1024 * 1024
 }
 
 /// Security policy settings (passphrase, session timeout, audit).
@@ -213,14 +223,7 @@ impl VaultConfig {
         ] {
             if !dir.exists() {
                 fs::create_dir_all(dir)?;
-
-                // Set restrictive permissions on Unix
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    let perms = std::fs::Permissions::from_mode(0o700);
-                    fs::set_permissions(dir, perms)?;
-                }
+                crate::permissions::restrict_dir(dir)?;
             }
         }
         Ok(())
@@ -229,7 +232,7 @@ impl VaultConfig {
     /// Load configuration from file
     fn load_from_file(path: &PathBuf, dirs: DirectoryPaths) -> Result<Self> {
         let contents = fs::read_to_string(path)?;
-        let mut config: VaultConfig = serde_yaml::from_str(&contents)?;
+        let mut config: VaultConfig = serde_yaml_ng::from_str(&contents)?;
         config.dirs = dirs;
         Ok(config)
     }
@@ -253,6 +256,7 @@ impl VaultConfig {
                 max_versions: 10,
                 auto_cleanup: true,
                 checkpoint_format: "v{version}_{timestamp}".to_string(),
+                streaming_threshold: default_streaming_threshold(),
             },
             security: SecuritySettings {
                 require_passphrase: true,
@@ -272,16 +276,9 @@ impl VaultConfig {
     /// Save configuration to file
     pub fn save(&self) -> Result<()> {
         let config_file = self.dirs.config_dir.join("config.yaml");
-        let contents = serde_yaml::to_string(self)?;
+        let contents = serde_yaml_ng::to_string(self)?;
         fs::write(&config_file, contents)?;
-
-        // Set secure permissions
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let perms = std::fs::Permissions::from_mode(0o600);
-            fs::set_permissions(&config_file, perms)?;
-        }
+        crate::permissions::restrict_file(&config_file)?;
 
         Ok(())
     }
@@ -323,5 +320,138 @@ impl VaultConfig {
 impl Default for VaultConfig {
     fn default() -> Self {
         Self::new().expect("Failed to create default configuration: home directory unavailable")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_telemetry_settings_default() {
+        // Covers line 126 — TelemetrySettings::default()
+        let ts = TelemetrySettings::default();
+        assert!(ts.enabled);
+        assert!(!ts.device_id.is_empty());
+    }
+
+    #[test]
+    fn test_vault_config_with_dirs() {
+        // Covers line 165 — VaultConfig::with_dirs()
+        let temp = tempfile::tempdir().unwrap();
+        let dirs = DirectoryPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+            cache_dir: temp.path().join("cache"),
+            vault_dir: temp.path().join("vaults"),
+            log_dir: temp.path().join("logs"),
+            backends_dir: temp.path().join("backends"),
+            utilities_dir: temp.path().join("utils"),
+            databases_dir: temp.path().join("dbs"),
+        };
+        let config = VaultConfig::with_dirs(dirs).unwrap();
+        assert!(config.dirs.config_dir.starts_with(temp.path()));
+    }
+
+    #[test]
+    fn test_vault_config_new() {
+        // Covers lines 155, 158, 159, 160 — VaultConfig::new() both branches
+        let config = VaultConfig::new().unwrap();
+        assert!(!config.dirs.config_dir.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_compression_level_settings() {
+        let mut config = VaultConfig::new().unwrap();
+        config.compression.level = 0;
+        assert!(matches!(
+            config.get_compression_level(),
+            CompressionLevel::None
+        ));
+        config.compression.level = 1;
+        assert!(matches!(
+            config.get_compression_level(),
+            CompressionLevel::Fast
+        ));
+        config.compression.level = 9;
+        assert!(matches!(
+            config.get_compression_level(),
+            CompressionLevel::Maximum
+        ));
+        config.compression.level = 5;
+        assert!(matches!(
+            config.get_compression_level(),
+            CompressionLevel::Balanced
+        ));
+    }
+
+    #[test]
+    fn test_compression_algorithm_variants() {
+        let mut config = VaultConfig::new().unwrap();
+        config.compression.algorithm = "gzip".to_string();
+        assert!(matches!(
+            config.get_compression_algorithm(),
+            CompressionAlgorithm::Gzip
+        ));
+        config.compression.algorithm = "lzma".to_string();
+        assert!(matches!(
+            config.get_compression_algorithm(),
+            CompressionAlgorithm::Lzma
+        ));
+        config.compression.algorithm = "none".to_string();
+        assert!(matches!(
+            config.get_compression_algorithm(),
+            CompressionAlgorithm::None
+        ));
+        config.compression.algorithm = "unknown_algo".to_string();
+        assert!(matches!(
+            config.get_compression_algorithm(),
+            CompressionAlgorithm::Gzip
+        ));
+    }
+
+    #[test]
+    fn test_vault_config_save_and_reload() {
+        let temp = tempfile::tempdir().unwrap();
+        let dirs = DirectoryPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+            cache_dir: temp.path().join("cache"),
+            vault_dir: temp.path().join("vaults"),
+            log_dir: temp.path().join("logs"),
+            backends_dir: temp.path().join("backends"),
+            utilities_dir: temp.path().join("utils"),
+            databases_dir: temp.path().join("dbs"),
+        };
+        let config = VaultConfig::with_dirs(dirs.clone()).unwrap();
+        config.save().unwrap();
+
+        // Now load_from_file is exercised
+        let config_file = dirs.config_dir.join("config.yaml");
+        assert!(config_file.exists());
+        let reloaded = VaultConfig::load_from_file(&config_file, dirs).unwrap();
+        assert_eq!(reloaded.vault.default_vault, "default");
+        assert_eq!(reloaded.crypto.algorithm, "aes-256-gcm");
+    }
+
+    #[test]
+    fn test_vault_path_and_audit_log_path() {
+        let config = VaultConfig::new().unwrap();
+        let vault_path = config.get_vault_path(None);
+        assert!(vault_path.ends_with("default"));
+
+        let custom_path = config.get_vault_path(Some("my-vault"));
+        assert!(custom_path.ends_with("my-vault"));
+
+        let audit_path = config.get_audit_log_path();
+        assert!(audit_path.ends_with("audit.log"));
+    }
+
+    #[test]
+    fn test_vault_config_default_impl() {
+        // Covers L335-336 — Default for VaultConfig
+        let config = VaultConfig::default();
+        assert_eq!(config.vault.default_vault, "default");
+        assert_eq!(config.crypto.algorithm, "aes-256-gcm");
     }
 }

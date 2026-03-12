@@ -120,3 +120,127 @@ pub struct CacheStats {
     pub max_size_bytes: usize,
     pub hit_rate: f64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rag::documents::Document;
+
+    fn make_doc(id: &str, content: &str) -> Document {
+        Document {
+            id: id.to_string(),
+            content: content.to_string(),
+            metadata: HashMap::new(),
+            embedding: None,
+            chunk_info: None,
+        }
+    }
+
+    #[test]
+    fn test_cache_store_and_retrieve() {
+        let mut cache = RetrievalCache::new(10_000);
+        let docs = vec![make_doc("d1", "hello world")];
+        cache.cache_results("query1", docs.clone()).unwrap();
+
+        let cached = cache.get_cached("query1");
+        assert!(cached.is_some());
+        assert_eq!(cached.unwrap().len(), 1);
+
+        // Miss
+        assert!(cache.get_cached("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_cache_eviction() {
+        // Max size = 20 bytes
+        let mut cache = RetrievalCache::new(20);
+        let doc1 = make_doc("d1", "twelve chars"); // 12 bytes
+        cache.cache_results("q1", vec![doc1]).unwrap();
+
+        // This should trigger eviction of q1
+        let doc2 = make_doc("d2", "another twelve"); // 14 bytes
+        cache.cache_results("q2", vec![doc2]).unwrap();
+
+        // q1 should have been evicted
+        assert!(cache.get_cached("q1").is_none());
+        assert!(cache.get_cached("q2").is_some());
+    }
+
+    #[test]
+    fn test_cache_clear() {
+        let mut cache = RetrievalCache::new(10_000);
+        cache
+            .cache_results("q1", vec![make_doc("d1", "x")])
+            .unwrap();
+        cache.clear();
+        assert!(cache.get_cached("q1").is_none());
+    }
+
+    #[test]
+    fn test_cache_stats() {
+        let mut cache = RetrievalCache::new(1000);
+        cache
+            .cache_results("q1", vec![make_doc("d1", "data")])
+            .unwrap();
+        let stats = cache.stats();
+        assert_eq!(stats.entries, 1);
+        assert_eq!(stats.max_size_bytes, 1000);
+        assert!(stats.size_bytes > 0);
+    }
+
+    #[test]
+    fn test_cache_oversized_item_rejected() {
+        // Max size = 5, doc with 10-byte content won't fit
+        let mut cache = RetrievalCache::new(5);
+        cache
+            .cache_results("q", vec![make_doc("d", "0123456789")])
+            .unwrap();
+        // Item too large, should not be cached
+        assert!(cache.get_cached("q").is_none());
+    }
+
+    #[test]
+    fn test_evict_lru_tiebreaker_by_timestamp() {
+        // Covers L84-86 — LRU eviction tiebreaker using timestamp
+        use crate::rag::documents::Document;
+        use std::collections::HashMap;
+
+        // Create cache with capacity for only 2 entries
+        let mut cache = RetrievalCache::new(8);
+
+        // Insert two entries so they have the same access_count (1)
+        let doc1 = Document {
+            id: "doc1".to_string(),
+            content: "aaaa".to_string(), // 4 bytes
+            metadata: HashMap::new(),
+            embedding: None, chunk_info: None,
+        };
+        let doc2 = Document {
+            id: "doc2".to_string(),
+            content: "bbbb".to_string(), // 4 bytes
+            metadata: HashMap::new(),
+            embedding: None, chunk_info: None,
+        };
+        let doc3 = Document {
+            id: "doc3".to_string(),
+            content: "cccc".to_string(), // 4 bytes
+            metadata: HashMap::new(),
+            embedding: None, chunk_info: None,
+        };
+
+        // Set results — first entry gets older timestamp
+        let _ = cache.cache_results("query1", vec![doc1]);
+        // Tiny sleep to ensure different timestamp
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let _ = cache.cache_results("query2", vec![doc2]);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        // Both have access_count = 0 after set (same). Adding a third should evict the oldest.
+        let _ = cache.cache_results("query3", vec![doc3]);
+
+        // query1 (oldest timestamp) should have been evicted
+        assert!(cache.get_cached("query1").is_none(), "Oldest entry should be evicted");
+        // query2 and query3 should still be present
+        assert!(cache.get_cached("query3").is_some());
+    }
+}

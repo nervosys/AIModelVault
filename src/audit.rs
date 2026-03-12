@@ -13,6 +13,11 @@ use std::path::{Path, PathBuf};
 
 use crate::error::Result;
 
+/// Maximum audit log size before rotation (10 MiB).
+const MAX_LOG_SIZE: u64 = 10 * 1024 * 1024;
+/// Number of rotated log files to keep.
+const MAX_ROTATED_LOGS: u32 = 9;
+
 /// Audit event types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -88,21 +93,48 @@ impl AuditLogger {
 
     /// Log an audit event
     pub fn log(&self, entry: AuditEntry) -> Result<()> {
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.log_file)?;
+        // Rotate log if it exceeds the size limit
+        self.rotate_if_needed()?;
 
+        let mut options = OpenOptions::new();
+        options.create(true).append(true);
+        crate::permissions::set_create_mode(&mut options);
+
+        let mut file = options.open(&self.log_file)?;
+        // Ensure restrictive ACLs on Windows too
+        crate::permissions::restrict_file(&self.log_file)?;
         let json = serde_json::to_string(&entry)?;
         writeln!(file, "{}", json)?;
 
-        // Set restrictive permissions on first write
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let perms = std::fs::Permissions::from_mode(0o600);
-            std::fs::set_permissions(&self.log_file, perms)?;
+        Ok(())
+    }
+
+    /// Rotate the audit log when it exceeds [`MAX_LOG_SIZE`].
+    ///
+    /// Keeps up to [`MAX_ROTATED_LOGS`] archived copies:
+    /// `audit.log` → `audit.log.1` → `audit.log.2` → … → `audit.log.9` (deleted).
+    fn rotate_if_needed(&self) -> Result<()> {
+        let size = match std::fs::metadata(&self.log_file) {
+            Ok(m) => m.len(),
+            Err(_) => return Ok(()), // file doesn't exist yet
+        };
+
+        if size < MAX_LOG_SIZE {
+            return Ok(());
         }
+
+        // Shift existing rotated files: .9 → delete, .8 → .9, … .1 → .2
+        for i in (1..MAX_ROTATED_LOGS).rev() {
+            let src = self.log_file.with_extension(format!("log.{i}"));
+            let dst = self.log_file.with_extension(format!("log.{}", i + 1));
+            if src.exists() {
+                let _ = std::fs::rename(&src, &dst);
+            }
+        }
+
+        // Current → .1
+        let rotated = self.log_file.with_extension("log.1");
+        let _ = std::fs::rename(&self.log_file, &rotated);
 
         Ok(())
     }
@@ -134,7 +166,7 @@ impl AuditLogger {
     }
 
     /// Log an authentication event
-    pub fn log_auth(&self, success: bool, reason: Option<&str>) -> Result<()> {
+    pub fn log_auth(&self, success: bool, _reason: Option<&str>) -> Result<()> {
         self.log(AuditEntry {
             timestamp: Utc::now(),
             event_type: if success {
@@ -145,7 +177,7 @@ impl AuditLogger {
             description: if success {
                 "Authentication successful".to_string()
             } else {
-                format!("Authentication failed: {}", reason.unwrap_or("unknown"))
+                "Authentication failed".to_string()
             },
             model_name: None,
             version: None,
@@ -184,5 +216,149 @@ impl AuditLogger {
         }
 
         Ok(entries)
+    }
+}
+
+// ── Trait implementation ─────────────────────────────────────
+
+impl crate::traits::AuditSink for AuditLogger {
+    fn emit(&self, entry: AuditEntry) -> Result<()> {
+        self.log(entry)
+    }
+
+    fn query(&self, limit: Option<usize>) -> Result<Vec<AuditEntry>> {
+        self.read_entries(limit)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::traits::AuditSink;
+
+    #[test]
+    fn test_audit_logger_emit_and_query() {
+        // Covers lines 197, 198 — AuditSink::query() trait impl
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("audit.log");
+        let logger = AuditLogger::new(&log_path).unwrap();
+
+        let sink: &dyn AuditSink = &logger;
+        sink.emit(AuditEntry {
+            timestamp: Utc::now(),
+            event_type: AuditEventType::ModelStored,
+            description: "Test entry".into(),
+            model_name: Some("m1".into()),
+            version: Some(1),
+            success: true,
+            metadata: None,
+        })
+        .unwrap();
+
+        let entries = sink.query(Some(10)).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].description, "Test entry");
+    }
+
+    #[test]
+    fn test_audit_logger_query_limit() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("audit.log");
+        let logger = AuditLogger::new(&log_path).unwrap();
+
+        for i in 0..5 {
+            logger
+                .log(AuditEntry {
+                    timestamp: Utc::now(),
+                    event_type: AuditEventType::ModelStored,
+                    description: format!("entry {}", i),
+                    model_name: None,
+                    version: None,
+                    success: true,
+                    metadata: None,
+                })
+                .unwrap();
+        }
+
+        let entries = logger.read_entries(Some(3)).unwrap();
+        assert_eq!(entries.len(), 3);
+
+        let all = logger.read_entries(None).unwrap();
+        assert_eq!(all.len(), 5);
+    }
+
+    #[test]
+    fn test_log_auth_success() {
+        // Covers L143 — log_auth with success=true
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("audit.log");
+        let logger = AuditLogger::new(&log_path).unwrap();
+
+        logger.log_auth(true, None).unwrap();
+
+        let entries = logger.read_entries(None).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert!(entries[0].success);
+        assert_eq!(entries[0].description, "Authentication successful");
+        assert!(matches!(entries[0].event_type, AuditEventType::AuthSuccess));
+    }
+
+    #[test]
+    fn test_log_auth_failure() {
+        // Covers L148 — log_auth with success=false
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("audit.log");
+        let logger = AuditLogger::new(&log_path).unwrap();
+
+        logger.log_auth(false, Some("bad password")).unwrap();
+
+        let entries = logger.read_entries(None).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert!(!entries[0].success);
+        assert!(entries[0].description.contains("Authentication failed"));
+        assert!(matches!(entries[0].event_type, AuditEventType::AuthFailure));
+    }
+
+    #[test]
+    fn test_log_auth_failure_no_reason() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("audit.log");
+        let logger = AuditLogger::new(&log_path).unwrap();
+
+        logger.log_auth(false, None).unwrap();
+
+        let entries = logger.read_entries(None).unwrap();
+        assert!(entries[0].description.contains("Authentication failed"));
+    }
+
+    #[test]
+    fn test_log_security_violation() {
+        // Covers L158-166, L173
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("audit.log");
+        let logger = AuditLogger::new(&log_path).unwrap();
+
+        logger
+            .log_security_violation("Unauthorized access attempt")
+            .unwrap();
+
+        let entries = logger.read_entries(None).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert!(!entries[0].success);
+        assert_eq!(entries[0].description, "Unauthorized access attempt");
+        assert!(matches!(
+            entries[0].event_type,
+            AuditEventType::SecurityViolation
+        ));
+    }
+
+    #[test]
+    fn test_read_entries_no_file() {
+        // Covers the early-return when log_file doesn't exist
+        let temp_dir = tempfile::tempdir().unwrap();
+        let log_path = temp_dir.path().join("nonexistent.log");
+        let logger = AuditLogger { log_file: log_path };
+        let entries = logger.read_entries(None).unwrap();
+        assert!(entries.is_empty());
     }
 }

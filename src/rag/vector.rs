@@ -114,7 +114,7 @@ impl VectorStore for SimpleVectorStore {
 /// Qdrant vector database client (optional feature)
 #[cfg(feature = "vector-db")]
 pub struct QdrantVectorStore {
-    client: qdrant_client::client::QdrantClient,
+    client: qdrant_client::Qdrant,
     collection_name: String,
 }
 
@@ -122,7 +122,7 @@ pub struct QdrantVectorStore {
 impl QdrantVectorStore {
     /// Create a new Qdrant vector store
     pub async fn new(url: &str, collection_name: String) -> Result<Self> {
-        let client = qdrant_client::client::QdrantClient::from_url(url)
+        let client = qdrant_client::Qdrant::from_url(url)
             .build()
             .map_err(|e| VaultError::StorageError(format!("Failed to connect to Qdrant: {}", e)))?;
 
@@ -134,24 +134,13 @@ impl QdrantVectorStore {
 
     /// Create collection if it doesn't exist
     pub async fn create_collection(&self, vector_size: u64) -> Result<()> {
-        use qdrant_client::qdrant::{CreateCollection, Distance, VectorParams, VectorsConfig};
-
-        let vectors_config = VectorsConfig {
-            config: Some(qdrant_client::qdrant::vectors_config::Config::Params(
-                VectorParams {
-                    size: vector_size,
-                    distance: Distance::Cosine.into(),
-                    ..Default::default()
-                },
-            )),
-        };
+        use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
 
         self.client
-            .create_collection(&CreateCollection {
-                collection_name: self.collection_name.clone(),
-                vectors_config: Some(vectors_config),
-                ..Default::default()
-            })
+            .create_collection(
+                CreateCollectionBuilder::new(&self.collection_name)
+                    .vectors_config(VectorParamsBuilder::new(vector_size, Distance::Cosine)),
+            )
             .await
             .map_err(|e| VaultError::StorageError(format!("Failed to create collection: {}", e)))?;
 
@@ -160,21 +149,26 @@ impl QdrantVectorStore {
 
     /// Store document with embedding
     pub async fn store_document_async(&self, doc: &Document) -> Result<()> {
-        use qdrant_client::qdrant::{PointStruct, UpsertPoints};
+        use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
 
         if let Some(embedding) = &doc.embedding {
+            let payload: qdrant_client::qdrant::value::Kind =
+                qdrant_client::qdrant::value::Kind::StringValue(
+                    serde_json::to_string(&doc.metadata).unwrap_or_default(),
+                );
             let point = PointStruct::new(
                 doc.id.clone(),
                 embedding.clone(),
-                serde_json::to_value(&doc.metadata).unwrap_or_default(),
+                [(
+                    "metadata".to_string(),
+                    qdrant_client::qdrant::Value {
+                        kind: Some(payload),
+                    },
+                )],
             );
 
             self.client
-                .upsert_points(&UpsertPoints {
-                    collection_name: self.collection_name.clone(),
-                    points: vec![point],
-                    ..Default::default()
-                })
+                .upsert_points(UpsertPointsBuilder::new(&self.collection_name, vec![point]))
                 .await
                 .map_err(|e| VaultError::StorageError(format!("Failed to upsert point: {}", e)))?;
 
@@ -192,17 +186,18 @@ impl QdrantVectorStore {
         query_embedding: &[f32],
         limit: usize,
     ) -> Result<Vec<(String, f32)>> {
-        use qdrant_client::qdrant::SearchPoints;
+        use qdrant_client::qdrant::SearchPointsBuilder;
 
         let results = self
             .client
-            .search_points(&SearchPoints {
-                collection_name: self.collection_name.clone(),
-                vector: query_embedding.to_vec(),
-                limit: limit as u64,
-                with_payload: Some(true.into()),
-                ..Default::default()
-            })
+            .search_points(
+                SearchPointsBuilder::new(
+                    &self.collection_name,
+                    query_embedding.to_vec(),
+                    limit as u64,
+                )
+                .with_payload(true),
+            )
             .await
             .map_err(|e| VaultError::StorageError(format!("Failed to search: {}", e)))?;
 
@@ -210,7 +205,16 @@ impl QdrantVectorStore {
             .result
             .into_iter()
             .map(|point| {
-                let id = point.id.map(|id| id.to_string()).unwrap_or_default();
+                let id = point
+                    .id
+                    .map(|id| match id.point_id_options {
+                        Some(qdrant_client::qdrant::point_id::PointIdOptions::Uuid(u)) => u,
+                        Some(qdrant_client::qdrant::point_id::PointIdOptions::Num(n)) => {
+                            n.to_string()
+                        }
+                        None => String::new(),
+                    })
+                    .unwrap_or_default();
                 let score = point.score;
                 (id, score)
             })
@@ -221,23 +225,119 @@ impl QdrantVectorStore {
 
     /// Delete document by ID
     pub async fn delete_document_async(&self, id: &str) -> Result<()> {
-        use qdrant_client::qdrant::{
-            points_selector::PointsSelectorOneOf, DeletePoints, PointsIdsList, PointsSelector,
-        };
+        use qdrant_client::qdrant::{DeletePointsBuilder, PointId};
 
+        let point_id: PointId = id.into();
         self.client
-            .delete_points(&DeletePoints {
-                collection_name: self.collection_name.clone(),
-                points: Some(PointsSelector {
-                    points_selector_one_of: Some(PointsSelectorOneOf::Points(PointsIdsList {
-                        ids: vec![id.into()],
-                    })),
-                }),
-                ..Default::default()
-            })
+            .delete_points(DeletePointsBuilder::new(&self.collection_name).points(vec![point_id]))
             .await
             .map_err(|e| VaultError::StorageError(format!("Failed to delete: {}", e)))?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rag::documents::Document;
+    use std::collections::HashMap;
+
+    fn make_doc(id: &str, embedding: Vec<f32>) -> Document {
+        Document {
+            id: id.to_string(),
+            content: format!("content for {}", id),
+            metadata: HashMap::new(),
+            embedding: Some(embedding),
+            chunk_info: None,
+        }
+    }
+
+    #[test]
+    fn test_cosine_similarity_identical() {
+        let v = vec![1.0, 0.0, 0.0];
+        let sim = cosine_similarity(&v, &v);
+        assert!((sim - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_cosine_similarity_orthogonal() {
+        let a = vec![1.0, 0.0];
+        let b = vec![0.0, 1.0];
+        let sim = cosine_similarity(&a, &b);
+        assert!(sim.abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_cosine_similarity_different_lengths() {
+        let a = vec![1.0, 0.0];
+        let b = vec![1.0];
+        assert_eq!(cosine_similarity(&a, &b), 0.0);
+    }
+
+    #[test]
+    fn test_cosine_similarity_zero_vector() {
+        let a = vec![0.0, 0.0];
+        let b = vec![1.0, 0.0];
+        assert_eq!(cosine_similarity(&a, &b), 0.0);
+    }
+
+    #[test]
+    fn test_simple_vector_store_default() {
+        let store = SimpleVectorStore::default();
+        assert_eq!(store.count().unwrap(), 0);
+    }
+
+    #[test]
+    fn test_simple_vector_store_crud() {
+        let mut store = SimpleVectorStore::new();
+
+        let doc = make_doc("d1", vec![1.0, 0.0, 0.0]);
+        store.store_with_embedding(&doc).unwrap();
+        assert_eq!(store.count().unwrap(), 1);
+
+        let doc2 = make_doc("d2", vec![0.0, 1.0, 0.0]);
+        store.store_with_embedding(&doc2).unwrap();
+        assert_eq!(store.count().unwrap(), 2);
+
+        // Search
+        let results = store.search_similar(&[1.0, 0.0, 0.0], 2).unwrap();
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].0, "d1"); // most similar
+
+        // Delete
+        store.delete_document("d1").unwrap();
+        assert_eq!(store.count().unwrap(), 1);
+    }
+
+    #[test]
+    fn test_simple_vector_store_no_embedding_error() {
+        let mut store = SimpleVectorStore::new();
+        let doc = Document {
+            id: "no-emb".to_string(),
+            content: "test".to_string(),
+            metadata: HashMap::new(),
+            embedding: None,
+            chunk_info: None,
+        };
+        assert!(store.store_with_embedding(&doc).is_err());
+    }
+
+    #[test]
+    fn test_simple_vector_store_from_documents() {
+        let docs = vec![
+            make_doc("a", vec![1.0, 0.0]),
+            make_doc("b", vec![0.0, 1.0]),
+            Document {
+                id: "c".to_string(),
+                content: "no embedding".to_string(),
+                metadata: HashMap::new(),
+                embedding: None,
+                chunk_info: None,
+            },
+        ];
+        let store = SimpleVectorStore::from_documents(docs);
+        // Only 2 docs have embeddings
+        assert_eq!(store.count().unwrap(), 2);
     }
 }

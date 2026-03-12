@@ -4,7 +4,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/nervosys/ai-model-vault
-  tag: "1.0.0"
+  tag: "1.1.0"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -90,17 +90,24 @@ resources:
 
 livenessProbe:
   httpGet:
-    path: /health
+    path: /api/v1/health
     port: http
   initialDelaySeconds: 5
   periodSeconds: 10
 
 readinessProbe:
   httpGet:
-    path: /health
+    path: /api/v1/health
     port: http
   initialDelaySeconds: 3
   periodSeconds: 5
+
+startupProbe:
+  httpGet:
+    path: /api/v1/health
+    port: http
+  failureThreshold: 30
+  periodSeconds: 2
 
 autoscaling:
   enabled: false

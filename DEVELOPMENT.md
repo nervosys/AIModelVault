@@ -6,7 +6,7 @@ This guide will help you get started with developing and contributing to aimodel
 
 ### Required
 
-- **Rust** 1.70 or later ([Install](https://rustup.rs/))
+- **Rust** 1.75 or later ([Install](https://rustup.rs/))
 - **Git** for version control
 - **Cargo** (comes with Rust)
 
@@ -33,8 +33,8 @@ This guide will help you get started with developing and contributing to aimodel
 
 ```bash
 # Clone repository
-git clone https://github.com/nervosys/aimodelvault.git
-cd aimodelvault
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
 
 # Build project
 cargo build
@@ -498,8 +498,8 @@ cargo clippy --fix
 ## Getting Help
 
 - **Documentation**: https://docs.rs/aimodelvault
-- **Discussions**: https://github.com/nervosys/aimodelvault/discussions
-- **Issues**: https://github.com/nervosys/aimodelvault/issues
+- **Discussions**: https://github.com/nervosys/AIModelVault/discussions
+- **Issues**: https://github.com/nervosys/AIModelVault/issues
 - **Email**: dev@nervosys.ai
 
 ## Next Steps
@@ -507,7 +507,7 @@ cargo clippy --fix
 1. Read the [Architecture Overview](IMPLEMENTATION.md)
 2. Browse the [API Documentation](https://docs.rs/aimodelvault)
 3. Try the [Examples](examples/)
-4. Check [Open Issues](https://github.com/nervosys/aimodelvault/issues)
-5. Join the [Discussions](https://github.com/nervosys/aimodelvault/discussions)
+4. Check [Open Issues](https://github.com/nervosys/AIModelVault/issues)
+5. Join the [Discussions](https://github.com/nervosys/AIModelVault/discussions)
 
 Happy coding! 🦀

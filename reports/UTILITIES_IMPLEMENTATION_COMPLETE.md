@@ -19,7 +19,7 @@ The AI Model Vault now includes a comprehensive suite of model utilities, bringi
 
 #### CompressionAnalyzer
 - Compression ratio calculation
-- Format-specific compression estimates (22 formats)
+- Format-specific compression estimates (23+ formats)
 - Compression effectiveness analysis
 - Detailed compression reports with efficiency metrics
 
@@ -172,7 +172,7 @@ Both dependencies are:
 - **Total Project**: ~5,000 lines of production code
 
 ### Feature Coverage
-- ✅ 22+ model formats supported
+- ✅ 23+ model formats supported
 - ✅ 10 quantization schemes
 - ✅ 6 pruning methods
 - ✅ 2 archive formats (TAR/ZIP)

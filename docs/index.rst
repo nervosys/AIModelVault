@@ -1,7 +1,7 @@
-NeuralVault Documentation
-=========================
+AI Model Vault Documentation
+============================
 
-**NeuralVault** is a universal, cross-platform, XDG-compliant secure vault for
+**AI Model Vault** is a universal, cross-platform, XDG-compliant secure vault for
 AI model formats — backed by Rust with native Python bindings via PyO3.
 
 .. toctree::

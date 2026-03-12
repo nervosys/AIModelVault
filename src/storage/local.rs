@@ -18,13 +18,7 @@ impl LocalBackend {
     pub fn new(base_path: PathBuf) -> Result<Self> {
         if !base_path.exists() {
             fs::create_dir_all(&base_path)?;
-
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                let perms = std::fs::Permissions::from_mode(0o700);
-                fs::set_permissions(&base_path, perms)?;
-            }
+            crate::permissions::restrict_dir(&base_path)?;
         }
 
         Ok(Self { base_path })
@@ -47,14 +41,7 @@ impl StorageBackend for LocalBackend {
 
         let mut file = File::create(&path)?;
         file.write_all(data)?;
-
-        // Set restrictive permissions
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let perms = std::fs::Permissions::from_mode(0o600);
-            fs::set_permissions(&path, perms)?;
-        }
+        crate::permissions::restrict_file(&path)?;
 
         Ok(())
     }
@@ -148,5 +135,52 @@ mod tests {
         let deleted = backend.delete("test.txt").await.unwrap();
         assert!(deleted);
         assert!(!backend.exists("test.txt").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_local_backend_nested_dirs() {
+        // Covers lines 105, 106 — recursive scan_dir into subdirectories
+        let temp_dir = tempdir().unwrap();
+        let backend = LocalBackend::new(temp_dir.path().to_path_buf()).unwrap();
+
+        // Create nested directory structure
+        let subdir = temp_dir.path().join("subdir");
+        std::fs::create_dir_all(&subdir).unwrap();
+        std::fs::write(subdir.join("nested.txt"), b"nested data").unwrap();
+        std::fs::write(temp_dir.path().join("root.txt"), b"root data").unwrap();
+
+        let files = backend.list().await.unwrap();
+        assert!(files.len() >= 2);
+        // Should contain both root and nested files
+        assert!(files.iter().any(|f| f.contains("root.txt")));
+        assert!(files.iter().any(|f| f.contains("nested.txt")));
+    }
+
+    #[tokio::test]
+    async fn test_local_backend_new_creates_dir() {
+        // Covers L20 — directory creation for non-existent path
+        let temp_dir = tempdir().unwrap();
+        let new_path = temp_dir.path().join("nonexistent_subdir");
+        assert!(!new_path.exists());
+        let _backend = LocalBackend::new(new_path.clone()).unwrap();
+        assert!(new_path.exists());
+    }
+
+    #[tokio::test]
+    async fn test_local_backend_download_missing() {
+        // Covers L66 — download returns ModelNotFound
+        let temp_dir = tempdir().unwrap();
+        let backend = LocalBackend::new(temp_dir.path().to_path_buf()).unwrap();
+        let err = backend.download("nonexistent_file.bin").await.unwrap_err();
+        assert!(format!("{err}").contains("nonexistent_file.bin"));
+    }
+
+    #[tokio::test]
+    async fn test_local_backend_delete_nonexistent() {
+        // Covers L83 — delete returns false for non-existent
+        let temp_dir = tempdir().unwrap();
+        let backend = LocalBackend::new(temp_dir.path().to_path_buf()).unwrap();
+        let result = backend.delete("ghost.bin").await.unwrap();
+        assert!(!result);
     }
 }

@@ -9,7 +9,7 @@
 | **Name**       | AI Model Vault                           |
 | **Binary**     | `aim`                                    |
 | **Crate**      | `ai-model-vault`                         |
-| **Version**    | 1.1.0                                    |
+| **Version**    | 1.2.0                                    |
 | **Language**   | Rust (edition 2021, MSRV 1.75)           |
 | **License**    | AGPL-3.0-or-later                        |
 | **Repository** | https://github.com/nervosys/AIModelVault |
@@ -115,6 +115,7 @@ Custom tools can be registered via `MCPServer::register_tool(tool, executor_fn)`
 | `full`         | All non-system features             |
 | `sqlite`       | SQLite RAG backend                  |
 | `kv-store`     | Sled KV backend                     |
+| `vector-db`    | Qdrant vector database              |
 | `s3`           | AWS S3 cloud storage                |
 | `azure`        | Azure Blob storage                  |
 | `cloud`        | All cloud backends                  |
@@ -134,29 +135,38 @@ Custom tools can be registered via `MCPServer::register_tool(tool, executor_fn)`
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | AWS S3 credentials                   |
 | `AZURE_STORAGE_ACCOUNT` / `AZURE_STORAGE_KEY`                | Azure credentials                    |
 | `GOOGLE_APPLICATION_CREDENTIALS` / `GCP_PROJECT`             | GCS credentials                      |
+| `AIM_TELEMETRY_ENABLED`                                      | Set to `false` to disable telemetry  |
+| `AIM_TELEMETRY_DISABLED`                                     | Set to `1` to disable telemetry      |
+| `DO_NOT_TRACK`                                               | Set to `1` to disable telemetry      |
+| `AIM_SQLITE_VERSIONS`                                        | Use SQLite version backend           |
 
 ## Project Layout
 
-```
+```bash
 src/
-├── lib.rs          # Library root (pub modules)
-├── main.rs         # CLI entry point
-├── cli/            # CLI subcommand handlers
-├── vault.rs        # Core vault logic
-├── crypto.rs       # AES-256-GCM, Argon2id
-├── storage.rs      # Storage backends
-├── version.rs      # Version control
-├── formats.rs      # 23+ format detection
-├── conversion.rs   # Format conversion pipeline
-├── audit.rs        # Security audit logging
-├── compliance.rs   # FIPS/CMMC/MITRE checks
-├── model_card.rs   # Model Cards
-├── rag.rs          # RAG system
-├── utils.rs        # Utilities
-├── blockchain.rs   # Blockchain audit trail
-├── federation.rs   # Federated vault sync
-├── api.rs          # REST/GraphQL API
-└── config.rs       # XDG-compliant configuration
+├── lib.rs              # Library root (pub modules)
+├── main.rs             # CLI entry point
+├── cli/                # CLI subcommand handlers
+├── vault.rs            # Core vault logic + VaultBuilder
+├── traits.rs           # Core traits, event system, URI parser, metrics
+├── crypto/             # AES-256-GCM, Argon2id, streaming encryption
+├── storage.rs          # Storage backends
+├── version.rs          # Version control (JSON backend)
+├── version_sqlite.rs   # Version control (SQLite backend)
+├── formats.rs          # 23+ format detection
+├── conversion.rs       # Format conversion pipeline (10 converters)
+├── audit.rs            # Security audit logging
+├── compliance.rs       # FIPS/CMMC/MITRE checks
+├── model_card.rs       # Model Cards
+├── rag/                # RAG system (7 submodules)
+├── utils.rs            # Utilities
+├── blockchain.rs       # Blockchain audit trail
+├── federation.rs       # Federated vault sync
+├── api.rs              # REST/GraphQL API
+├── telemetry.rs        # Anonymous telemetry (opt-in)
+├── config.rs           # XDG-compliant configuration
+├── error.rs            # Error types
+└── python.rs           # Python bindings (PyO3)
 ```
 
 ## Security Model

@@ -5,8 +5,8 @@
 ### From Source
 
 ```bash
-git clone https://github.com/nervosys/aimodelvault.git
-cd aimodelvault
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
 cargo build --release
 cargo install --path .
 ```
@@ -232,12 +232,11 @@ cp -r /backup/aimodelvault ~/.local/share/
 ## Support
 
 - Documentation: https://aimodelvault.nervosys.ai/docs
-- Issues: https://github.com/nervosys/aimodelvault/issues
+- Issues: https://github.com/nervosys/AIModelVault/issues
 - Security: security@nervosys.ai
 
 ## Next Steps
 
 - Read the [CLI Reference](CLI.md)
-- Explore [Security Features](SECURITY.md)
-- Check [Compliance Guide](COMPLIANCE.md)
+- Explore [Security Features](../SECURITY.md)
 - View [API Documentation](https://docs.rs/aimodelvault)

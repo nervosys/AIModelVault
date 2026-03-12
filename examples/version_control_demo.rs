@@ -266,8 +266,7 @@ fn demonstrate_lineage_tracking() -> Result<(), Box<dyn std::error::Error>> {
     println!("  📜 Complete Lineage:");
     println!();
 
-    let lineage = vec![
-        (
+    let lineage = [(
             "v1",
             "2024-10-01",
             "Base model",
@@ -288,8 +287,7 @@ fn demonstrate_lineage_tracking() -> Result<(), Box<dyn std::error::Error>> {
             "Dialogue dataset",
             Some(2),
         ),
-        ("v5", "2024-11-05", "Chat-pro", "RLHF optimization", Some(3)),
-    ];
+        ("v5", "2024-11-05", "Chat-pro", "RLHF optimization", Some(3))];
 
     for (i, (version, date, stage, description, parent)) in lineage.iter().enumerate() {
         let indent = "  ".repeat(i);

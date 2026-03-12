@@ -15,19 +15,19 @@ export default function QuickStartPage() {
       <CodeBlock language="bash">{`cargo install ai-model-vault`}</CodeBlock>
 
       <h3 className="text-lg font-semibold mt-6 mb-2">From source</h3>
-      <CodeBlock language="bash">{`git clone https://github.com/nervosys/ai-model-vault.git
-cd ai-model-vault
+      <CodeBlock language="bash">{`git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
 cargo build --release
 # Binary is at target/release/aim`}</CodeBlock>
 
       <h3 className="text-lg font-semibold mt-6 mb-2">Python (via PyPI)</h3>
-      <CodeBlock language="bash">{`pip install neuralvault
+      <CodeBlock language="bash">{`pip install aimodelvault
 # With ML extras:
-pip install "neuralvault[ml]"`}</CodeBlock>
+pip install "aimodelvault[ml]"`}</CodeBlock>
 
       <h3 className="text-lg font-semibold mt-6 mb-2">Docker</h3>
-      <CodeBlock language="bash">{`docker pull ghcr.io/nervosys/ai-model-vault:1.0.0
-docker run --rm -v ./vault:/data ghcr.io/nervosys/ai-model-vault:1.0.0 aim --help`}</CodeBlock>
+      <CodeBlock language="bash">{`docker pull ghcr.io/nervosys/ai-model-vault:1.1.0
+docker run --rm -v ./vault:/data ghcr.io/nervosys/ai-model-vault:1.1.0 aim --help`}</CodeBlock>
 
       <h2 className="text-2xl font-bold mt-10 mb-4" id="first-vault">Create Your First Vault</h2>
       <CodeBlock language="bash">{`# Initialize a new vault

@@ -1,6 +1,6 @@
 # AI Model Utilities
 
-Comprehensive utilities for working with AI models in NeuronVault. This module provides popular operations for model management, optimization, and analysis.
+Comprehensive utilities for working with AI models in AI Model Vault. This module provides popular operations for model management, optimization, and analysis.
 
 ## Features
 
@@ -316,6 +316,5 @@ for model_name in vault.list_models() {
 
 ## See Also
 
-- [Formats Guide](FORMATS.md) - Supported model formats
-- [Crypto Documentation](docs/CRYPTO.md) - Encryption and security
-- [CLI Documentation](docs/CLI.md) - Command-line usage
+- [Formats Guide](../FORMATS.md) - Supported model formats
+- [CLI Documentation](CLI.md) - Command-line usage

@@ -582,8 +582,7 @@ fn test_metric_minimal() {
 
 #[test]
 fn test_multiple_metrics() {
-    let metrics = vec![
-        Metric {
+    let metrics = [Metric {
             name: "Accuracy".to_string(),
             value: 0.95,
             description: None,
@@ -600,8 +599,7 @@ fn test_multiple_metrics() {
             value: 0.92,
             description: None,
             threshold: None,
-        },
-    ];
+        }];
 
     assert_eq!(metrics.len(), 3);
     assert!(metrics.iter().all(|m| m.value > 0.9));

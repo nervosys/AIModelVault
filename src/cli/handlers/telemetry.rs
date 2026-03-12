@@ -52,6 +52,7 @@ fn show_status(config: &VaultConfig) -> Result<()> {
 
     println!("\nTo opt out:");
     println!("  aim telemetry disable");
+    println!("  # Or set AIM_TELEMETRY_ENABLED=false");
     println!("  # Or set AIM_TELEMETRY_DISABLED=1");
     println!("  # Or set DO_NOT_TRACK=1");
 
@@ -108,9 +109,12 @@ fn reset_device_id(config: &mut VaultConfig) -> Result<()> {
 }
 
 fn is_env_disabled() -> bool {
-    std::env::var("AIM_TELEMETRY_DISABLED")
-        .map(|v| v == "1" || v.to_lowercase() == "true")
+    std::env::var("AIM_TELEMETRY_ENABLED")
+        .map(|v| v.to_lowercase() == "false" || v == "0")
         .unwrap_or(false)
+        || std::env::var("AIM_TELEMETRY_DISABLED")
+            .map(|v| v == "1" || v.to_lowercase() == "true")
+            .unwrap_or(false)
         || std::env::var("DO_NOT_TRACK")
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)

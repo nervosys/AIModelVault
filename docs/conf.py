@@ -10,11 +10,11 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join("..", "src")))
 
 # -- Project information ------------------------------------------------------
-project = "NeuralVault"
+project = "AI Model Vault"
 copyright = "2026, NervoSys AI"
 author = "NervoSys AI Team"
-release = "0.3.0"
-version = "0.3.0"
+release = "1.1.0"
+version = "1.1.0"
 
 # -- General configuration ----------------------------------------------------
 extensions = [
@@ -31,8 +31,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # -- Options for HTML output --------------------------------------------------
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
-html_title = "NeuralVault Documentation"
-html_short_title = "NeuralVault"
+html_title = "AI Model Vault Documentation"
+html_short_title = "AI Model Vault"
 
 # -- Extension configuration --------------------------------------------------
 

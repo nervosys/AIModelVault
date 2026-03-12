@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-02-12  
-> Current version: **1.1.0**  
-> Status: Production release — advanced distributed features
+> Last updated: 2026-03-11  
+> Current version: **1.2.0** (RBAC, domain errors, API expansion)  
+> Status: Production release — v1.2.0 shipped with RBAC, 5 new REST endpoints, GraphQL routing
 
 ---
 
@@ -14,7 +14,7 @@
 - [x] Passphrase change with full re-encryption
 - [x] Version control with lineage tracking (JSON persistence)
 - [x] XDG-compliant configuration (Linux/macOS/Windows)
-- [x] 22+ model format detection (PyTorch, ONNX, SafeTensors, GGUF, etc.)
+- [x] 23+ model format detection (PyTorch, ONNX, SafeTensors, GGUF, etc.)
 - [x] Compression (gzip, LZMA, zlib) with analysis
 - [x] Cloud storage backends (AWS S3, Azure Blob) via async StorageBackend trait
 - [x] CLI with 18+ commands (clap 4.4, `aim` binary)
@@ -29,7 +29,7 @@
 - [x] Audit logging for compliance
 - [x] Compliance checks: CVE scanning via `cargo audit`, FIPS/CMMC/MITRE assessment
 - [x] Python bindings: neuralvault package (Vault, VaultConfig, ModelFormat)
-- [x] 227 tests passing, zero warnings
+- [x] 1,609 tests passing, zero warnings
 - [x] Git repository initialized
 - [x] 10 example programs, 30+ documentation files
 
@@ -164,7 +164,7 @@ Native Rust-backed Python bindings replacing CLI-wrapper architecture.
 - [x] **Native Python API (`src/python.rs`, ~640 lines)**
   - `Vault` — create, unlock, lock, store_model, get_model, list_models, list_versions, get_lineage, delete_version, get_stats, change_passphrase
   - `VaultConfig` — XDG-compliant config with optional custom vault_dir
-  - `ModelFormat` — 22+ format detection, name/extension properties
+  - `ModelFormat` — 23+ format detection, name/extension properties
   - `ModelMetadata` — builder-style constructor with description, framework, task, architecture, parameters
   - `ModelVersion` — read-only version snapshot (version, checkpoint_id, timestamp, format, size, checksum)
   - `ModelCard` — create, set_training_data, add_metric, add_metadata, to_json/to_yaml/to_markdown, from_json/from_yaml
@@ -298,12 +298,196 @@ Distributed systems and hardware acceleration.
 
 ---
 
+## v2.0.0 — Architecture v2 ✅
+
+Internal architecture overhaul based on `docs/ARCHITECTURE_V2.md`. Introduces trait-based
+dependency injection, a domain event system, streaming encryption, and a SQLite version
+repository — all backward-compatible with existing CLI and API surfaces.
+
+### Phase 1: Trait Extraction ✅
+
+Extracted four core domain traits into `src/traits.rs` with concrete implementations on
+existing types. Every subsystem now programs against a trait boundary.
+
+- [x] **`CryptoProvider` trait** — `derive_key`, `encrypt`, `decrypt`, `hash`, `hash_hex`, `random_bytes`
+  - Implemented by `FipsCrypto` (`src/crypto/mod.rs`)
+- [x] **`BlobStore` trait** — `put`, `get`, `remove`, `exists`, `size`, `list_keys`, `stats`
+  - Implemented by `Storage` (`src/storage.rs`)
+- [x] **`VersionRepo` trait** — `add_version`, `get_version`, `list_versions`, `get_lineage`, `delete_version`, `cleanup_old_versions`, `verify_checksum`, `update_metadata`, `get_metadata`, `list_models`
+  - Implemented by `VersionControl` (`src/version.rs`)
+- [x] **`AuditSink` trait** — `emit`, `query`
+  - Implemented by `AuditLogger` (`src/audit.rs`)
+- [x] **`NullAuditSink`** — no-op implementation for testing / disabled audit
+- [x] **`BlobStoreStats`** — storage statistics returned by `BlobStore::stats()`
+- [x] **Re-exports in `lib.rs`** — all trait types are top-level public API
+
+### Phase 2: Event System ✅
+
+Domain event infrastructure for audit, metrics, and agent observability.
+
+- [x] **`VaultEvent` enum** — 9 variants: `VaultCreated`, `VaultUnlocked`, `VaultLocked`, `ModelStored`, `ModelRetrieved`, `ModelDeleted`, `PassphraseChanged`, `IntegrityFailed`, `ComplianceChecked`
+  - Helper methods: `timestamp()`, `vault_name()`, `event_type()`
+- [x] **`EventBus`** — subscriber registry with `register()` + `dispatch()`, error-swallowing
+- [x] **`EventSubscriber` trait** — `accepts()`, `on_event()`, `name()`
+- [x] **`AuditLogSubscriber`** — converts `VaultEvent` → `AuditEntry`, forwards to `AuditSink`
+- [x] **`VaultMetrics`** — atomic counters: models stored/retrieved/deleted, bytes stored, errors, vault unlocked flag
+- [x] **`MetricsSubscriber`** — receives events and increments `VaultMetrics` counters
+- [x] **`MetricsSnapshot`** — serializable point-in-time metrics snapshot
+- [x] **`Vault` wiring** — `EventBus` integrated into `Vault` struct, events emitted in `unlock()`, `lock()`, `store_model()`, `get_model()`, `delete_version()`, `change_passphrase()`
+- [x] **`VaultState` enum** — `Uninitialized`, `Locked`, `Unlocked`, `Error` — queryable via `Vault::state()`
+- [x] **`Vault::event_bus()` / `event_bus_mut()`** — accessors for subscriber registration
+
+### Phase 3: Agent-Addressable URIs ✅
+
+- [x] **`AimvUri` struct + parser** — full `aimv://` URI scheme
+  - Format: `aimv://{vault}/{model}@{version}/{resource}?{query}`
+  - Supports: root, vault, model, model@version, resource, query params
+  - Roundtrip serialization (`Display` + `parse`)
+  - 9 unit tests covering all URI forms
+
+### Phase 4: Streaming Encryption ✅
+
+Chunked encryption for large models — constant 8 MiB memory budget regardless of model size.
+
+- [x] **`src/crypto/streaming.rs`** — `encrypt_chunked` / `decrypt_chunked` / `is_chunked_format`
+- [x] **Wire format** — `[header: 32B][chunk_0: nonce(12)+ciphertext+tag(16)]...[stream_mac: 32B]`
+- [x] **`StreamHeader`** — magic bytes `AIMV`, version, chunk size, total chunks, original size
+  - Roundtrip serialization (`to_bytes` / `from_bytes`)
+- [x] **Stream MAC** — SHA-256 over all chunk auth tags + chunk count (prevents truncation/reordering)
+- [x] **Default chunk size** — 4 MiB (tuned for SSD page alignment)
+- [x] **7 unit tests** — small data, exact boundaries, 1 MB, tamper detection, empty data, invalid magic
+
+### Phase 5: Repository & Observability ✅
+
+SQLite-backed version storage with ACID guarantees and auto-migration.
+
+- [x] **`SqliteVersionRepo`** (`src/version_sqlite.rs`) — full `VersionRepo` trait implementation
+  - SQLite WAL mode for concurrent reads
+  - Indexed tables: `versions` (model_name, version) + `version_metadata` (key-value)
+  - In-memory cache for reference-returning trait methods
+- [x] **Auto-migration from `versions.json`** — on first open, imports legacy JSON, renames to `.migrated`
+- [x] **`SqliteVersionRepo::in_memory()`** — for testing
+- [x] **6 unit tests** — CRUD, cleanup, metadata, list_models, JSON migration
+- [x] **Re-exports in `lib.rs`** — `SqliteVersionRepo` is top-level public API (behind `sqlite` feature)
+
+### Phase 6: Async Unification ✅
+
+Unified async blob storage trait bridging local and cloud backends.
+
+- [x] **`AsyncBlobStore` trait** — async counterpart to sync `BlobStore`
+  - Methods: `put`, `get`, `delete`, `exists`, `list`, `stat`
+  - Returns `BlobReceipt` (key, size, timestamp) on put
+  - Returns `BlobInfo` (key, size) on list/stat
+- [x] **`AsyncBlobStoreAdapter<B: StorageBackend>`** — wraps any existing `StorageBackend` implementation
+  - Bridges S3, Azure, Local async backends to the new trait
+  - Zero-cost when unused (generic, monomorphized)
+- [x] **`BlobReceipt` / `BlobInfo`** — typed return values for async storage operations
+- [x] **Re-exports in `lib.rs`** — all async types are top-level public API
+
+### Phase 7: API Observability ✅
+
+REST API endpoints for agent introspection and monitoring.
+
+- [x] **`GET /api/v1/metrics`** — vault metrics: state, model count, version count, storage bytes
+- [x] **`GET /api/v1/events`** — audit events with filtering
+  - `?limit=N` — maximum events to return
+  - `?type=ModelStored` — filter by event type
+  - Returns newest-first ordering
+- [x] **Enhanced `GET /api/v1/health`** — now returns `vault_state`, `model_count` alongside status/version
+- [x] **Route registration** — new endpoints wired into axum Router
+
+### Phase 8: Pipeline Wiring ✅
+
+Wired v2 components (VersionBackend, VaultBuilder, streaming) into the live vault pipeline.
+
+- [x] **`VersionBackend` enum** — JSON / SQLite dispatch in vault.rs
+- [x] **`VaultBuilder`** — fluent builder with `.config()`, `.sqlite_versions()`, `.subscriber()`, `.no_default_subscribers()`
+- [x] **`Vault::version_backend_name()`** — reports active backend for CLI/API
+- [x] **Streaming threshold** — `StorageSettings::streaming_threshold` in config for auto chunked I/O
+- [x] **`store_streamed()` / `retrieve_auto()`** — hybrid streaming path in Storage
+
+### Phase 9: CLI & Python Integration ✅
+
+Surfaced VaultBuilder and backend selection to CLI users and Python consumers.
+
+- [x] **`--sqlite-versions` CLI flag** — global arg on `Cli` struct (env: `AIM_SQLITE_VERSIONS`)
+- [x] **`build_vault()` helper** — replaces all 20 `Vault::new()` call sites in CLI handlers
+- [x] **Handler updates** — vault, analyze, archive, cloud, convert, card handlers accept `use_sqlite`
+- [x] **main.rs dispatch** — extracts `use_sqlite` flag (feature-gated) and passes to all handlers
+- [x] **Default EventBus subscribers** — `AuditLogSubscriber` + `MetricsSubscriber` auto-wired in `VaultBuilder::build()`
+- [x] **`PyVaultBuilder`** — Python bindings: `VaultBuilder().config(cfg).sqlite_versions().build()`
+- [x] **`basic_usage` example** — updated to showcase `VaultBuilder` pattern
+
+### Phase 10: Testing & Bug Fixes ✅
+
+Fixed critical wiring bugs and added comprehensive test coverage for v2 components.
+
+- [x] **Fixed `AuditLogSubscriber`** — was wired with `NullAuditSink`, now uses real `AuditLogger` (events actually reach audit log)
+- [x] **Fixed `VaultMetrics` exposure** — `Arc<VaultMetrics>` stored on `Vault`, exposed via `pub fn metrics() -> Option<MetricsSnapshot>`
+- [x] **30 VaultBuilder integration tests** (`tests/vault_builder_tests.rs`):
+  - Builder construction (JSON/SQLite backends, default/custom subscribers)
+  - Metrics lifecycle (store, retrieve, delete operations update counters)
+  - Event emission validation (custom subscriber receives ModelStored/Retrieved/Deleted)
+  - Streaming API round-trip (`store_model_streamed`, `get_model_chunked`)
+  - SQLite backend parity (CRUD, versioning, list, delete)
+  - AimvUri parsing and validation
+  - Audit log file written via EventBus subscriber pipeline
+- [x] **17 CLI integration tests** (`tests/cli_tests.rs`) using `assert_cmd`:
+  - Help/version output, subcommand help for 5 commands
+  - Vault lifecycle (init, list, stats, compliance)
+  - Error cases (missing args, unknown subcommand)
+  - `--sqlite-versions` flag accepted
+
+### Test Results
+
+- **391 tests total** (105 unit + 22 config + 31 conversion + 19 coverage + 14 crypto + 15 format + 8 integration + 30 vault_builder + 17 cli + 4 model_card_integration + 48 model_card + 38 rag + 38 utils + 2 doc-test)
+- **0 failures**, 0 warnings
+- Backward-compatible — no existing API surface changed
+
+### Files Created
+
+| File                           | Lines  | Purpose                                                           |
+| ------------------------------ | ------ | ----------------------------------------------------------------- |
+| `src/traits.rs`                | ~1,070 | Core traits, event system, URI parser, metrics, async BlobStore   |
+| `src/crypto/streaming.rs`      | ~300   | Chunked encryption with stream MAC                                |
+| `src/version_sqlite.rs`        | ~470   | SQLite-backed VersionRepo + migration                             |
+| `tests/vault_builder_tests.rs` | ~700   | 30 integration tests: builder, metrics, events, streaming, SQLite |
+| `tests/cli_tests.rs`           | ~200   | 17 CLI integration tests with `assert_cmd`                        |
+
+### Files Modified
+
+| File                      | Change                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `src/lib.rs`              | Added `mod traits`, `mod version_sqlite`, comprehensive re-exports           |
+| `src/crypto/mod.rs`       | `impl CryptoProvider for FipsCrypto`, `pub mod streaming`                    |
+| `src/audit.rs`            | `impl AuditSink for AuditLogger`                                             |
+| `src/version.rs`          | `impl VersionRepo for VersionControl`                                        |
+| `src/storage.rs`          | `impl BlobStore for Storage`                                                 |
+| `src/vault.rs`            | Added `EventBus`, `VaultState`, event emission in all state-changing methods |
+| `src/api/routes.rs`       | Added `/metrics`, `/events` endpoints; enhanced `/health` with vault state   |
+| `src/api/server.rs`       | Registered `/metrics`, `/events` routes                                      |
+| `src/vault.rs`            | `VaultBuilder`, `VersionBackend`, `metrics()`, EventBus subscriber wiring    |
+| `src/cli/args.rs`         | Added `--sqlite-versions` flag                                               |
+| `src/cli/helpers.rs`      | Added `build_vault()` helper                                                 |
+| `src/cli/handlers/*.rs`   | All 6 handler files updated to use `build_vault()`                           |
+| `src/main.rs`             | Extract `use_sqlite`, pass to all 18 handler calls                           |
+| `src/python.rs`           | Added `PyVaultBuilder` class                                                 |
+| `examples/basic_usage.rs` | Updated to use `VaultBuilder` pattern                                        |
+
+---
+
 ## Out of Scope (Current)
 
 These are tracked but not planned for any specific release:
 
 - Google Cloud Storage (blocked by RUSTSEC-2025-0009/0010 in `cloud-storage` crate)
 - Model training integration
+
+## Completed in v1.2.0
+
+- [x] **Error type granularity** — Split the monolithic `VaultError` enum into domain-specific error types (`CryptoError`, `StorageError`, `ConversionError`) with `From` conversions into `VaultError`
+- [x] **API endpoint expansion** — Added REST endpoints for model cards (`GET/POST /models/{name}/card`), compliance checks (`GET /compliance`), and RAG operations (`POST /rag/search`, `POST /rag/documents`)
+- [x] **GraphQL routing** — Wired existing `async-graphql` schema into the Axum router at `/graphql` (Playground + query endpoint)
 
 ---
 

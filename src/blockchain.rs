@@ -398,7 +398,7 @@ impl BlockchainAudit {
         let latest_idx: BlockIndex = fs::read_to_string(&index_path)?
             .trim()
             .parse()
-            .map_err(|e| VaultError::IoError(std::io::Error::other(format!("Parse error: {e}"))))?;
+            .map_err(|_| VaultError::IoError(std::io::Error::other("Invalid block index")))?;
 
         let block_path = self.chain_dir.join(format!("block_{:08}.json", latest_idx));
         if block_path.exists() {
@@ -429,11 +429,29 @@ impl BlockchainAudit {
             .chain_dir
             .join(format!("block_{:08}.json", block.index));
         let json = serde_json::to_string_pretty(block)?;
-        fs::write(&block_path, json)?;
+
+        // Write with restrictive permissions
+        {
+            use std::io::Write;
+            let mut opts = fs::OpenOptions::new();
+            opts.write(true).create(true).truncate(true);
+            crate::permissions::set_create_mode(&mut opts);
+            let mut f = opts.open(&block_path)?;
+            f.write_all(json.as_bytes())?;
+        }
+        crate::permissions::restrict_file(&block_path)?;
 
         // Update latest index
         let index_path = self.chain_dir.join("latest_index");
-        fs::write(&index_path, block.index.to_string())?;
+        {
+            use std::io::Write;
+            let mut opts = fs::OpenOptions::new();
+            opts.write(true).create(true).truncate(true);
+            crate::permissions::set_create_mode(&mut opts);
+            let mut f = opts.open(&index_path)?;
+            f.write_all(block.index.to_string().as_bytes())?;
+        }
+        crate::permissions::restrict_file(&index_path)?;
 
         Ok(())
     }
@@ -870,5 +888,573 @@ mod tests {
         let result = audit.verify_chain();
         assert!(result.valid);
         assert_eq!(result.blocks_verified, 1);
+    }
+
+    #[test]
+    fn test_blockchain_reopen_existing_chain() {
+        // Covers lines 351, 392, 401, 408, 412 — load_latest_block on reopen
+        let temp_dir = tempfile::tempdir().unwrap();
+        {
+            let mut audit = BlockchainAudit::new(temp_dir.path(), 2).unwrap();
+            let entry = AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "First entry".into(),
+                model_name: Some("model_a".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            };
+            audit.add_entry(entry).unwrap();
+            // Force a new block by adding more entries
+            for i in 0..3 {
+                let e = AuditEntry {
+                    timestamp: Utc::now(),
+                    event_type: AuditEventType::ModelRetrieved,
+                    description: format!("Entry {}", i),
+                    model_name: Some("model_a".into()),
+                    version: Some(1),
+                    success: true,
+                    metadata: None,
+                };
+                audit.add_entry(e).unwrap();
+            }
+        }
+        // Reopen — this triggers load_latest_block path
+        let audit2 = BlockchainAudit::new(temp_dir.path(), 2).unwrap();
+        assert!(audit2.height() >= 2);
+        let verification = audit2.verify_chain();
+        assert!(verification.valid);
+    }
+
+    #[test]
+    fn test_blockchain_generate_and_verify_proof() {
+        // Covers lines 533, 543-545, 552-558 — generate_proof
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 10).unwrap();
+
+        let entry = AuditEntry {
+            timestamp: Utc::now(),
+            event_type: AuditEventType::ModelStored,
+            description: "Provable entry".into(),
+            model_name: Some("prove_me".into()),
+            version: Some(1),
+            success: true,
+            metadata: None,
+        };
+        audit.add_entry(entry).unwrap();
+
+        // Genesis is block 0 with 1 entry
+        let proof = audit.generate_proof(0, 0).unwrap();
+        assert_eq!(proof.block_index, 0);
+        assert!(!proof.genesis_hash.is_empty());
+
+        // Verify the proof
+        let verification = BlockchainAudit::verify_proof(&proof);
+        assert!(verification.valid);
+    }
+
+    #[test]
+    fn test_blockchain_generate_proof_multi_block() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 2).unwrap();
+
+        // Add enough entries to create a second block
+        for i in 0..3 {
+            let e = AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: format!("Entry {}", i),
+                model_name: Some("test".into()),
+                version: Some(i as u32),
+                success: true,
+                metadata: None,
+            };
+            audit.add_entry(e).unwrap();
+        }
+
+        // Generate proof for a block > 0 (covers block_chain traversal back to genesis)
+        if audit.height() > 1 {
+            let proof = audit.generate_proof(1, 0).unwrap();
+            assert!(proof.block_chain.len() >= 2); // Should include block 1 and genesis
+            let v = BlockchainAudit::verify_proof(&proof);
+            assert!(v.valid);
+        }
+    }
+
+    #[test]
+    fn test_blockchain_search_by_model_name() {
+        // Covers line 637+ — search results
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 10).unwrap();
+
+        let entry = AuditEntry {
+            timestamp: Utc::now(),
+            event_type: AuditEventType::ModelStored,
+            description: "Searchable entry".into(),
+            model_name: Some("searchable_model".into()),
+            version: Some(1),
+            success: true,
+            metadata: None,
+        };
+        audit.add_entry(entry).unwrap();
+        audit.finalize_block().unwrap();
+
+        let results = audit
+            .search(Some("searchable_model"), None, None, None, 10)
+            .unwrap();
+        assert!(!results.is_empty());
+        assert_eq!(
+            results[0].2.audit.model_name.as_deref(),
+            Some("searchable_model")
+        );
+    }
+
+    #[test]
+    fn test_blockchain_search_by_event_type() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 10).unwrap();
+
+        let entry = AuditEntry {
+            timestamp: Utc::now(),
+            event_type: AuditEventType::ModelDeleted,
+            description: "Deleted model".into(),
+            model_name: Some("del_model".into()),
+            version: Some(1),
+            success: true,
+            metadata: None,
+        };
+        audit.add_entry(entry).unwrap();
+        audit.finalize_block().unwrap();
+
+        let results = audit
+            .search(None, Some(AuditEventType::ModelDeleted), None, None, 10)
+            .unwrap();
+        assert!(!results.is_empty());
+    }
+
+    #[test]
+    fn test_blockchain_search_with_limit() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 100).unwrap();
+
+        for _ in 0..5 {
+            let e = AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "entry".into(),
+                model_name: Some("m".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            };
+            audit.add_entry(e).unwrap();
+        }
+        audit.finalize_block().unwrap();
+
+        let results = audit.search(None, None, None, None, 2).unwrap();
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn test_verify_chain_with_missing_block() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 1).unwrap();
+
+        // Add entries and finalize multiple blocks
+        for i in 0..3 {
+            let entry = AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: format!("Entry {}", i),
+                model_name: Some("m".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            };
+            audit.add_entry(entry).unwrap();
+            audit.finalize_block().unwrap();
+        }
+
+        // Verify chain is valid before corruption
+        let result = audit.verify_chain();
+        assert!(result.valid);
+        assert!(result.blocks_total >= 3);
+
+        // Delete a block file to simulate corruption
+        let block_path = temp_dir.path().join("block_00000001.json");
+        if block_path.exists() {
+            std::fs::remove_file(&block_path).unwrap();
+        }
+
+        // Verify chain should detect the missing block
+        let result = audit.verify_chain();
+        assert!(!result.valid);
+        assert!(!result.issues.is_empty());
+    }
+
+    #[test]
+    fn test_verify_chain_with_tampered_block() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 1).unwrap();
+
+        // Create 2 real blocks
+        for _ in 0..2 {
+            let entry = AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "entry".into(),
+                model_name: Some("m".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            };
+            audit.add_entry(entry).unwrap();
+            audit.finalize_block().unwrap();
+        }
+
+        // Tamper with block 1's hash
+        let block_path = temp_dir.path().join("block_00000001.json");
+        if block_path.exists() {
+            let contents = std::fs::read_to_string(&block_path).unwrap();
+            let mut block: serde_json::Value = serde_json::from_str(&contents).unwrap();
+            block["hash"] = serde_json::json!("tampered_hash_value");
+            std::fs::write(&block_path, serde_json::to_string_pretty(&block).unwrap()).unwrap();
+        }
+
+        let result = audit.verify_chain();
+        assert!(!result.valid);
+    }
+
+    #[test]
+    fn test_blockchain_reload_and_verify() {
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        // Create blockchain and add data
+        {
+            let mut audit = BlockchainAudit::new(temp_dir.path(), 2).unwrap();
+            for _ in 0..4 {
+                let entry = AuditEntry {
+                    timestamp: Utc::now(),
+                    event_type: AuditEventType::ModelStored,
+                    description: "test entry".into(),
+                    model_name: Some("reload_model".into()),
+                    version: Some(1),
+                    success: true,
+                    metadata: None,
+                };
+                audit.add_entry(entry).unwrap();
+            }
+            audit.finalize_block().unwrap();
+        }
+
+        // Reopen and verify — exercises load_latest_block
+        let audit2 = BlockchainAudit::new(temp_dir.path(), 2).unwrap();
+        let result = audit2.verify_chain();
+        assert!(result.valid);
+        assert!(audit2.height() > 0);
+    }
+
+    #[test]
+    fn test_merkle_tree_generate_proof_out_of_range() {
+        // Covers L139 — index >= leaves.len()
+        let data = vec![b"a".to_vec(), b"b".to_vec()];
+        let tree = MerkleTree::build(&data);
+        assert!(tree.generate_proof(10).is_none());
+    }
+
+    #[test]
+    fn test_verify_chain_fresh() {
+        // Covers L533 — verify_chain on fresh chain (genesis only)
+        let temp_dir = tempfile::tempdir().unwrap();
+        let audit = BlockchainAudit::new(temp_dir.path(), 5).unwrap();
+        let result = audit.verify_chain();
+        assert!(result.valid);
+        assert_eq!(result.blocks_total, 1); // genesis block
+        assert_eq!(result.blocks_verified, 1);
+    }
+
+    #[test]
+    fn test_search_with_event_type_filter() {
+        // Covers L670, L675-676, L679 — search with event_type filter
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 10).unwrap();
+
+        audit
+            .add_entry(AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "stored".into(),
+                model_name: Some("m1".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            })
+            .unwrap();
+        audit
+            .add_entry(AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelRetrieved,
+                description: "retrieved".into(),
+                model_name: Some("m1".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            })
+            .unwrap();
+        audit.finalize_block().unwrap();
+
+        // Search by event type
+        let results = audit
+            .search(None, Some(AuditEventType::ModelStored), None, None, 10)
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].2.audit.description, "stored");
+
+        // Search by model name
+        let results = audit.search(Some("m1"), None, None, None, 10).unwrap();
+        assert_eq!(results.len(), 2);
+
+        // Search with limit
+        let results = audit.search(None, None, None, None, 1).unwrap();
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn test_search_with_time_bounds() {
+        // Covers L644 — search with from/to time bounds
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 10).unwrap();
+
+        audit
+            .add_entry(AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "entry1".into(),
+                model_name: Some("m1".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            })
+            .unwrap();
+        audit.finalize_block().unwrap();
+
+        // Far future from — all blocks are before it, so search breaks immediately
+        let far_future = Utc::now() + chrono::Duration::days(365);
+        let results = audit
+            .search(None, None, Some(far_future), None, 10)
+            .unwrap();
+        assert!(
+            results.is_empty(),
+            "Far future from should return no results"
+        );
+
+        // Far past to — all blocks are after it, so they are all skipped
+        let far_past = Utc::now() - chrono::Duration::days(365);
+        let results = audit.search(None, None, None, Some(far_past), 10).unwrap();
+        assert!(results.is_empty(), "Far past to should return no results");
+
+        // Wide range — should find results
+        let results = audit
+            .search(None, None, Some(far_past), Some(far_future), 10)
+            .unwrap();
+        assert!(!results.is_empty(), "Wide range should return results");
+    }
+    #[test]
+    fn test_generate_and_verify_proof() {
+        // Covers L574, L588, L628, L637, L644 — proof generation + verification
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 10).unwrap();
+
+        audit
+            .add_entry(AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "test_proof".into(),
+                model_name: Some("m1".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            })
+            .unwrap();
+        audit.finalize_block().unwrap();
+
+        // Generate valid proof
+        let proof = audit.generate_proof(0, 0).unwrap();
+        let verification = BlockchainAudit::verify_proof(&proof);
+        assert!(
+            verification.valid,
+            "Valid proof should verify: {:?}",
+            verification.issues
+        );
+
+        // Generate proof for invalid entry index
+        let result = audit.generate_proof(0, 99);
+        assert!(result.is_err());
+
+        // Generate proof for invalid block index
+        let result = audit.generate_proof(99, 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_verify_proof_chain_broken() {
+        // Covers L628 — "Block chain broken at index" in verify_proof
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 2).unwrap();
+
+        // Add entries to create block 1
+        for i in 0..3 {
+            audit
+                .add_entry(AuditEntry {
+                    timestamp: Utc::now(),
+                    event_type: AuditEventType::ModelStored,
+                    description: format!("Entry {}", i),
+                    model_name: Some("broken_chain".into()),
+                    version: Some(i as u32),
+                    success: true,
+                    metadata: None,
+                })
+                .unwrap();
+        }
+
+        // Generate a valid proof from block 1
+        let mut proof = audit.generate_proof(1, 0).unwrap();
+        assert!(proof.block_chain.len() >= 2);
+
+        // Tamper with the chain: corrupt prev_hash of first link
+        proof.block_chain[0].prev_hash = "tampered_hash".to_string();
+
+        let verification = BlockchainAudit::verify_proof(&proof);
+        assert!(!verification.valid);
+        assert!(verification
+            .issues
+            .iter()
+            .any(|i| i.contains("chain broken")));
+    }
+
+    #[test]
+    fn test_verify_proof_genesis_mismatch() {
+        // Covers L637, L644 — genesis hash check in verify_proof
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 10).unwrap();
+
+        audit
+            .add_entry(AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "genesis test".into(),
+                model_name: Some("gen_test".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            })
+            .unwrap();
+        audit.finalize_block().unwrap();
+
+        let mut proof = audit.generate_proof(0, 0).unwrap();
+
+        // Tamper genesis hash so it doesn't match the last block's hash
+        proof.genesis_hash = "wrong_genesis_hash".to_string();
+
+        let verification = BlockchainAudit::verify_proof(&proof);
+        assert!(!verification.valid);
+        assert!(verification.issues.iter().any(|i| i.contains("genesis")));
+    }
+
+    #[test]
+    fn test_audit_block_verify_timestamp_and_index() {
+        // Covers L265 (timestamp before previous) and L268 (non-sequential index)
+        use chrono::Duration;
+
+        // Create two blocks
+        let now = Utc::now();
+        let prev_block = AuditBlock {
+            index: 0,
+            timestamp: now,
+            entries: vec![],
+            prev_hash: String::new(),
+            hash: "prev_hash_123".to_string(),
+            merkle_root: String::new(),
+            signature: None,
+            nonce: 0,
+        };
+
+        // Block with timestamp BEFORE previous
+        let mut bad_time_block = AuditBlock {
+            index: 1,
+            timestamp: now - Duration::hours(1),
+            entries: vec![],
+            prev_hash: "prev_hash_123".to_string(),
+            hash: String::new(),
+            merkle_root: String::new(),
+            signature: None,
+            nonce: 0,
+        };
+        bad_time_block.hash = bad_time_block.compute_hash();
+
+        let verification = bad_time_block.verify(Some(&prev_block));
+        assert!(!verification.valid);
+        assert!(verification.issues.iter().any(|i| i.contains("Timestamp")));
+
+        // Block with non-sequential index
+        let mut bad_idx_block = AuditBlock {
+            index: 5, // Should be 1
+            timestamp: now + Duration::hours(1),
+            entries: vec![],
+            prev_hash: "prev_hash_123".to_string(),
+            hash: String::new(),
+            merkle_root: String::new(),
+            signature: None,
+            nonce: 0,
+        };
+        bad_idx_block.hash = bad_idx_block.compute_hash();
+
+        let verification = bad_idx_block.verify(Some(&prev_block));
+        assert!(!verification.valid);
+        assert!(verification
+            .issues
+            .iter()
+            .any(|i| i.contains("Non-sequential")));
+    }
+
+    #[test]
+    fn test_blockchain_load_chain_multi_block() {
+        // Covers L408, L417 — load_chain path for non-genesis latest block
+        let temp_dir = tempfile::tempdir().unwrap();
+
+        {
+            // Create a chain with multiple blocks, then drop it
+            let mut audit = BlockchainAudit::new(temp_dir.path(), 2).unwrap();
+            for i in 0..5 {
+                audit
+                    .add_entry(AuditEntry {
+                        timestamp: Utc::now(),
+                        event_type: AuditEventType::ModelStored,
+                        description: format!("Persist entry {}", i),
+                        model_name: Some("persist_model".into()),
+                        version: Some(i as u32),
+                        success: true,
+                        metadata: None,
+                    })
+                    .unwrap();
+            }
+            // Finalize to ensure blocks are written
+            audit.finalize_block().unwrap();
+            assert!(audit.height() > 1, "Should have multiple blocks");
+        }
+
+        // Re-open the chain — this triggers load_chain with latest_block > 0
+        // which loads genesis hash from block_00000000.json (L408, L417)
+        let audit2 = BlockchainAudit::new(temp_dir.path(), 2).unwrap();
+        assert!(audit2.height() > 1);
+
+        // Verify the reloaded chain
+        let result = audit2.verify_chain();
+        assert!(
+            result.valid,
+            "Reloaded chain should be valid: {:?}",
+            result.issues
+        );
     }
 }

@@ -76,6 +76,13 @@ target/
 **/*.rs.bk
 *.pdb
 
+# Tarpaulin coverage artifacts
+tarpaulin-report.json
+tarpaulin_stderr.log
+
+# Cache
+.cache/
+
 # Test outputs (keep committed for reference)
 # reports/*.txt can be gitignored if you prefer
 

@@ -23,16 +23,16 @@ This document covers upgrading from any v0.x release of AI Model Vault to v1.0.0
 
 v1.0.0 is the first production-stable release of AI Model Vault. It encompasses
 all features from v0.1.0 through v0.5.0 with hardened security, comprehensive
-testing (330+ tests), and deployment-ready packaging.
+testing (1,609+ tests), and deployment-ready packaging.
 
-| Version | Highlights |
-|---------|-----------|
-| v0.1.0  | Core vault, encryption, model cards, XDG compliance |
-| v0.1.1  | Hardening pass |
-| v0.2.0  | Code quality & architecture refactor |
-| v0.3.0  | PyO3 Python bindings, Sphinx docs, streaming API |
-| v0.4.0  | Format conversion pipeline (10 converters, BFS path-finding) |
-| v0.5.0  | REST API (14 endpoints), JWT auth, embedded web dashboard |
+| Version    | Highlights                                                   |
+| ---------- | ------------------------------------------------------------ |
+| v0.1.0     | Core vault, encryption, model cards, XDG compliance          |
+| v0.1.1     | Hardening pass                                               |
+| v0.2.0     | Code quality & architecture refactor                         |
+| v0.3.0     | PyO3 Python bindings, Sphinx docs, streaming API             |
+| v0.4.0     | Format conversion pipeline (10 converters, BFS path-finding) |
+| v0.5.0     | REST API (14 endpoints), JWT auth, embedded web dashboard    |
 | **v1.0.0** | **Production release — Docker, Helm, publication readiness** |
 
 ---
@@ -98,16 +98,16 @@ ai-model-vault = { version = "1.0.0", features = ["python"] }
 Update the package:
 
 ```bash
-pip install --upgrade neuralvault==1.0.0
+pip install --upgrade aimodelvault==1.0.0
 ```
 
 Or with optional ML dependencies:
 
 ```bash
-pip install "neuralvault[ml]==1.0.0"
+pip install "aimodelvault[ml]==1.0.0"
 ```
 
-The Python API is unchanged. All functions in `neuralvault._native` retain
+The Python API is unchanged. All functions in `aimodelvault._native` retain
 their existing signatures.
 
 ---
@@ -146,22 +146,22 @@ The REST API is fully backward-compatible. The only change is the OpenAPI
 spec version field (`0.5.0` → `1.0.0`). All 14 endpoints retain their
 existing request/response schemas:
 
-| Endpoint | Method | Status |
-|----------|--------|--------|
-| `/health` | GET | Unchanged |
-| `/auth/token` | POST | Unchanged |
-| `/models` | GET | Unchanged |
-| `/models` | POST | Unchanged |
-| `/models/{name}` | GET | Unchanged |
-| `/models/{name}` | DELETE | Unchanged |
-| `/models/{name}/versions` | POST | Unchanged |
-| `/models/{name}/versions` | GET | Unchanged |
-| `/models/{name}/versions/{ver}` | GET | Unchanged |
+| Endpoint                        | Method | Status    |
+| ------------------------------- | ------ | --------- |
+| `/health`                       | GET    | Unchanged |
+| `/auth/token`                   | POST   | Unchanged |
+| `/models`                       | GET    | Unchanged |
+| `/models`                       | POST   | Unchanged |
+| `/models/{name}`                | GET    | Unchanged |
+| `/models/{name}`                | DELETE | Unchanged |
+| `/models/{name}/versions`       | POST   | Unchanged |
+| `/models/{name}/versions`       | GET    | Unchanged |
+| `/models/{name}/versions/{ver}` | GET    | Unchanged |
 | `/models/{name}/versions/{ver}` | DELETE | Unchanged |
-| `/models/{name}/lineage/{ver}` | GET | Unchanged |
-| `/conversions` | GET | Unchanged |
-| `/convert` | POST | Unchanged |
-| `/stats` | GET | Unchanged |
+| `/models/{name}/lineage/{ver}`  | GET    | Unchanged |
+| `/conversions`                  | GET    | Unchanged |
+| `/convert`                      | POST   | Unchanged |
+| `/stats`                        | GET    | Unchanged |
 
 ### From pre-v0.5.0
 
@@ -196,11 +196,11 @@ docker build --target debian -t aim:debian .
 
 ### Volumes
 
-| Mount Point | Purpose |
-|-------------|---------|
-| `/data` | Vault data (XDG_DATA_HOME) |
-| `/config` | Configuration (XDG_CONFIG_HOME) |
-| `/cache` | Cache files (XDG_CACHE_HOME) |
+| Mount Point | Purpose                         |
+| ----------- | ------------------------------- |
+| `/data`     | Vault data (XDG_DATA_HOME)      |
+| `/config`   | Configuration (XDG_CONFIG_HOME) |
+| `/cache`    | Cache files (XDG_CACHE_HOME)    |
 
 ---
 
@@ -241,19 +241,19 @@ The chart includes:
 
 All existing environment variables are unchanged:
 
-| Variable | Since | Purpose |
-|----------|-------|---------|
-| `AIM_HOST` | v0.5.0 | API listen address |
-| `AIM_PORT` | v0.5.0 | API listen port |
-| `AIM_JWT_SECRET` | v0.5.0 | JWT signing key |
-| `XDG_DATA_HOME` | v0.1.0 | Data directory |
-| `XDG_CONFIG_HOME` | v0.1.0 | Config directory |
-| `XDG_CACHE_HOME` | v0.1.0 | Cache directory |
+| Variable          | Since  | Purpose            |
+| ----------------- | ------ | ------------------ |
+| `AIM_HOST`        | v0.5.0 | API listen address |
+| `AIM_PORT`        | v0.5.0 | API listen port    |
+| `AIM_JWT_SECRET`  | v0.5.0 | JWT signing key    |
+| `XDG_DATA_HOME`   | v0.1.0 | Data directory     |
+| `XDG_CONFIG_HOME` | v0.1.0 | Config directory   |
+| `XDG_CACHE_HOME`  | v0.1.0 | Cache directory    |
 
 New in v1.0.0:
 
-| Variable | Purpose |
-|----------|---------|
+| Variable           | Purpose                                       |
+| ------------------ | --------------------------------------------- |
 | `AIM_TOKEN_EXPIRY` | JWT token lifetime in seconds (default: 3600) |
 
 ---
@@ -284,6 +284,6 @@ aim --version   # Should show 1.0.0
 
 ## Support
 
-- **Issues**: https://github.com/nervosys/ai-model-vault/issues
-- **Discussions**: https://github.com/nervosys/ai-model-vault/discussions
+- **Issues**: https://github.com/nervosys/AIModelVault/issues
+- **Discussions**: https://github.com/nervosys/AIModelVault/discussions
 - **Security**: See [SECURITY.md](../SECURITY.md)

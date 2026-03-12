@@ -19,6 +19,11 @@ pub struct Cli {
     #[arg(short, long)]
     pub config: Option<PathBuf>,
 
+    /// Use SQLite for version storage (ACID, indexed, concurrent)
+    #[cfg(feature = "sqlite")]
+    #[arg(long, env = "AIM_SQLITE_VERSIONS")]
+    pub sqlite_versions: bool,
+
     /// Disable telemetry for this session
     #[arg(long, env = "AIM_TELEMETRY_DISABLED")]
     pub no_telemetry: bool,

@@ -1,10 +1,10 @@
 # 🚀 Quick Start Examples Guide
 
-This guide shows you how to explore NeuronVault's features using the included examples.
+This guide shows you how to explore AI Model Vault's features using the included examples.
 
 ## 📚 Available Examples
 
-NeuronVault includes 5 comprehensive examples demonstrating all features:
+AI Model Vault includes 5 comprehensive examples demonstrating all features:
 
 ### 1. `basic_usage.rs` - Core Vault Operations ⭐ **START HERE**
 **What it shows**: Essential vault operations for everyday use
@@ -266,7 +266,7 @@ By running all 5 examples, you'll understand:
 ✅ How to ensure FIPS 140-3 compliance  
 
 **Time investment**: 30-40 minutes to run all examples  
-**Knowledge gain**: Complete understanding of NeuronVault  
+**Knowledge gain**: Complete understanding of AI Model Vault  
 
 ---
 

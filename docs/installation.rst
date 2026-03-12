@@ -14,7 +14,7 @@ Install from PyPI
 
 .. code-block:: bash
 
-   pip install neuralvault
+   pip install aimodelvault
 
 This installs the pre-built wheel with native Rust bindings. No Rust toolchain needed.
 
@@ -25,8 +25,8 @@ Install from Source
 .. code-block:: bash
 
    # Clone the repository
-   git clone https://github.com/nervosys/ai-model-vault.git
-   cd ai-model-vault
+   git clone https://github.com/nervosys/AIModelVault.git
+   cd AIModelVault
 
    # Create a virtual environment
    python -m venv .venv
@@ -38,7 +38,7 @@ Install from Source
    maturin develop --features python
 
    # Verify
-   python -c "import neuralvault; print(neuralvault._NATIVE)"  # True
+   python -c "import aimodelvault; print(aimodelvault._NATIVE)"  # True
 
 
 Optional Dependencies
@@ -48,7 +48,7 @@ Optional Dependencies
 
 .. code-block:: bash
 
-   pip install neuralvault[ml]
+   pip install aimodelvault[ml]
 
 This installs PyTorch, TensorFlow, ONNX, SafeTensors, NumPy, and h5py.
 
@@ -56,19 +56,19 @@ This installs PyTorch, TensorFlow, ONNX, SafeTensors, NumPy, and h5py.
 
 .. code-block:: bash
 
-   pip install neuralvault[dev]
+   pip install aimodelvault[dev]
 
 **Security scanning:**
 
 .. code-block:: bash
 
-   pip install neuralvault[security]
+   pip install aimodelvault[security]
 
 **Documentation building:**
 
 .. code-block:: bash
 
-   pip install neuralvault[docs]
+   pip install aimodelvault[docs]
 
 
 Verify Native Bindings
@@ -76,12 +76,12 @@ Verify Native Bindings
 
 .. code-block:: python
 
-   import neuralvault
+   import aimodelvault
 
    # True  → native Rust bindings active (fast, full API)
    # False → pure-Python fallback (CLI wrappers, limited API)
-   print(f"Native: {neuralvault._NATIVE}")
-   print(f"Version: {neuralvault.version()}")
+   print(f"Native: {aimodelvault._NATIVE}")
+   print(f"Version: {aimodelvault.version()}")
 
 
 Rust CLI

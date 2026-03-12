@@ -215,7 +215,7 @@ mod tests {
         let bucket = std::env::var("TEST_S3_BUCKET").unwrap();
         let region = std::env::var("TEST_S3_REGION").unwrap_or("us-east-1".to_string());
 
-        let backend = S3Backend::new(bucket, region, Some("test-neuronvault".to_string()))
+        let backend = S3Backend::new(bucket, region, Some("test-aimodelvault".to_string()))
             .await
             .unwrap();
 

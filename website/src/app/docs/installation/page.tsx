@@ -29,8 +29,8 @@ export default function InstallationPage() {
       <CodeBlock language="bash">{`cargo install ai-model-vault --features full`}</CodeBlock>
 
       <h2 className="text-2xl font-bold mt-8 mb-4" id="source">From Source</h2>
-      <CodeBlock language="bash">{`git clone https://github.com/nervosys/ai-model-vault.git
-cd ai-model-vault
+      <CodeBlock language="bash">{`git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
 cargo build --release
 
 # Run directly
@@ -41,26 +41,26 @@ cargo install --path .`}</CodeBlock>
 
       <h2 className="text-2xl font-bold mt-8 mb-4" id="python">Python Package</h2>
       <CodeBlock language="bash">{`# Base package
-pip install neuralvault
+pip install aimodelvault
 
 # With ML frameworks
-pip install "neuralvault[ml]"
+pip install "aimodelvault[ml]"
 
 # With development tools
-pip install "neuralvault[dev]"
+pip install "aimodelvault[dev]"
 
 # With security auditing
-pip install "neuralvault[security]"`}</CodeBlock>
+pip install "aimodelvault[security]"`}</CodeBlock>
 
       <h2 className="text-2xl font-bold mt-8 mb-4" id="docker">Docker</h2>
       <CodeBlock language="bash">{`# Alpine (smallest, ~12 MB)
-docker pull ghcr.io/nervosys/ai-model-vault:1.0.0
+docker pull ghcr.io/nervosys/ai-model-vault:1.1.0
 
 # Debian
-docker pull ghcr.io/nervosys/ai-model-vault:1.0.0-debian
+docker pull ghcr.io/nervosys/ai-model-vault:1.1.0-debian
 
 # API variant
-docker pull ghcr.io/nervosys/ai-model-vault:1.0.0-api`}</CodeBlock>
+docker pull ghcr.io/nervosys/ai-model-vault:1.1.0-api`}</CodeBlock>
 
       <h2 className="text-2xl font-bold mt-8 mb-4" id="features">Feature Flags</h2>
       <div className="overflow-x-auto">

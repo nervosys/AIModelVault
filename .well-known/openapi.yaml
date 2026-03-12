@@ -7,7 +7,7 @@ info:
     
     Requires the `api` cargo feature: `cargo build --features api`
     Start with: `aim serve --port 8080`
-  version: 1.1.0
+  version: 1.2.0
   license:
     name: AGPL-3.0-or-later
     url: https://www.gnu.org/licenses/agpl-3.0.html
@@ -314,6 +314,22 @@ components:
           type: string
 
 paths:
+  /api/v1/health:
+    get:
+      summary: Health check
+      tags: [Observability]
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
   /api/v1/auth/token:
     post:
       summary: Get JWT authentication token
@@ -341,7 +357,7 @@ paths:
                   expires_in:
                     type: integer
 
-  /api/v1/vault/stats:
+  /api/v1/stats:
     get:
       summary: Get vault statistics
       tags: [Vault]
@@ -366,18 +382,41 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ModelMetadata'
+
+  /api/v1/models/{name}:
+    get:
+      summary: Get model (latest version binary)
+      tags: [Models]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model binary
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
     post:
       summary: Store a new model
       tags: [Models]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           multipart/form-data:
             schema:
               type: object
-              required: [name, file]
+              required: [file]
               properties:
-                name:
-                  type: string
                 file:
                   type: string
                   format: binary
@@ -396,36 +435,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ModelVersion'
-
-  /api/v1/models/{name}:
-    get:
-      summary: Get model metadata
-      tags: [Models]
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Model metadata and latest version
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ModelMetadata'
-    delete:
-      summary: Delete a model
-      tags: [Models]
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Model deleted
 
   /api/v1/models/{name}/versions:
     get:
@@ -449,7 +458,7 @@ paths:
 
   /api/v1/models/{name}/versions/{version}:
     get:
-      summary: Get specific version details
+      summary: Get specific version (binary download)
       tags: [Versions]
       parameters:
         - name: name
@@ -464,35 +473,29 @@ paths:
             type: integer
       responses:
         '200':
-          description: Version details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ModelVersion'
-
-  /api/v1/models/{name}/versions/{version}/download:
-    get:
-      summary: Download decrypted model file
-      tags: [Versions]
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: version
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Model binary
+          description: Model binary for specific version
           content:
             application/octet-stream:
               schema:
                 type: string
                 format: binary
+    delete:
+      summary: Delete a specific version
+      tags: [Versions]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Version deleted
 
   /api/v1/models/{name}/lineage/{version}:
     get:
@@ -519,7 +522,7 @@ paths:
 
   /api/v1/models/{name}/card:
     get:
-      summary: Get model card
+      summary: Generate model card from vault metadata
       tags: [Model Cards]
       parameters:
         - name: name
@@ -529,13 +532,15 @@ paths:
             type: string
       responses:
         '200':
-          description: Model card
+          description: Model card JSON
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ModelCard'
-    put:
-      summary: Update model card
+        '404':
+          description: Model not found
+    post:
+      summary: Create or overwrite a custom model card
       tags: [Model Cards]
       parameters:
         - name: name
@@ -549,8 +554,85 @@ paths:
             schema:
               $ref: '#/components/schemas/ModelCard'
       responses:
+        '201':
+          description: Model card created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelCard'
+        '400':
+          description: Invalid model card JSON
+        '404':
+          description: Model not found
+
+  /api/v1/compliance:
+    get:
+      summary: Run compliance checks (FIPS 140-3, CVE, MITRE ATT&CK, CMMC 2.0)
+      tags: [Compliance]
+      responses:
         '200':
-          description: Model card updated
+          description: Compliance report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceReport'
+
+  /api/v1/rag/search:
+    post:
+      summary: Search RAG knowledge base
+      tags: [RAG]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                limit:
+                  type: integer
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+        '400':
+          description: Empty query
+
+  /api/v1/rag/documents:
+    post:
+      summary: Add document to RAG knowledge base
+      tags: [RAG]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                metadata:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '201':
+          description: Document stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  content_length:
+                    type: integer
+        '400':
+          description: Empty content
 
   /api/v1/convert:
     post:
@@ -588,91 +670,56 @@ paths:
                     to:
                       type: string
 
-  /api/v1/compliance:
+  /api/v1/audit:
     get:
-      summary: Run compliance check
-      tags: [Compliance]
+      summary: Get audit log entries
+      description: Returns audit log. Non-admin JWT roles have security events filtered out.
+      tags: [Observability]
       responses:
         '200':
-          description: Compliance report
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ComplianceReport'
-
-  /api/v1/rag/documents:
-    get:
-      summary: List RAG documents
-      tags: [RAG]
-      responses:
-        '200':
-          description: Document list
+          description: Audit log
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Document'
-    post:
-      summary: Add document to RAG store
-      tags: [RAG]
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Document'
-      responses:
-        '201':
-          description: Document added
+                  type: object
 
-  /api/v1/rag/search:
-    post:
-      summary: Search RAG knowledge base
-      tags: [RAG]
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [query]
-              properties:
-                query:
-                  type: string
-                top_k:
-                  type: integer
-                  default: 10
-                threshold:
-                  type: number
-                  default: 0.7
+  /api/v1/metrics:
+    get:
+      summary: Get vault metrics
+      tags: [Observability]
       responses:
         '200':
-          description: Search results
+          description: Metrics data
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SearchResult'
+                type: object
 
-  /graphql:
-    post:
-      summary: GraphQL endpoint
-      tags: [GraphQL]
-      description: Full GraphQL API (requires `graphql` feature). See playground at /graphql/playground.
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [query]
-              properties:
-                query:
-                  type: string
-                variables:
-                  type: object
-                operationName:
-                  type: string
+  /api/v1/events:
+    get:
+      summary: Get recent events
+      description: Returns recent events. Non-admin JWT roles have security events filtered out.
+      tags: [Observability]
       responses:
         '200':
-          description: GraphQL response
+          description: Event stream
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /api/v1/openapi.json:
+    get:
+      summary: Get OpenAPI specification
+      tags: [Observability]
+      security: []
+      responses:
+        '200':
+          description: OpenAPI JSON spec
           content:
             application/json:
               schema:
@@ -686,14 +733,14 @@ tags:
   - name: Models
     description: Model storage and retrieval
   - name: Versions
-    description: Version control and lineage
+    description: Version control, lineage, and downloads
   - name: Model Cards
-    description: Model documentation (Google/HuggingFace standard)
+    description: Model card generation and management
   - name: Conversion
     description: Format conversion and quantization
   - name: Compliance
-    description: FIPS/CMMC/MITRE compliance
+    description: FIPS 140-3, CVE, MITRE ATT&CK, and CMMC 2.0 compliance
   - name: RAG
-    description: Retrieval Augmented Generation
-  - name: GraphQL
-    description: GraphQL API endpoint
+    description: Retrieval-Augmented Generation knowledge base
+  - name: Observability
+    description: Health, metrics, audit log, and events

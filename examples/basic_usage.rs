@@ -1,18 +1,27 @@
 //! Example: Basic usage of AI Model Vault
 
 use ai_model_vault::formats::{ModelFormat, ModelMetadata};
-use ai_model_vault::{Vault, VaultConfig};
+use ai_model_vault::{VaultBuilder, VaultConfig};
 
 fn main() -> ai_model_vault::Result<()> {
     println!("=== AI Model Vault Basic Example ===\n");
 
-    // 1. Create and configure vault
-    println!("1. Creating vault...");
+    // 1. Create and configure vault (using VaultBuilder)
+    println!("1. Creating vault with VaultBuilder...");
     let config = VaultConfig::new()?;
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = VaultBuilder::new()
+        .config(config)
+        // .sqlite_versions()        // uncomment with `sqlite` feature
+        // .no_default_subscribers()  // opt out of built-in audit + metrics
+        .build()?;
     println!(
-        "   ✓ Vault created at: {:?}\n",
+        "   ✓ Vault created at: {:?}",
         vault.get_config().dirs.vault_dir
+    );
+    println!("   ✓ Version backend: {}", vault.version_backend_name());
+    println!(
+        "   ✓ Event subscribers: {}\n",
+        vault.event_bus().subscriber_count()
     );
 
     // 2. Unlock vault with passphrase

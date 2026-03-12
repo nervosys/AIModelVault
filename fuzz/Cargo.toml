@@ -1,0 +1,33 @@
+[package]
+name = "ai-model-vault-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.ai-model-vault]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fuzz_crypto_roundtrip"
+path = "fuzz_targets/fuzz_crypto_roundtrip.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_format_detection"
+path = "fuzz_targets/fuzz_format_detection.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_model_metadata"
+path = "fuzz_targets/fuzz_model_metadata.rs"
+doc = false

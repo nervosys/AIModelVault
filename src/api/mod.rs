@@ -20,6 +20,7 @@ pub mod routes;
 pub mod server;
 
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// API server configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,5 +52,11 @@ impl Default for ApiConfig {
             max_body_size: 512 * 1024 * 1024,
             enable_dashboard: true,
         }
+    }
+}
+
+impl Drop for ApiConfig {
+    fn drop(&mut self) {
+        self.jwt_secret.zeroize();
     }
 }

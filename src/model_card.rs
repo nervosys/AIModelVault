@@ -293,7 +293,7 @@ impl ModelCard {
 
     /// Convert to YAML string
     pub fn to_yaml(&self) -> Result<String> {
-        serde_yaml::to_string(self)
+        serde_yaml_ng::to_string(self)
             .map_err(|e| crate::error::VaultError::SerializationError(e.to_string()))
     }
 
@@ -303,32 +303,36 @@ impl ModelCard {
         let mut md = String::with_capacity(2048);
 
         // Header
-        let _ = write!(md, "# Model Card: {}\n\n", self.model_details.name);
+        let _ = writeln!(md, "# Model Card: {}\n", self.model_details.name);
 
         // Model Details
         md.push_str("## Model Details\n\n");
-        let _ = write!(md, "- **Name**: {}\n", self.model_details.name);
-        let _ = write!(md, "- **Version**: {}\n", self.model_details.version);
-        let _ = write!(md, "- **Type**: {}\n", self.model_details.model_type);
-        let _ = write!(md, "- **Architecture**: {}\n", self.model_details.architecture);
-        let _ = write!(md, "- **Size**: {}\n", self.model_details.size);
-        let _ = write!(md, "- **Framework**: {}\n", self.model_details.framework);
-        let _ = write!(md, "- **Format**: {}\n", self.model_details.format);
+        let _ = writeln!(md, "- **Name**: {}", self.model_details.name);
+        let _ = writeln!(md, "- **Version**: {}", self.model_details.version);
+        let _ = writeln!(md, "- **Type**: {}", self.model_details.model_type);
+        let _ = writeln!(
+            md,
+            "- **Architecture**: {}",
+            self.model_details.architecture
+        );
+        let _ = writeln!(md, "- **Size**: {}", self.model_details.size);
+        let _ = writeln!(md, "- **Framework**: {}", self.model_details.framework);
+        let _ = writeln!(md, "- **Format**: {}", self.model_details.format);
 
         if let Some(license) = &self.model_details.license {
-            let _ = write!(md, "- **License**: {}\n", license);
+            let _ = writeln!(md, "- **License**: {}", license);
         }
 
         if !self.model_details.developers.is_empty() {
-            let _ = write!(
+            let _ = writeln!(
                 md,
-                "- **Developers**: {}\n",
+                "- **Developers**: {}",
                 self.model_details.developers.join(", ")
             );
         }
 
         if let Some(repo) = &self.model_details.repository {
-            let _ = write!(md, "- **Repository**: {}\n", repo);
+            let _ = writeln!(md, "- **Repository**: {}", repo);
         }
 
         let _ = write!(md, "\n{}\n\n", self.model_details.description);
@@ -337,15 +341,15 @@ impl ModelCard {
         md.push_str("## Intended Use\n\n");
         md.push_str("### Primary Uses\n");
         for use_case in &self.intended_use.primary_uses {
-            let _ = write!(md, "- {}\n", use_case);
+            let _ = writeln!(md, "- {}", use_case);
         }
         md.push_str("\n### Primary Users\n");
         for user in &self.intended_use.primary_users {
-            let _ = write!(md, "- {}\n", user);
+            let _ = writeln!(md, "- {}", user);
         }
         md.push_str("\n### Out-of-Scope Uses\n");
         for use_case in &self.intended_use.out_of_scope_uses {
-            let _ = write!(md, "- {}\n", use_case);
+            let _ = writeln!(md, "- {}", use_case);
         }
         md.push('\n');
 
@@ -354,13 +358,13 @@ impl ModelCard {
             md.push_str("## Training Data\n\n");
             md.push_str("### Datasets\n");
             for dataset in &training.datasets {
-                let _ = write!(md, "- {}\n", dataset);
+                let _ = writeln!(md, "- {}", dataset);
             }
             if let Some(size) = &training.size {
-                let _ = write!(md, "\n**Dataset Size**: {}\n", size);
+                let _ = writeln!(md, "\n**Dataset Size**: {}", size);
             }
             if let Some(languages) = &training.languages {
-                let _ = write!(md, "\n**Languages**: {}\n", languages.join(", "));
+                let _ = writeln!(md, "\n**Languages**: {}", languages.join(", "));
             }
             md.push('\n');
         }
@@ -380,7 +384,7 @@ impl ModelCard {
             if let Some(benchmarks) = &eval.benchmarks {
                 md.push_str("\n### Benchmark Results\n");
                 for (name, score) in benchmarks {
-                    let _ = write!(md, "- **{}**: {:.4}\n", name, score);
+                    let _ = writeln!(md, "- **{}**: {:.4}", name, score);
                 }
             }
             md.push('\n');
@@ -393,7 +397,7 @@ impl ModelCard {
             if let Some(bias) = &ethical.bias {
                 md.push_str("### Bias Considerations\n");
                 for item in bias {
-                    let _ = write!(md, "- {}\n", item);
+                    let _ = writeln!(md, "- {}", item);
                 }
                 md.push('\n');
             }
@@ -401,17 +405,17 @@ impl ModelCard {
             if let Some(risks) = &ethical.risks {
                 md.push_str("### Risk Assessment\n");
                 for risk in risks {
-                    let _ = write!(md, "- {}\n", risk);
+                    let _ = writeln!(md, "- {}", risk);
                 }
                 md.push('\n');
             }
 
             if let Some(impact) = &ethical.environmental_impact {
                 md.push_str("### Environmental Impact\n");
-                let _ = write!(md, "- **Hardware**: {}\n", impact.hardware);
-                let _ = write!(md, "- **Training Hours**: {:.1}\n", impact.hours);
+                let _ = writeln!(md, "- **Hardware**: {}", impact.hardware);
+                let _ = writeln!(md, "- **Training Hours**: {:.1}", impact.hours);
                 if let Some(carbon) = impact.carbon_emitted {
-                    let _ = write!(md, "- **Carbon Emitted**: {:.2} kg CO2e\n", carbon);
+                    let _ = writeln!(md, "- **Carbon Emitted**: {:.2} kg CO2e", carbon);
                 }
                 md.push('\n');
             }
@@ -422,11 +426,11 @@ impl ModelCard {
             md.push_str("## Limitations and Recommendations\n\n");
             md.push_str("### Limitations\n");
             for limitation in &caveats.limitations {
-                let _ = write!(md, "- {}\n", limitation);
+                let _ = writeln!(md, "- {}", limitation);
             }
             md.push_str("\n### Recommendations\n");
             for rec in &caveats.recommendations {
-                let _ = write!(md, "- {}\n", rec);
+                let _ = writeln!(md, "- {}", rec);
             }
             md.push('\n');
         }
@@ -440,16 +444,12 @@ impl ModelCard {
         }
 
         // Footer
-        let _ = write!(
+        let _ = writeln!(
             md,
-            "\n---\n*Model card created: {}*\n",
+            "\n---\n*Model card created: {}*",
             self.created_at.format("%Y-%m-%d")
         );
-        let _ = write!(
-            md,
-            "*Last updated: {}*\n",
-            self.updated_at.format("%Y-%m-%d")
-        );
+        let _ = writeln!(md, "*Last updated: {}*", self.updated_at.format("%Y-%m-%d"));
 
         md
     }
@@ -462,7 +462,7 @@ impl ModelCard {
 
     /// Parse from YAML string
     pub fn from_yaml(yaml: &str) -> Result<Self> {
-        serde_yaml::from_str(yaml)
+        serde_yaml_ng::from_str(yaml)
             .map_err(|e| crate::error::VaultError::SerializationError(e.to_string()))
     }
 }
@@ -574,5 +574,292 @@ mod tests {
         assert!(markdown.contains("# Model Card: test-model"));
         assert!(markdown.contains("## Model Details"));
         assert!(markdown.contains("## Intended Use"));
+    }
+
+    #[test]
+    fn test_model_card_to_json() {
+        // Covers line 291
+        let details = ModelDetails {
+            name: "json-model".to_string(),
+            version: "1.0".to_string(),
+            description: "JSON test".to_string(),
+            model_type: "LLM".to_string(),
+            architecture: "Transformer".to_string(),
+            size: "7B".to_string(),
+            framework: "PyTorch".to_string(),
+            format: "safetensors".to_string(),
+            license: Some("MIT".to_string()),
+            citation: None,
+            developers: vec!["author".to_string()],
+            contact: None,
+            repository: None,
+            paper: None,
+        };
+        let intended_use = IntendedUse {
+            primary_uses: vec!["Testing".to_string()],
+            primary_users: vec!["Devs".to_string()],
+            out_of_scope_uses: vec![],
+            use_case_examples: None,
+        };
+        let card = ModelCard::new(details, intended_use);
+        let json = card.to_json().unwrap();
+        assert!(json.contains("json-model"));
+        assert!(json.contains("Transformer"));
+        // Verify it's valid JSON
+        let _: serde_json::Value = serde_json::from_str(&json).unwrap();
+    }
+
+    #[test]
+    fn test_model_card_to_yaml() {
+        // Covers line 297
+        let details = ModelDetails {
+            name: "yaml-model".to_string(),
+            version: "2.0".to_string(),
+            description: "YAML test".to_string(),
+            model_type: "CNN".to_string(),
+            architecture: "CNN".to_string(),
+            size: "50M".to_string(),
+            framework: "TensorFlow".to_string(),
+            format: "savedmodel".to_string(),
+            license: Some("Apache-2.0".to_string()),
+            citation: None,
+            developers: vec![],
+            contact: None,
+            repository: None,
+            paper: None,
+        };
+        let intended_use = IntendedUse {
+            primary_uses: vec![],
+            primary_users: vec![],
+            out_of_scope_uses: vec![],
+            use_case_examples: None,
+        };
+        let card = ModelCard::new(details, intended_use);
+        let yaml = card.to_yaml().unwrap();
+        assert!(yaml.contains("yaml-model"));
+    }
+
+    fn full_model_details() -> ModelDetails {
+        ModelDetails {
+            name: "full-model".to_string(),
+            version: "2.0.0".to_string(),
+            description: "A fully loaded model".to_string(),
+            model_type: "LLM".to_string(),
+            architecture: "Transformer".to_string(),
+            size: "7B parameters".to_string(),
+            framework: "PyTorch".to_string(),
+            format: "safetensors".to_string(),
+            license: Some("Apache-2.0".to_string()),
+            citation: Some("@article{test2024}".to_string()),
+            developers: vec!["Alice".to_string(), "Bob".to_string()],
+            contact: Some("alice@example.com".to_string()),
+            repository: Some("https://github.com/test/model".to_string()),
+            paper: Some("https://arxiv.org/abs/1234".to_string()),
+        }
+    }
+
+    fn full_intended_use() -> IntendedUse {
+        IntendedUse {
+            primary_uses: vec!["Text generation".to_string()],
+            primary_users: vec!["Researchers".to_string()],
+            out_of_scope_uses: vec!["Medical advice".to_string()],
+            use_case_examples: Some(vec!["Summarization".to_string()]),
+        }
+    }
+
+    #[test]
+    fn test_builder_with_training_data() {
+        let card = ModelCard::new(full_model_details(), full_intended_use()).with_training_data(
+            TrainingData {
+                datasets: vec!["dataset1".to_string()],
+                sources: Some(vec!["web".to_string()]),
+                collection_methods: Some("scraping".to_string()),
+                preprocessing: Some(vec!["tokenize".to_string()]),
+                size: Some("100GB".to_string()),
+                splits: None,
+                languages: Some(vec!["en".to_string(), "fr".to_string()]),
+                demographics: None,
+            },
+        );
+        assert!(card.training_data.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_evaluation() {
+        let card =
+            ModelCard::new(full_model_details(), full_intended_use()).with_evaluation(Evaluation {
+                datasets: vec!["MMLU".to_string()],
+                metrics: vec![Metric {
+                    name: "Accuracy".to_string(),
+                    value: 0.95,
+                    description: Some("Top-1 accuracy".to_string()),
+                    threshold: Some(0.90),
+                }],
+                benchmarks: Some({
+                    let mut m = HashMap::new();
+                    m.insert("MMLU".to_string(), 0.85);
+                    m
+                }),
+                performance_by_group: None,
+                methodology: Some("Standard eval".to_string()),
+            });
+        assert!(card.evaluation.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_ethical_considerations() {
+        let card = ModelCard::new(full_model_details(), full_intended_use())
+            .with_ethical_considerations(EthicalConsiderations {
+                sensitive_data: Some("None".to_string()),
+                bias: Some(vec!["English-centric".to_string()]),
+                fairness: None,
+                privacy: None,
+                environmental_impact: Some(EnvironmentalImpact {
+                    hardware: "8xA100".to_string(),
+                    hours: 100.0,
+                    cloud_provider: Some("AWS".to_string()),
+                    carbon_emitted: Some(42.5),
+                    energy_consumed: Some(800.0),
+                }),
+                human_oversight: None,
+                risks: Some(vec!["Hallucination".to_string()]),
+                mitigations: None,
+            });
+        assert!(card.ethical_considerations.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_caveats() {
+        let card = ModelCard::new(full_model_details(), full_intended_use())
+            .with_caveats_and_recommendations(CaveatsAndRecommendations {
+                limitations: vec!["English only".to_string()],
+                known_issues: None,
+                recommendations: vec!["Fine-tune for domain".to_string()],
+                testing_recommendations: None,
+                tradeoffs: None,
+            });
+        assert!(card.caveats_and_recommendations.is_some());
+    }
+
+    #[test]
+    fn test_builder_add_metadata() {
+        let card = ModelCard::new(full_model_details(), full_intended_use())
+            .add_metadata("key1", "value1")
+            .add_metadata("key2", "value2");
+        assert_eq!(card.metadata.len(), 2);
+        assert_eq!(card.metadata.get("key1"), Some(&"value1".to_string()));
+    }
+
+    #[test]
+    fn test_touch_updates_timestamp() {
+        let mut card = ModelCard::new(full_model_details(), full_intended_use());
+        let before = card.updated_at;
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        card.touch();
+        assert!(card.updated_at >= before);
+    }
+
+    #[test]
+    fn test_full_markdown_with_all_sections() {
+        let card = ModelCard::new(full_model_details(), full_intended_use())
+            .with_training_data(TrainingData {
+                datasets: vec!["CommonCrawl".to_string()],
+                sources: None,
+                collection_methods: None,
+                preprocessing: None,
+                size: Some("500GB".to_string()),
+                splits: None,
+                languages: Some(vec!["en".to_string()]),
+                demographics: None,
+            })
+            .with_evaluation(Evaluation {
+                datasets: vec!["MMLU".to_string()],
+                metrics: vec![
+                    Metric {
+                        name: "Accuracy".to_string(),
+                        value: 0.95,
+                        description: Some("Top-1".to_string()),
+                        threshold: None,
+                    },
+                    Metric {
+                        name: "F1".to_string(),
+                        value: 0.92,
+                        description: None,
+                        threshold: None,
+                    },
+                ],
+                benchmarks: Some({
+                    let mut m = HashMap::new();
+                    m.insert("HellaSwag".to_string(), 0.88);
+                    m
+                }),
+                performance_by_group: None,
+                methodology: None,
+            })
+            .with_ethical_considerations(EthicalConsiderations {
+                sensitive_data: None,
+                bias: Some(vec!["Western bias".to_string()]),
+                fairness: None,
+                privacy: None,
+                environmental_impact: Some(EnvironmentalImpact {
+                    hardware: "8xA100".to_string(),
+                    hours: 200.0,
+                    cloud_provider: None,
+                    carbon_emitted: Some(55.0),
+                    energy_consumed: None,
+                }),
+                human_oversight: None,
+                risks: Some(vec!["Misinformation".to_string()]),
+                mitigations: None,
+            })
+            .with_caveats_and_recommendations(CaveatsAndRecommendations {
+                limitations: vec!["English only".to_string()],
+                known_issues: None,
+                recommendations: vec!["Fine-tune".to_string()],
+                testing_recommendations: None,
+                tradeoffs: None,
+            });
+
+        let md = card.to_markdown();
+
+        // Header and model details
+        assert!(md.contains("# Model Card: full-model"));
+        assert!(md.contains("**License**: Apache-2.0"));
+        assert!(md.contains("**Developers**: Alice, Bob"));
+        assert!(md.contains("**Repository**: https://github.com/test/model"));
+
+        // Training data
+        assert!(md.contains("## Training Data"));
+        assert!(md.contains("CommonCrawl"));
+        assert!(md.contains("**Dataset Size**: 500GB"));
+        assert!(md.contains("**Languages**: en"));
+
+        // Evaluation
+        assert!(md.contains("## Evaluation"));
+        assert!(md.contains("**Accuracy**: 0.9500 - Top-1"));
+        assert!(md.contains("**F1**: 0.9200"));
+        assert!(md.contains("### Benchmark Results"));
+        assert!(md.contains("HellaSwag"));
+
+        // Ethical considerations
+        assert!(md.contains("## Ethical Considerations"));
+        assert!(md.contains("Western bias"));
+        assert!(md.contains("Misinformation"));
+        assert!(md.contains("**Hardware**: 8xA100"));
+        assert!(md.contains("**Training Hours**: 200.0"));
+        assert!(md.contains("**Carbon Emitted**: 55.00 kg CO2e"));
+
+        // Caveats
+        assert!(md.contains("## Limitations and Recommendations"));
+        assert!(md.contains("English only"));
+        assert!(md.contains("Fine-tune"));
+
+        // Citation
+        assert!(md.contains("## Citation"));
+        assert!(md.contains("@article{test2024}"));
+
+        // Footer
+        assert!(md.contains("Model card created:"));
+        assert!(md.contains("Last updated:"));
     }
 }

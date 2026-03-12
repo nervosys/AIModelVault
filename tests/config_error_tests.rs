@@ -34,9 +34,11 @@ fn test_directory_paths_creation() {
     use tempfile::TempDir;
 
     let temp = TempDir::new().unwrap();
-    let mut paths = DirectoryPaths::default();
-    paths.data_dir = temp.path().join("data");
-    paths.config_dir = temp.path().join("config");
+    let paths = DirectoryPaths {
+        data_dir: temp.path().join("data"),
+        config_dir: temp.path().join("config"),
+        ..DirectoryPaths::default()
+    };
 
     // Paths should be set correctly
     assert!(paths.data_dir.to_string_lossy().contains("data"));
@@ -117,7 +119,7 @@ fn test_error_from_io_error() {
     let vault_err: VaultError = io_err.into();
 
     match vault_err {
-        VaultError::IoError(_) => assert!(true),
+        VaultError::IoError(_) => {} // expected
         _ => panic!("Should convert to IoError variant"),
     }
 }

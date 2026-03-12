@@ -2,21 +2,28 @@
 
 use ai_model_vault::conversion::{ConversionOptions, ConversionPipeline};
 use ai_model_vault::formats::ModelFormat;
-use ai_model_vault::{Result, Vault, VaultConfig, VaultError};
+use ai_model_vault::{Result, VaultConfig, VaultError};
 use std::path::PathBuf;
 
-use crate::cli::helpers::prompt_passphrase;
+use crate::cli::helpers::{build_vault, prompt_passphrase};
 
 /// List all supported conversions.
 pub fn handle_list_conversions() -> Result<()> {
     let pipeline = ConversionPipeline::with_builtins();
     let conversions = pipeline.supported_conversions();
 
-    println!("🔄 Supported format conversions ({} total):\n", conversions.len());
-    println!("   {:<30} {}", "Conversion", "Converter");
-    println!("   {:<30} {}", "──────────", "─────────");
+    println!(
+        "🔄 Supported format conversions ({} total):\n",
+        conversions.len()
+    );
+    println!("   {:<30} Converter", "Conversion");
+    println!("   {:<30} ─────────", "──────────");
     for (src, dst, name) in &conversions {
-        println!("   {:<30} {}", format!("{} → {}", src.name(), dst.name()), name);
+        println!(
+            "   {:<30} {}",
+            format!("{} → {}", src.name(), dst.name()),
+            name
+        );
     }
 
     // Show some multi-step paths
@@ -37,6 +44,7 @@ pub fn handle_list_conversions() -> Result<()> {
 }
 
 /// Convert a model between formats.
+#[allow(clippy::too_many_arguments)]
 pub fn handle_convert(
     name: String,
     to_format_str: String,
@@ -47,6 +55,7 @@ pub fn handle_convert(
     validate: bool,
     plan_only: bool,
     config: VaultConfig,
+    use_sqlite: bool,
 ) -> Result<()> {
     println!("🔄 Converting model format");
     println!("   Model: {}", name);
@@ -56,7 +65,7 @@ pub fn handle_convert(
     let to_format = parse_format(&to_format_str)?;
 
     // Open vault and get model
-    let mut vault = Vault::new(Some(config.clone()))?;
+    let mut vault = build_vault(config.clone(), use_sqlite)?;
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
     vault.unlock(passphrase)?;
 
@@ -86,7 +95,10 @@ pub fn handle_convert(
     println!("   Source size: {} bytes", data.len());
 
     if from_format == to_format {
-        println!("\n⚠️  Model is already in {} format — no conversion needed.", to_format.name());
+        println!(
+            "\n⚠️  Model is already in {} format — no conversion needed.",
+            to_format.name()
+        );
         return Ok(());
     }
 
@@ -180,7 +192,11 @@ pub fn handle_convert(
         let export_ext = from_format.extension();
         let export_file = format!("{}_v{}.{}", name, version_num, export_ext);
         std::fs::write(&export_file, &data)?;
-        println!("\n   Source exported: {} ({} bytes)", export_file, data.len());
+        println!(
+            "\n   Source exported: {} ({} bytes)",
+            export_file,
+            data.len()
+        );
 
         if let Some(python) = plan["python"].as_str() {
             println!("\n   Python script (set input_path/output_path):");

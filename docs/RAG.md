@@ -1,6 +1,6 @@
 # RAG and Rule-Based Systems
 
-NeuronVault provides comprehensive support for **Retrieval-Augmented Generation (RAG)** and **rule-based AI systems**, including document stores, knowledge bases, rule engines, caching, and database abstractions.
+AI Model Vault provides comprehensive support for **Retrieval-Augmented Generation (RAG)** and **rule-based AI systems**, including document stores, knowledge bases, rule engines, caching, and database abstractions.
 
 ## Table of Contents
 

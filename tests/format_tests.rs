@@ -31,7 +31,7 @@ fn test_format_detection_from_extension() {
     ];
 
     for (filename, expected_format) in test_cases {
-        let ext = filename.split('.').last().unwrap();
+        let ext = filename.split('.').next_back().unwrap();
         let detected = ModelFormat::from_extension(ext);
         assert_eq!(detected, expected_format, "Failed for {}", filename);
     }

@@ -2,14 +2,19 @@
 
 use ai_model_vault::formats::{ModelFormat, ModelMetadata};
 use ai_model_vault::utils::{CompressionAnalyzer, ModelAnalyzer, ModelDeduplicator, ModelExporter};
-use ai_model_vault::{Result, Vault, VaultConfig};
+use ai_model_vault::{Result, VaultConfig};
 
-use crate::cli::helpers::prompt_passphrase;
+use crate::cli::helpers::{build_vault, prompt_passphrase};
 
-pub fn handle_analyze(name: String, version: Option<u32>, config: VaultConfig) -> Result<()> {
+pub fn handle_analyze(
+    name: String,
+    version: Option<u32>,
+    config: VaultConfig,
+    use_sqlite: bool,
+) -> Result<()> {
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
 
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
     // Get model data
@@ -69,10 +74,10 @@ pub fn handle_analyze(name: String, version: Option<u32>, config: VaultConfig) -
     Ok(())
 }
 
-pub fn handle_deduplicate(detailed: bool, config: VaultConfig) -> Result<()> {
+pub fn handle_deduplicate(detailed: bool, config: VaultConfig, use_sqlite: bool) -> Result<()> {
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
 
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
     println!("Scanning for duplicate models...");
@@ -129,10 +134,11 @@ pub fn handle_export(
     output: std::path::PathBuf,
     version: Option<u32>,
     config: VaultConfig,
+    use_sqlite: bool,
 ) -> Result<()> {
     let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
 
-    let mut vault = Vault::new(Some(config))?;
+    let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
     let data = vault.get_model(&name, version)?;

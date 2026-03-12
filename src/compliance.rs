@@ -125,7 +125,13 @@ impl ComplianceChecker {
             }
             _ => {
                 // cargo-audit not installed or not runnable — report as advisory
-                (true, vec!["cargo-audit not available; install with: cargo install cargo-audit".to_string()])
+                (
+                    true,
+                    vec![
+                        "cargo-audit not available; install with: cargo install cargo-audit"
+                            .to_string(),
+                    ],
+                )
             }
         }
     }
@@ -227,5 +233,60 @@ mod tests {
         assert!(status.cve_scan_passed);
         assert!(status.mitre_attack_aligned);
         assert_eq!(status.cmmc_level, 2);
+    }
+
+    #[test]
+    fn test_check_disabled_fips() {
+        // Covers line 94 (is_check_enabled("fips_140_3") => false path)
+        let mut checker = ComplianceChecker::new();
+        checker.set_check_enabled("fips_140_3", false);
+        assert!(checker.check_fips_140_3()); // returns true when disabled
+    }
+
+    #[test]
+    fn test_check_disabled_cve() {
+        // Covers line 94-96 — check_cve disabled path
+        let mut checker = ComplianceChecker::new();
+        checker.set_check_enabled("cve", false);
+        let (passed, cves) = checker.check_cve();
+        assert!(passed);
+        assert!(cves.is_empty());
+    }
+
+    #[test]
+    fn test_check_disabled_mitre() {
+        let mut checker = ComplianceChecker::new();
+        checker.set_check_enabled("mitre_attack", false);
+        assert!(checker.check_mitre_attack());
+    }
+
+    #[test]
+    fn test_check_disabled_cmmc() {
+        let mut checker = ComplianceChecker::new();
+        checker.set_check_enabled("cmmc", false);
+        assert_eq!(checker.check_cmmc(), 0);
+    }
+
+    #[test]
+    fn test_check_enabled_unknown() {
+        let checker = ComplianceChecker::new();
+        assert!(!checker.is_check_enabled("nonexistent"));
+    }
+
+    #[test]
+    fn test_run_all_with_disabled_checks() {
+        let mut checker = ComplianceChecker::new();
+        checker.set_check_enabled("cve", false);
+        checker.set_check_enabled("mitre_attack", false);
+        let status = checker.run_all_checks().unwrap();
+        assert!(status.fips_140_3);
+        assert!(status.cve_scan_passed);
+    }
+
+    #[test]
+    fn test_violation_severity_debug() {
+        let sev = ViolationSeverity::Critical;
+        let s = format!("{:?}", sev);
+        assert!(s.contains("Critical"));
     }
 }

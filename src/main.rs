@@ -27,7 +27,7 @@ fn main() -> Result<()> {
     // Load or create config
     let config = if let Some(config_path) = &cli.config {
         let contents = std::fs::read_to_string(config_path)?;
-        serde_yaml::from_str(&contents)?
+        serde_yaml_ng::from_str(&contents)?
     } else {
         VaultConfig::new()?
     };
@@ -40,8 +40,14 @@ fn main() -> Result<()> {
         telemetry::track_app_start();
     }
 
+    // Extract sqlite-versions flag (feature-gated)
+    #[cfg(feature = "sqlite")]
+    let use_sqlite = cli.sqlite_versions;
+    #[cfg(not(feature = "sqlite"))]
+    let use_sqlite = false;
+
     let result = match cli.command {
-        Commands::Init { name } => vault::handle_init(name, config),
+        Commands::Init { name } => vault::handle_init(name, config, use_sqlite),
         Commands::Store {
             name,
             path,
@@ -49,37 +55,52 @@ fn main() -> Result<()> {
             description,
             framework,
             task,
-        } => vault::handle_store(name, path, format, description, framework, task, config),
+        } => vault::handle_store(
+            name,
+            path,
+            format,
+            description,
+            framework,
+            task,
+            config,
+            use_sqlite,
+        ),
         Commands::Get {
             name,
             output,
             version,
-        } => vault::handle_get(name, output, version, config),
-        Commands::List => vault::handle_list(config),
-        Commands::Versions { name } => vault::handle_versions(name, config),
-        Commands::Lineage { name, version } => vault::handle_lineage(name, version, config),
+        } => vault::handle_get(name, output, version, config, use_sqlite),
+        Commands::List => vault::handle_list(config, use_sqlite),
+        Commands::Versions { name } => vault::handle_versions(name, config, use_sqlite),
+        Commands::Lineage { name, version } => {
+            vault::handle_lineage(name, version, config, use_sqlite)
+        }
         Commands::Delete {
             name,
             version,
             force,
-        } => vault::handle_delete(name, version, force, config),
-        Commands::Stats => vault::handle_stats(config),
+        } => vault::handle_delete(name, version, force, config, use_sqlite),
+        Commands::Stats => vault::handle_stats(config, use_sqlite),
         Commands::Compliance => vault::handle_compliance(),
-        Commands::ChangePassphrase => vault::handle_change_passphrase(config),
+        Commands::ChangePassphrase => vault::handle_change_passphrase(config, use_sqlite),
         Commands::Archive {
             models,
             output,
             format,
             versions,
-        } => archive::handle_archive(models, output, format, versions, config),
+        } => archive::handle_archive(models, output, format, versions, config, use_sqlite),
         Commands::Extract { archive, output } => archive::handle_extract(archive, output),
-        Commands::Analyze { name, version } => analyze::handle_analyze(name, version, config),
-        Commands::Deduplicate { detailed } => analyze::handle_deduplicate(detailed, config),
+        Commands::Analyze { name, version } => {
+            analyze::handle_analyze(name, version, config, use_sqlite)
+        }
+        Commands::Deduplicate { detailed } => {
+            analyze::handle_deduplicate(detailed, config, use_sqlite)
+        }
         Commands::Export {
             name,
             output,
             version,
-        } => analyze::handle_export(name, output, version, config),
+        } => analyze::handle_export(name, output, version, config, use_sqlite),
         Commands::Convert {
             name,
             to_format,
@@ -99,6 +120,7 @@ fn main() -> Result<()> {
             validate,
             plan_only,
             config,
+            use_sqlite,
         ),
         Commands::ListConversions => convert::handle_list_conversions(),
         #[cfg(feature = "api")]
@@ -119,13 +141,12 @@ fn main() -> Result<()> {
                 enable_dashboard: !no_dashboard,
                 ..Default::default()
             };
-            let rt = tokio::runtime::Runtime::new()
-                .map_err(|e| ai_model_vault::VaultError::IoError(e))?;
+            let rt = tokio::runtime::Runtime::new().map_err(ai_model_vault::VaultError::IoError)?;
             rt.block_on(ai_model_vault::api::server::serve(config, api_config))
         }
         Commands::Cache => vault::handle_cache(),
-        Commands::Cloud { command } => cloud::handle_cloud(command, config),
-        Commands::Card { command } => card::handle_card(command, config),
+        Commands::Cloud { command } => cloud::handle_cloud(command, config, use_sqlite),
+        Commands::Card { command } => card::handle_card(command, config, use_sqlite),
         Commands::Database { command } => database::handle_database(command),
         Commands::Telemetry { command } => telemetry_handler::handle_telemetry(command, config),
     };

@@ -12,6 +12,7 @@
 pub mod compression;
 #[cfg(feature = "gpu")]
 pub mod gpu;
+pub mod streaming;
 
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
@@ -75,10 +76,10 @@ impl SecureKey {
 impl FipsCrypto {
     /// Create new FIPS crypto instance with recommended parameters
     pub fn new() -> Result<Self> {
-        // Argon2id with OWASP recommended parameters
+        // Argon2id with FIPS 140-3 / OWASP recommended parameters
         let params = ParamsBuilder::new()
-            .m_cost(19456) // 19 MiB memory
-            .t_cost(2) // 2 iterations
+            .m_cost(65536) // 64 MiB memory
+            .t_cost(3) // 3 iterations
             .p_cost(1) // 1 parallelism
             .build()
             .map_err(|e| {
@@ -300,6 +301,34 @@ impl Default for KeyManager {
     }
 }
 
+// ── Trait implementation ─────────────────────────────────────
+
+impl crate::traits::CryptoProvider for FipsCrypto {
+    fn derive_key(
+        &self,
+        passphrase: Vec<u8>,
+        salt: Option<Vec<u8>>,
+    ) -> Result<(SecureKey, Vec<u8>)> {
+        FipsCrypto::derive_key(self, passphrase, salt)
+    }
+
+    fn encrypt(&self, data: &[u8], key: &SecureKey) -> Result<Vec<u8>> {
+        FipsCrypto::encrypt(self, data, key)
+    }
+
+    fn decrypt(&self, encrypted_data: &[u8], key: &SecureKey) -> Result<Vec<u8>> {
+        FipsCrypto::decrypt(self, encrypted_data, key)
+    }
+
+    fn hash(&self, data: &[u8]) -> Vec<u8> {
+        FipsCrypto::hash_sha256(data)
+    }
+
+    fn random_bytes(&self, length: usize) -> Vec<u8> {
+        FipsCrypto::generate_random(self, length)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -310,7 +339,7 @@ mod tests {
         let passphrase = b"test_passphrase_with_sufficient_entropy".to_vec();
         let (key, _) = crypto.derive_key(passphrase, None).unwrap();
 
-        let plaintext = b"Hello, NeuralVault!";
+        let plaintext = b"Hello, AI Model Vault!";
         let encrypted = crypto.encrypt(plaintext, &key).unwrap();
         let decrypted = crypto.decrypt(&encrypted, &key).unwrap();
 
@@ -345,5 +374,132 @@ mod tests {
         let result = crypto.decrypt(&encrypted, &key2);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_key_manager_store_load_roundtrip() {
+        let km = KeyManager::new().unwrap();
+        let crypto = FipsCrypto::new().unwrap();
+        let (original_key, _) = crypto
+            .derive_key(b"some_passphrase".to_vec(), None)
+            .unwrap();
+
+        let stored = km
+            .store_key(&original_key, b"master_pass_1234".to_vec())
+            .unwrap();
+        let loaded = km.load_key(&stored, b"master_pass_1234".to_vec()).unwrap();
+
+        assert_eq!(original_key.as_bytes(), loaded.as_bytes());
+    }
+
+    #[test]
+    fn test_key_manager_wrong_passphrase() {
+        let km = KeyManager::new().unwrap();
+        let crypto = FipsCrypto::new().unwrap();
+        let (key, _) = crypto.derive_key(b"gen_pass".to_vec(), None).unwrap();
+
+        let stored = km.store_key(&key, b"correct_pass".to_vec()).unwrap();
+        let result = km.load_key(&stored, b"wrong_pass".to_vec());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_key_manager_truncated_data() {
+        let km = KeyManager::new().unwrap();
+        let short_data = vec![0u8; SALT_SIZE - 1];
+        let result = km.load_key(&short_data, b"pass".to_vec());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_key_manager_default() {
+        let km = KeyManager::default();
+        let crypto = FipsCrypto::new().unwrap();
+        let (key, _) = crypto.derive_key(b"default_test".to_vec(), None).unwrap();
+        let stored = km.store_key(&key, b"mp".to_vec()).unwrap();
+        assert!(!stored.is_empty());
+    }
+
+    #[test]
+    fn test_secure_key_wrong_size() {
+        // Covers L58, L61 — SecureKey::from_bytes with wrong key size
+        let short = vec![0u8; 16]; // too short (need 32)
+        let result = SecureKey::from_bytes(&short);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.err().unwrap());
+        assert!(err_msg.contains("Invalid key size"));
+    }
+
+    #[test]
+    fn test_decrypt_too_short_data() {
+        // Covers L186-187 — decrypt with data shorter than NONCE_SIZE
+        let crypto = FipsCrypto::new().unwrap();
+        let (key, _) = crypto.derive_key(b"short_test".to_vec(), None).unwrap();
+        let short_data = vec![0u8; 5]; // less than NONCE_SIZE (12)
+        let result = crypto.decrypt(&short_data, &key);
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("too short"));
+    }
+
+    #[test]
+    fn test_generate_random() {
+        // Covers L212-215 — generate_random
+        let crypto = FipsCrypto::new().unwrap();
+        let random1 = crypto.generate_random(32);
+        let random2 = crypto.generate_random(32);
+        assert_eq!(random1.len(), 32);
+        assert_eq!(random2.len(), 32);
+        assert_ne!(random1, random2);
+    }
+
+    #[test]
+    fn test_hash_sha256() {
+        let hash = FipsCrypto::hash_sha256(b"hello");
+        assert_eq!(hash.len(), 32);
+        let hex = hex::encode(&hash);
+        assert_eq!(hex, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    }
+
+    #[test]
+    fn test_hash_sha256_hex() {
+        // Covers L228-229 — hash_sha256_hex
+        let hex = FipsCrypto::hash_sha256_hex(b"hello");
+        assert_eq!(hex.len(), 64);
+        assert_eq!(hex, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    }
+
+    #[test]
+    fn test_fips_crypto_default() {
+        // Covers L235-237 — Default impl for FipsCrypto
+        let crypto = FipsCrypto::default();
+        let (key, _) = crypto.derive_key(b"default_works".to_vec(), None).unwrap();
+        let encrypted = crypto.encrypt(b"test", &key).unwrap();
+        assert!(!encrypted.is_empty());
+    }
+
+    #[test]
+    fn test_crypto_provider_trait() {
+        // Covers CryptoProvider trait impl
+        use crate::traits::CryptoProvider;
+        let crypto = FipsCrypto::new().unwrap();
+        let provider: &dyn CryptoProvider = &crypto;
+
+        let (key, salt) = provider.derive_key(b"trait_test".to_vec(), None).unwrap();
+        assert!(!salt.is_empty());
+
+        let encrypted = provider.encrypt(b"data", &key).unwrap();
+        let decrypted = provider.decrypt(&encrypted, &key).unwrap();
+        assert_eq!(decrypted, b"data");
+
+        let hash = provider.hash(b"test");
+        assert_eq!(hash.len(), 32);
+
+        let random = provider.random_bytes(16);
+        assert_eq!(random.len(), 16);
+
+        let hex = provider.hash_hex(b"test");
+        assert_eq!(hex.len(), 64);
     }
 }

@@ -1,0 +1,142 @@
+# AI Model Vault — MkDocs Configuration
+# Build: mkdocs build          (outputs to website/public/mkdocs/)
+# Serve: mkdocs serve           (dev preview at http://127.0.0.1:8000)
+# Deploy to Next.js: mkdocs build && next build  (from website/)
+
+site_name: AI Model Vault
+site_description: Universal cross-platform secure vault for AI model storage, versioning, and management
+site_author: NervoSys AI Team
+site_url: https://aimodelvault.nervosys.ai/mkdocs/
+repo_url: https://github.com/nervosys/AIModelVault
+repo_name: nervosys/AIModelVault
+copyright: "&copy; 2026 NervoSys. Licensed under AGPL-3.0-or-later."
+
+docs_dir: docs
+site_dir: website/public/mkdocs
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+  # PyMdown Extensions
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/nervosys/AIModelVault
+  generator: false
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: QUICKSTART.md
+      - CLI Reference: CLI.md
+      - Demo Guide: DEMO_GUIDE.md
+      - Examples Guide: EXAMPLES_GUIDE.md
+  - Core Features:
+      - Top 10 Features: TOP_10_FEATURES.md
+      - Providers & Formats: PROVIDERS_FORMATS.md
+      - Providers & Formats Quick Ref: PROVIDERS_FORMATS_QUICKREF.md
+      - Version Control: VERSION_CONTROL.md
+      - Version Control Quick Ref: VERSION_CONTROL_QUICKREF.md
+      - Model Cards: MODEL_CARDS.md
+      - Model Cards Quick Ref: MODEL_CARDS_QUICKREF.md
+      - HDF5 Support: HDF5_SUPPORT.md
+  - Security:
+      - Security Audit: SECURITY_AUDIT.md
+      - Security Hardening: SECURITY_HARDENING.md
+      - Vulnerability Fixes: VULNERABILITY_FIXES.md
+  - AI & RAG:
+      - RAG System: RAG.md
+      - RAG Quick Ref: RAG_QUICKREF.md
+      - MCP Tools: MCP_TOOLS.md
+      - MCP Quick Ref: MCP_QUICKREF.md
+      - Database: DATABASE.md
+  - Cloud & Deployment:
+      - Cloud Storage: CLOUD_STORAGE.md
+      - Cloud CLI: CLOUD_CLI.md
+      - XDG Compliance: XDG_COMPLIANCE.md
+      - XDG Quick Ref: XDG_QUICKREF.md
+      - Migration Guide: MIGRATION.md
+  - Utilities:
+      - Utilities Guide: UTILITIES.md
+      - Utilities Quick Ref: UTILITIES_QUICKREF.md
+      - Utilities Summary: UTILITIES_SUMMARY.md
+  - Performance:
+      - Performance: PERFORMANCE.md
+      - GPU Acceleration: GPU_ACCELERATION.md
+      - Feature Flags: FEATURE_FLAGS.md
+  - Architecture:
+      - Architecture: ARCHITECTURE.md
+      - Architecture V2: ARCHITECTURE_V2.md
+      - Project Structure: PROJECT_STRUCTURE.md
+      - Project Summary: PROJECT_SUMMARY.md
+      - Implementation: IMPLEMENTATION.md
+  - Development:
+      - PyTorch & UV Guide: PYTORCH_UV_GUIDE.md
+      - UV Integration: UV_INTEGRATION.md
+      - Executive Summary: EXECUTIVE_SUMMARY.md

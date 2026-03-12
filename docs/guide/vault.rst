@@ -1,7 +1,7 @@
 Vault User Guide
 ================
 
-The vault is the core component of NeuralVault — a secure, encrypted container
+The vault is the core component of AI Model Vault — a secure, encrypted container
 for storing and managing AI model files with version control and lineage tracking.
 
 Architecture
@@ -40,11 +40,11 @@ Lifecycle
 Custom Vault Location
 ---------------------
 
-By default, NeuralVault uses XDG-compliant directories. Override with ``VaultConfig``:
+By default, AI Model Vault uses XDG-compliant directories. Override with ``VaultConfig``:
 
 .. code-block:: python
 
-   from neuralvault import Vault, VaultConfig
+   from aimodelvault import Vault, VaultConfig
 
    config = VaultConfig("/secure/nvme/models")
    vault = Vault(config=config)

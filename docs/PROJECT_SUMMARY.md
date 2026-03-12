@@ -192,13 +192,13 @@ User Passphrase
 
 | Document              | Description                         | Path                                     |
 | --------------------- | ----------------------------------- | ---------------------------------------- |
-| **Quick Start**       | Get up and running in 5 minutes     | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
-| **CLI Reference**     | Complete command-line documentation | [docs/CLI.md](docs/CLI.md)               |
-| **Utilities Guide**   | Model utilities documentation       | [docs/UTILITIES.md](docs/UTILITIES.md) ⭐ |
-| **Development Guide** | For contributors and developers     | [DEVELOPMENT.md](DEVELOPMENT.md) ⭐       |
+| **Quick Start**       | Get up and running in 5 minutes     | [QUICKSTART.md](QUICKSTART.md)           |
+| **CLI Reference**     | Complete command-line documentation | [CLI.md](CLI.md)                         |
+| **Utilities Guide**   | Model utilities documentation       | [UTILITIES.md](UTILITIES.md) ⭐           |
+| **Development Guide** | For contributors and developers     | [DEVELOPMENT.md](../DEVELOPMENT.md) ⭐    |
 | **Implementation**    | Architecture and technical details  | [IMPLEMENTATION.md](IMPLEMENTATION.md) ⭐ |
-| **Security Policy**   | Security standards and reporting    | [SECURITY.md](SECURITY.md)               |
-| **Contributing**      | How to contribute                   | [CONTRIBUTING.md](CONTRIBUTING.md)       |
+| **Security Policy**   | Security standards and reporting    | [SECURITY.md](../SECURITY.md)            |
+| **Contributing**      | How to contribute                   | [CONTRIBUTING.md](../CONTRIBUTING.md)    |
 
 ---
 
@@ -295,14 +295,14 @@ let versions = vault.list_versions("my-model");
 ## 🛠️ Development
 
 ### Prerequisites
-- Rust 1.70+ ([Install](https://rustup.rs/))
+- Rust 1.75+ ([Install](https://rustup.rs/))
 - Cargo (comes with Rust)
 - Git
 
 ### Setup
 ```bash
-git clone https://github.com/nervosys/aimodelvault.git
-cd aimodelvault
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
 cargo build
 cargo test
 ```
@@ -325,7 +325,7 @@ cargo test
 cargo doc --open
 ```
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development guide.
+See [DEVELOPMENT.md](../DEVELOPMENT.md) for detailed development guide.
 
 ---
 
@@ -387,13 +387,13 @@ cargo build --release --target x86_64-pc-windows-msvc
 
 ## 📝 License
 
-MIT License - see [LICENSE](LICENSE) file
+AGPL-3.0-or-later - see [LICENSE](../LICENSE) file
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Please see [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 
 ---
 
@@ -403,15 +403,15 @@ For security issues, please email: **security@nervosys.ai**
 
 Do NOT open public issues for security vulnerabilities.
 
-See [SECURITY.md](SECURITY.md) for full security policy.
+See [SECURITY.md](../SECURITY.md) for full security policy.
 
 ---
 
 ## 📞 Support
 
 - 📖 [Documentation](https://aimodelvault.nervosys.ai)
-- 💬 [GitHub Discussions](https://github.com/nervosys/aimodelvault/discussions)
-- 🐛 [Issue Tracker](https://github.com/nervosys/aimodelvault/issues)
+- 💬 [GitHub Discussions](https://github.com/nervosys/AIModelVault/discussions)
+- 🐛 [Issue Tracker](https://github.com/nervosys/AIModelVault/issues)
 - 📧 Email: dev@nervosys.ai
 
 ---

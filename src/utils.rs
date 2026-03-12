@@ -68,7 +68,7 @@ impl ModelArchive {
         let mut total_size = 0;
 
         for (name, data) in models {
-            let options = zip::write::FileOptions::default()
+            let options = zip::write::SimpleFileOptions::default()
                 .compression_method(zip::CompressionMethod::Deflated)
                 .unix_permissions(0o644);
 
@@ -660,5 +660,250 @@ mod tests {
 
         let score2 = ModelDeduplicator::similarity_score(data1, data3);
         assert_eq!(score2, 0.0); // Different lengths
+    }
+
+    #[test]
+    fn test_create_and_extract_tar() {
+        // Covers lines 18, plus extract_tar
+        let temp_dir = tempfile::tempdir().unwrap();
+        let tar_path = temp_dir.path().join("test.tar");
+
+        let models = vec![
+            ("model_a.bin".to_string(), vec![1, 2, 3, 4]),
+            ("model_b.bin".to_string(), vec![5, 6, 7, 8, 9]),
+        ];
+
+        let total = ModelArchive::create_tar(models, &tar_path).unwrap();
+        assert_eq!(total, 9); // 4 + 5
+
+        let extracted = ModelArchive::extract_tar(&tar_path).unwrap();
+        assert_eq!(extracted.len(), 2);
+        assert_eq!(extracted[0].1, vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_create_and_extract_zip() {
+        // Covers lines 64, 85
+        let temp_dir = tempfile::tempdir().unwrap();
+        let zip_path = temp_dir.path().join("test.zip");
+
+        let models = vec![
+            ("model_x.bin".to_string(), vec![10, 20, 30]),
+            ("model_y.bin".to_string(), vec![40, 50]),
+        ];
+
+        let total = ModelArchive::create_zip(models, &zip_path).unwrap();
+        assert_eq!(total, 5);
+
+        let extracted = ModelArchive::extract_zip(&zip_path).unwrap();
+        assert_eq!(extracted.len(), 2);
+    }
+
+    #[test]
+    fn test_model_analyzer_analyze() {
+        // Covers line 381
+        let data = vec![0u8; 1024 * 1024]; // 1 MB
+        let meta = ModelMetadata::new("test_model".to_string(), ModelFormat::PyTorch);
+        let analysis = ModelAnalyzer::analyze(&data, &meta);
+
+        assert_eq!(analysis.size_bytes, 1024 * 1024);
+        assert!((analysis.size_mb - 1.0).abs() < 0.01);
+        assert!(analysis.estimated_parameters.unwrap() > 0);
+    }
+
+    #[test]
+    fn test_compression_ratio_zero() {
+        let ratio = CompressionAnalyzer::compression_ratio(1000, 0);
+        assert_eq!(ratio, 0.0);
+    }
+
+    #[test]
+    fn test_estimate_ratio_all_formats() {
+        assert!(CompressionAnalyzer::estimate_ratio(&ModelFormat::Safetensors) > 1.0);
+        assert_eq!(CompressionAnalyzer::estimate_ratio(&ModelFormat::GGUF), 1.0);
+        assert!(CompressionAnalyzer::estimate_ratio(&ModelFormat::PyTorch) > 1.0);
+        assert!(CompressionAnalyzer::estimate_ratio(&ModelFormat::ONNX) > 1.0);
+        assert_eq!(
+            CompressionAnalyzer::estimate_ratio(&ModelFormat::TensorRT),
+            1.0
+        );
+        assert!(CompressionAnalyzer::estimate_ratio(&ModelFormat::TFLite) >= 1.0);
+        assert!(CompressionAnalyzer::estimate_ratio(&ModelFormat::HDF5) > 1.0);
+        assert!(CompressionAnalyzer::estimate_ratio(&ModelFormat::Pickle) > 1.0);
+        // Default case
+        assert!(CompressionAnalyzer::estimate_ratio(&ModelFormat::CoreML) > 0.0);
+    }
+
+    #[test]
+    fn test_retrieval_optimizer_eviction() {
+        let mut opt = RetrievalOptimizer::new(100);
+        opt.cache_model("m1".to_string(), vec![0; 60]).unwrap();
+        opt.cache_model("m2".to_string(), vec![0; 60]).unwrap();
+        // m1 should have been evicted
+        assert!(opt.get_cached("m1").is_none());
+        assert!(opt.get_cached("m2").is_some());
+    }
+
+    #[test]
+    fn test_retrieval_optimizer_oversized() {
+        let mut opt = RetrievalOptimizer::new(10);
+        opt.cache_model("big".to_string(), vec![0; 100]).unwrap();
+        assert!(opt.get_cached("big").is_none());
+    }
+
+    #[test]
+    fn test_retrieval_optimizer_clear() {
+        let mut opt = RetrievalOptimizer::new(1000);
+        opt.cache_model("m1".to_string(), vec![1]).unwrap();
+        opt.clear_cache();
+        assert!(opt.get_cached("m1").is_none());
+        let stats = opt.cache_stats();
+        assert_eq!(stats.total_entries, 0);
+        assert_eq!(stats.total_size, 0);
+    }
+
+    #[test]
+    fn test_retrieval_optimizer_stats() {
+        let mut opt = RetrievalOptimizer::new(1000);
+        opt.cache_model("m1".to_string(), vec![0; 100]).unwrap();
+        let stats = opt.cache_stats();
+        assert_eq!(stats.total_entries, 1);
+        assert_eq!(stats.total_size, 100);
+        assert_eq!(stats.max_size, 1000);
+        assert!((stats.utilization - 10.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_quantization_schemes() {
+        let schemes = QuantizationInfo::schemes();
+        assert!(schemes.contains(&"FP32"));
+        assert!(schemes.contains(&"Q4_K_M"));
+        assert!(!schemes.is_empty());
+    }
+
+    #[test]
+    fn test_quantization_estimate_size_zero_bits() {
+        let size = QuantizationInfo::estimate_size(1000, 0, 8);
+        assert_eq!(size, 1000);
+        let size2 = QuantizationInfo::estimate_size(1000, 32, 0);
+        assert_eq!(size2, 1000);
+    }
+
+    #[test]
+    fn test_quantization_is_valid_scheme() {
+        assert!(QuantizationInfo::is_valid_scheme("FP32"));
+        assert!(QuantizationInfo::is_valid_scheme("Q4_K_M"));
+        assert!(!QuantizationInfo::is_valid_scheme("INVALID"));
+    }
+
+    #[test]
+    fn test_pruning_zero_params() {
+        let info = PruningInfo::new(PruningMethod::Magnitude, 0.5, 0, 0);
+        assert_eq!(info.calculate_sparsity(), 0.0);
+        assert_eq!(info.size_reduction(), 0.0);
+    }
+
+    #[test]
+    fn test_pruning_methods() {
+        assert_eq!(PruningMethod::Magnitude, PruningMethod::Magnitude);
+        assert_ne!(PruningMethod::Structured, PruningMethod::Unstructured);
+        let _grad = PruningMethod::GradientBased;
+        let _layer = PruningMethod::LayerWise;
+        let _custom = PruningMethod::Custom("test".into());
+    }
+
+    #[test]
+    fn test_model_analyzer_format_size_tb() {
+        let tb = 1024u64 * 1024 * 1024 * 1024;
+        assert!(ModelAnalyzer::format_size(tb).contains("TB"));
+    }
+
+    #[test]
+    fn test_model_analyzer_estimate_params_formats() {
+        // Test analysis with different formats to hit different estimate branches
+        let data = vec![0u8; 4000]; // 4KB
+        for fmt in &[
+            ModelFormat::GGUF,
+            ModelFormat::ONNX,
+            ModelFormat::TFLite,
+            ModelFormat::Safetensors,
+        ] {
+            let meta = ModelMetadata::new("m".to_string(), fmt.clone());
+            let analysis = ModelAnalyzer::analyze(&data, &meta);
+            assert!(analysis.estimated_parameters.is_some());
+        }
+    }
+
+    #[test]
+    fn test_model_exporter_export_with_metadata() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let meta = ModelMetadata::new("exported".to_string(), ModelFormat::PyTorch);
+        let data = vec![1, 2, 3, 4];
+        let path = ModelExporter::export_with_metadata(data, &meta, temp_dir.path()).unwrap();
+        assert!(path.exists());
+        assert!(temp_dir.path().join("exported.meta.json").exists());
+    }
+
+    #[test]
+    fn test_model_exporter_export_to_directory() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let models = vec![
+            (
+                vec![1, 2],
+                ModelMetadata::new("a".to_string(), ModelFormat::ONNX),
+            ),
+            (
+                vec![3, 4],
+                ModelMetadata::new("b".to_string(), ModelFormat::PyTorch),
+            ),
+        ];
+        let paths = ModelExporter::export_to_directory(models, temp_dir.path()).unwrap();
+        assert_eq!(paths.len(), 2);
+        for p in &paths {
+            assert!(p.exists());
+        }
+    }
+
+    #[test]
+    fn test_deduplicator_find_duplicates() {
+        let models = vec![
+            ("model_a".to_string(), vec![1, 2, 3]),
+            ("model_b".to_string(), vec![1, 2, 3]), // duplicate of a
+            ("model_c".to_string(), vec![4, 5, 6]), // unique
+        ];
+        let dupes = ModelDeduplicator::find_duplicates(models);
+        assert_eq!(dupes.len(), 1);
+        let names: Vec<&Vec<String>> = dupes.values().collect();
+        let names = &names[0];
+        assert!(names.contains(&"model_a".to_string()));
+        assert!(names.contains(&"model_b".to_string()));
+    }
+
+    #[test]
+    fn test_deduplicator_similarity_partial() {
+        let data1 = vec![1, 2, 3, 4];
+        let data2 = vec![1, 2, 0, 0];
+        let score = ModelDeduplicator::similarity_score(&data1, &data2);
+        assert!((score - 50.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_similarity_score_different_lengths() {
+        let a = vec![1u8, 2, 3];
+        let b = vec![1u8, 2, 3, 4];
+        let score = ModelDeduplicator::similarity_score(&a, &b);
+        assert_eq!(score, 0.0);
+    }
+
+    #[test]
+    fn test_estimate_parameters_custom_format() {
+        // Covers L411 — wildcard match arm in estimate_parameters for Custom format
+        let data = vec![0u8; 1024]; // 1KB
+        let meta = ModelMetadata::new("custom_fmt".to_string(), ModelFormat::Custom("myformat".to_string()));
+        let analysis = ModelAnalyzer::analyze(&data, &meta);
+        // Custom format should hit the wildcard `_ => Some(base_estimate)` at L411
+        assert!(analysis.estimated_parameters.is_some());
+        // base_estimate = 1024 / 4 = 256
+        assert_eq!(analysis.estimated_parameters.unwrap(), 256);
     }
 }

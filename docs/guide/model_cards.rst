@@ -1,7 +1,7 @@
 Model Cards Guide
 =================
 
-NeuralVault includes built-in support for `Model Cards
+AI Model Vault includes built-in support for `Model Cards
 <https://arxiv.org/abs/1810.03993>`_ — structured documentation for AI models
 covering intended use, training data, evaluation metrics, and ethical considerations.
 
@@ -11,7 +11,7 @@ Creating a Model Card
 
 .. code-block:: python
 
-   from neuralvault import ModelCard
+   from aimodelvault import ModelCard
 
    card = ModelCard(
        name="code-llama-finetune",

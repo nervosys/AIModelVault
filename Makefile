@@ -1,4 +1,4 @@
-.PHONY: help build test clean install run format lint security doc examples
+.PHONY: help build test clean install run format lint security doc examples docs-mkdocs docs-serve
 
 help:
 	@echo "AI Model Vault - Makefile commands"
@@ -15,8 +15,10 @@ help:
 	@echo "  make audit      - Run cargo audit"
 	@echo ""
 	@echo "Documentation:"
-	@echo "  make doc        - Generate documentation"
-	@echo "  make examples   - Run examples"
+	@echo "  make doc         - Generate Rust API docs"
+	@echo "  make docs-mkdocs - Build MkDocs site (to website/public/mkdocs/)"
+	@echo "  make docs-serve  - Serve MkDocs locally for preview"
+	@echo "  make examples    - Run examples"
 	@echo ""
 	@echo "Installation:"
 	@echo "  make install    - Install aim (AI Model Vault)"
@@ -70,9 +72,23 @@ doc:
 doc-all:
 	cargo doc --all-features --open
 
+docs-mkdocs:
+	mkdocs build
+
+docs-serve:
+	mkdocs serve
+
 examples:
 	cargo run --example basic_usage
+	cargo run --example huggingface_demo
+	cargo run --example mcp_tools_demo
+	cargo run --example model_card_demo
+	cargo run --example providers_formats_demo
+	cargo run --example rag_demo
 	cargo run --example security_demo
+	cargo run --example utilities_demo
+	cargo run --example version_control_demo
+	cargo run --example xdg_demo
 
 benchmark:
 	cargo bench

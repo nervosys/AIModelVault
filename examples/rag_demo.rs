@@ -11,7 +11,7 @@ use ai_model_vault::rag::*;
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== NeuronVault RAG and Rule-Based Systems Demo ===\n");
+    println!("=== AI Model Vault RAG and Rule-Based Systems Demo ===\n");
 
     // PART 1: Document Store for RAG
     println!("📚 PART 1: Document Store for RAG");
@@ -458,12 +458,10 @@ fn demo_complete_rag_pipeline() -> Result<(), Box<dyn std::error::Error>> {
 
     // Add knowledge
     println!("\n1. Populating knowledge base...");
-    let knowledge_items = vec![
-        "RAG systems combine retrieval with generation for better AI responses",
+    let knowledge_items = ["RAG systems combine retrieval with generation for better AI responses",
         "Vector databases store embeddings for efficient semantic search",
         "Fine-tuning adapts pre-trained models to specific tasks",
-        "Prompt engineering improves model outputs through better instructions",
-    ];
+        "Prompt engineering improves model outputs through better instructions"];
 
     for (i, content) in knowledge_items.iter().enumerate() {
         let doc = Document {

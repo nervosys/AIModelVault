@@ -8,7 +8,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Fuzz testing targets** — 3 `cargo-fuzz` targets in `fuzz/`: `fuzz_crypto_roundtrip` (AES-256-GCM encrypt/decrypt roundtrip), `fuzz_format_detection` (ModelFormat::from_extension with arbitrary input), `fuzz_model_metadata` (ModelMetadata builder with fuzzed strings)
+- **Code coverage baseline** — 83.83% line coverage (3,676/4,385 lines) measured with cargo-tarpaulin; 8 modules at 100% coverage
+- **Performance baselines** — updated `docs/PERFORMANCE.md` with measured crypto benchmark results (AES-256-GCM, Argon2id, gzip/LZMA compression) and per-module coverage table
+
+## [1.2.0]
+
+### Added
+- **Domain-specific error types** — introduced `CryptoError`, `StorageError`, and `ConversionError` enums in `src/error.rs` with typed variants and `From` conversions into the top-level `VaultError`. All three types are re-exported from the crate root.
+- **REST API endpoints for model cards** — `GET /api/v1/models/{name}/card` generates a model card from vault metadata; `POST /api/v1/models/{name}/card` creates/overwrites a custom model card from JSON
+- **REST API endpoint for compliance checks** — `GET /api/v1/compliance` runs FIPS 140-3, CVE, MITRE ATT&CK, and CMMC 2.0 checks and returns results as JSON
+- **REST API endpoints for RAG** — `POST /api/v1/rag/search` searches the RAG document store; `POST /api/v1/rag/documents` adds a document with metadata
+- **GraphQL routing** — wired existing `async-graphql` schema into the Axum router at `/graphql` (GET for Playground, POST for queries/mutations), gated behind `#[cfg(feature = "graphql")]`
+
+### Changed
+- **Removed `async-graphql-axum` dependency** — replaced with a manual bridge handler to avoid axum 0.7 / 0.8 version conflict; the `graphql` feature now only requires `async-graphql`
+- **Fixed deprecated `TimeoutLayer::new`** — migrated to `TimeoutLayer::with_status_code(REQUEST_TIMEOUT, ...)` per tower-http 0.6.7+
+- **Added `timeout` feature to tower-http** in Cargo.toml (was missing, caused compilation failure with `api` feature)
+- **Removed unused `ConnectInfo` import** from `src/api/server.rs`
+- **Version bump** — 1.1.0 → 1.2.0
+
+### Changed
+- **Real SafeTensors ↔ PyTorch converters** — replaced shim/plan converters with real pure-Rust implementations
+  - SafeTensors → PyTorch: generates valid ZIP archives with pickle v2 bytecode and tensor data files
+  - PyTorch → SafeTensors: parses ZIP archives, extracts tensor metadata from pickle bytecode, produces SafeTensors binary output
+  - Full roundtrip conversion support with dtype mapping (F32↔FloatStorage, F16↔HalfStorage, BF16↔BFloat16Storage, etc.)
+- **Telemetry changed to opt-in** — disabled by default for privacy
+  - `TelemetryConfig::default()` now sets `enabled: false`
+  - Unified environment variable handling: both `AIM_TELEMETRY_ENABLED=false` and `AIM_TELEMETRY_DISABLED=1` are respected in all code paths
+  - Updated module documentation to reflect opt-in model
+  - CLI `telemetry status` now shows both env var options
+- **CI/CD hardening**
+  - Added `permissions` and `concurrency` blocks to all GitHub Actions workflows
+  - Release workflow now generates SHA-256 checksums for all binary artifacts
+  - Release binaries properly renamed (e.g., `aim-linux-amd64`, `aim-darwin-arm64`)
+  - Removed automatic crates.io publishing from release workflow
+  - Consolidated Docker workflow: removed redundant API image job, added per-variant features
+  - Fixed duplicate Alpine target in Docker workflow matrix
+  - Updated `dependency-review-action` from v3 to v4
+  - Added `--locked` flag to cargo install commands in CI
+  - Added cargo cache to coverage job
+- **deny.toml**: Rewrote for cargo-deny 0.19 schema — removed deprecated fields (`vulnerability`, `unmaintained`, `yanked`, `notice`, `unlicensed`, `copyleft`, `allow-osi-fsf-free`, `default`, `deny`), added `version = 2` to `[licenses]`, added `CC0-1.0`, `CDLA-Permissive-2.0`, `OpenSSL`, `Zlib`, `MPL-2.0` to license allow list
+- **Updated qdrant-client** from 1.7 to 1.13 — migrated to builder-pattern API (`CreateCollectionBuilder`, `UpsertPointsBuilder`, `SearchPointsBuilder`, `DeletePointsBuilder`)
+- **Replaced deprecated `serde_yaml`** (0.9) with maintained `serde_yml` (0.0.12) — drop-in replacement across all source and test files
+- **Updated `zip` crate** from 0.6 to 4 — migrated `FileOptions` → `SimpleFileOptions` API in conversion.rs and utils.rs
+- **Updated `bytes`** 1.10.1 → 1.11.1 (fixes RUSTSEC-2026-0007)
+- **Updated `time`** 0.3.44 → 0.3.47 (fixes RUSTSEC-2026-0009)
+- **Removed unused lancedb dependency** — v0.4 depends on arrow-arith v51 which is incompatible with Rust 1.93+
+- **README overhaul** — updated test counts (331 → 1,580), fixed architecture diagram, added Architecture v2 features (API, GraphQL, federation, blockchain, GPU, streaming, VaultBuilder), fixed broken demo script paths, removed stale "NEW" labels, fixed AIMV_PATH_UPDATE link
+- **AGENTS.md** — updated project layout, added `vector-db` feature, added telemetry env vars
+- **Removed unused `futures` dependency** — confirmed zero usage in src/, not in any feature gate
+- **Consolidated 12 coverage test files** into single `coverage_tests.rs` — reduced test binaries from 27 to 16, preserving all 1,609 tests
+- **Expanded Makefile `examples` target** — now runs all 10 examples (was 2)
+- **Fixed OpenAPI spec** — aligned `.well-known/openapi.yaml` with actual API routes: corrected model store path (`POST /api/v1/models/{name}`), version download path, version delete endpoint, added undocumented routes (health, audit, metrics, events, openapi.json), removed unimplemented routes (model cards, compliance, RAG, GraphQL)
+- **Fixed Helm chart health probes** — corrected probe paths from `/health` to `/api/v1/health`, updated image tag to 1.1.0, added `startupProbe` for slow cold starts
+- **Rewrote docs/PROJECT_STRUCTURE.md** — updated entire file to reflect current codebase: added 15+ missing src/ modules (crypto/gpu.rs, streaming.rs, cli/, api/, rag/, model_card.rs, blockchain.rs, federation.rs, telemetry.rs, traits.rs, version_sqlite.rs), updated tests/ from 6 to 14 files, examples/ from 5 to 10, docs/ with all new files, fixed license from MIT to AGPL-3.0, added deploy/, website/, .well-known/ directories
+- **Updated reports/TEST_COVERAGE.md** — corrected test count from 119 to 1,609, updated test binary count to 16, added all missing test file entries, expanded coverage matrix with 8 new categories (model cards, CLI, VaultBuilder, blockchain, federation, telemetry, format conversion, RAG)
+- **Updated all dependencies** — ran `cargo update` (141 packages updated within semver-compatible ranges), all 1,609 tests pass
+- **Fixed format count references** — corrected "22 formats" to "23+ formats" across reports/TEST_COVERAGE.md, reports/COMPREHENSIVE_TEST_REPORT.md, reports/UTILITIES_IMPLEMENTATION_COMPLETE.md
+- **Fixed MSRV references** — corrected "Rust 1.70+" to "Rust 1.75+" in docs/PROJECT_SUMMARY.md, updated Dockerfile example in docs/SECURITY_HARDENING.md to `rust:1.85-slim-bookworm`
+- **Updated website version** — changed version badge from v1.0.0 to v1.1.0 in Header.tsx and page.tsx
+- **Fixed stale test count in MIGRATION.md** — corrected "330+ tests" to "1,609+ tests"
+- **Fixed stale test count in ROADMAP.md** — corrected "227 tests" to "1,609 tests"
+- **Fixed website test count** — corrected "331+" to "1,609" in homepage stats
+- **Fixed DEVELOPMENT.md MSRV** — corrected "Rust 1.70" to "Rust 1.75"
+- **Fixed remaining "22+" → "23+" format count references** — docs/EXECUTIVE_SUMMARY.md, docs/api/formats.rst, reports/COMPREHENSIVE_TEST_REPORT.md, reports/PRODUCTION_READY.md, reports/PROJECT_COMPLETE.md, website Python docs
+- **Root directory cleanup** — moved 5 Python coverage scripts (`analyze_cov.py`, `analyze_coverage.py`, `parse_coverage.py`, `parse_extra.py`, `parse_uncovered.py`) to `scripts/`, deleted tarpaulin artifacts, added `tarpaulin-report.json`, `tarpaulin_stderr.log`, `.cache/` to `.gitignore`
+- **README overhaul (round 2)** — removed duplicate Project Structure section, removed duplicate Documentation section with garbled emoji headings, consolidated documentation table with 7 new entries (Architecture, Providers & Formats, Version Control, Cloud Storage, Model Cards, XDG, Roadmap, Changelog), fixed last `(22+)` → `(23+)` format count, updated architecture tree with new `scripts/` directory
+- **Fixed all remaining "22+" → "23+" format count references** — ROADMAP.md, examples/huggingface_demo.rs, docs/EXECUTIVE_SUMMARY.md, docs/TOP_10_FEATURES.md, docs/guide/formats.rst, docs/archived/LAUNCH_READINESS.md, docs/archived/LAUNCH_READY.md, reports/COMPREHENSIVE_TEST_REPORT.md, reports/FEATURES_DEMO.md, reports/PRODUCTION_READY.md, reports/PROJECT_COMPLETE.md, reports/TESTING_COMPLETE.md, reports/UTILITIES_IMPLEMENTATION_COMPLETE.md
+
+### Fixed
+- Fixed all clippy warnings (29 warnings → 0)
+  - Replaced `field_reassign_with_default` patterns with struct init syntax across src/ and tests/
+  - Replaced `vec_init_then_push` with pre-initialized `vec![]` literals
+  - Fixed `unused_must_use` on `cache_results()` calls
+  - Fixed `unnecessary_get_then_check` in traits.rs
+  - Fixed `unwrap_on_ok` / `expect_on_ok` in error.rs test
+  - Removed unused imports (`EventSubscriber`, `VersionRepo`, `super`)
+  - Fixed constant assertions (`assert!(X > 0)` → `assert_ne!(X, 0)`)
+  - Suppressed deprecated `assert_cmd::Command::cargo_bin` warning
+- Fixed 26 broken internal links across 8 docs/ files
+  - Added `../` prefix for root-level files referenced from docs/ (README.md, LICENSE, SECURITY.md, CONTRIBUTING.md, DEVELOPMENT.md, FORMATS.md)
+  - Removed redundant `docs/` prefix for same-directory references (QUICKSTART.md, CLI.md, UTILITIES.md)
+  - Fixed reports/ directory references (FEATURES_DEMO.md, PRODUCTION_READY.md)
+  - Removed links to non-existent files (COMPLIANCE.md, CRYPTO.md, API.md)
+  - Fixed incorrect license references (MIT → AGPL-3.0-or-later)
+  - Replaced manual `div_ceil` with standard library method in crypto/streaming.rs
+  - Used `keys()` iterator instead of destructuring in conversion.rs
+  - Added `#[allow(clippy::too_many_arguments)]` where appropriate
+
+### Added
 - **Next.js documentation website** (`website/`)
+- **docs/FEATURE_FLAGS.md** — comprehensive documentation of all Cargo feature flags with build recipes
+- **docs/PERFORMANCE.md** — benchmark baseline for encryption, hashing, compression, model card serialization
+- **docs/GPU_ACCELERATION.md** — user guide for OpenCL GPU-accelerated encryption
+- **docs/archived/** — moved stale launch readiness docs out of main docs/
+- **ROADMAP: Future Improvements** section — documented error type granularity, API expansion, GraphQL routing as v1.2.0+ items
   - 21 documentation pages covering all features
   - Responsive layout with sidebar navigation and mobile menu
   - Light/dark theme with CSS custom properties
@@ -102,7 +197,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Native Python bindings via PyO3** (`src/python.rs`, ~640 lines)
   - `Vault`: create, unlock, lock, store_model, get_model, list_models, list_versions, get_lineage, delete_version, get_stats, change_passphrase
   - `VaultConfig`: XDG-compliant configuration with optional custom vault directory
-  - `ModelFormat`: 22+ format detection with name/extension properties
+  - `ModelFormat`: 23+ format detection with name/extension properties
   - `ModelMetadata`: builder-style constructor (name, format, description, framework, task, architecture, parameters)
   - `ModelVersion`: read-only version snapshot (version, checkpoint_id, timestamp, format, size, checksum)
   - `ModelCard`: create, set_training_data, add_metric, add_metadata, serialization (JSON/YAML/Markdown), deserialization
@@ -183,7 +278,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Secure key storage with memory zeroization
   - Comprehensive audit logging for compliance
 
-- **Model Format Support (22+ formats)**
+- **Model Format Support (23+ formats)**
   - PyTorch (.pt, .pth, .bin)
   - TensorFlow (.pb, .keras, .h5)
   - ONNX (.onnx)
@@ -314,7 +409,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned for v0.3.0
 - Native Python bindings (PyO3/maturin)
 - Direct Python API without subprocess
-- PyPI publication as `neuralvault`
+- PyPI publication as `aimodelvault`
 
 ### Planned for v0.4.0
 - Real model format conversion pipeline
@@ -322,6 +417,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[0.2.0]: https://github.com/nervosys/aimodelvault/compare/v0.1.1...v0.2.0
-[0.1.1]: https://github.com/nervosys/aimodelvault/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/nervosys/aimodelvault/releases/tag/v0.1.0
+[0.2.0]: https://github.com/nervosys/AIModelVault/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/nervosys/AIModelVault/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/nervosys/AIModelVault/releases/tag/v0.1.0

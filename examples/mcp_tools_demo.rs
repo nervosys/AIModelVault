@@ -10,7 +10,7 @@
 use ai_model_vault::rag::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== NeuronVault MCP Tools Demo ===\n");
+    println!("=== AI Model Vault MCP Tools Demo ===\n");
 
     // PART 1: Basic Tool Creation
     println!("📦 PART 1: Creating Custom Tools");

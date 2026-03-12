@@ -122,3 +122,93 @@ impl Default for DocumentStore {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_doc(id: &str, content: &str, embedding: Option<Vec<f32>>) -> Document {
+        Document {
+            id: id.to_string(),
+            content: content.to_string(),
+            metadata: HashMap::new(),
+            embedding,
+            chunk_info: None,
+        }
+    }
+
+    #[test]
+    fn test_document_store_default() {
+        let store = DocumentStore::default();
+        assert_eq!(store.count(), 0);
+    }
+
+    #[test]
+    fn test_document_store_add_and_get() {
+        let mut store = DocumentStore::new();
+        let doc = make_doc("d1", "hello", Some(vec![1.0, 0.0]));
+        store.add_document(doc).unwrap();
+
+        assert_eq!(store.count(), 1);
+        let got = store.get_document("d1").unwrap();
+        assert_eq!(got.content, "hello");
+
+        // Nonexistent
+        assert!(store.get_document("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_document_store_search_similar() {
+        let mut store = DocumentStore::new();
+        store
+            .add_document(make_doc("a", "alpha", Some(vec![1.0, 0.0])))
+            .unwrap();
+        store
+            .add_document(make_doc("b", "beta", Some(vec![0.0, 1.0])))
+            .unwrap();
+
+        let results = store.search_similar(&[1.0, 0.0], 2);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].0, "a"); // most similar
+    }
+
+    #[test]
+    fn test_document_store_delete() {
+        let mut store = DocumentStore::new();
+        store
+            .add_document(make_doc("d1", "x", Some(vec![1.0])))
+            .unwrap();
+        store
+            .add_document(make_doc("d2", "y", Some(vec![0.0])))
+            .unwrap();
+
+        store.delete_document("d1").unwrap();
+        assert_eq!(store.count(), 1);
+        assert!(store.get_document("d1").is_none());
+    }
+
+    #[test]
+    fn test_document_store_get_all() {
+        let mut store = DocumentStore::new();
+        store.add_document(make_doc("a", "x", None)).unwrap();
+        store.add_document(make_doc("b", "y", None)).unwrap();
+        assert_eq!(store.get_all_documents().len(), 2);
+    }
+
+    #[test]
+    fn test_document_store_clear() {
+        let mut store = DocumentStore::new();
+        store.add_document(make_doc("a", "x", None)).unwrap();
+        store.clear();
+        assert_eq!(store.count(), 0);
+    }
+
+    #[test]
+    fn test_document_without_embedding_not_indexed() {
+        let mut store = DocumentStore::new();
+        store.add_document(make_doc("noem", "x", None)).unwrap();
+        // Search should return nothing since doc has no embedding
+        let results = store.search_similar(&[1.0], 10);
+        assert!(results.is_empty());
+    }
+}

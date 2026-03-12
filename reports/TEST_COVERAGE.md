@@ -4,16 +4,25 @@
 Comprehensive test suite for AI Model Vault covering all major functionality areas.
 
 ## Test Statistics
-- **Total Tests**: 119
-  - Unit Tests: 22
+- **Total Tests**: 1,609
+  - Unit Tests (lib.rs): 447
+  - CLI Tests: 17
   - Config/Error Tests: 22
+  - Conversion Tests: 31
+  - Coverage Tests: 873
   - Crypto Tests: 14
   - Format Tests: 15
   - Integration Tests: 8
+  - Model Card Tests: 48
+  - Model Card Integration Tests: 4
+  - RAG Tests: 38
   - Utils Tests: 38
-- **Test Files**: 5 test files + unit tests in source modules
-- **All Tests Passing**: ✅ Yes
-- **Execution Time**: ~6 seconds (full suite)
+  - Vault Builder Tests: 30
+  - API Integration Tests: 22
+  - Doc Tests: 2
+- **Test Binaries**: 17
+- **All Tests Passing**: ✅ Yes (1 doc test ignored)
+- **Execution Time**: ~60 seconds (full suite)
 
 ## Test Categories
 
@@ -48,7 +57,7 @@ Comprehensive testing of FIPS 140-3 compliant cryptography:
 Testing all 22 supported AI model formats:
 
 #### Format Detection
-- ✅ `test_format_detection_from_extension` - All 22 formats (Safetensors, GGUF, PyTorch, ONNX, TensorRT, etc.)
+- ✅ `test_format_detection_from_extension` - All 23+ formats (Safetensors, GGUF, PyTorch, ONNX, TensorRT, etc.)
 - ✅ `test_format_extension_roundtrip` - Extension ↔ Format conversion
 - ✅ `test_case_insensitive_detection` - Case-insensitive format matching
 - ✅ `test_format_detection_unknown_extension` - Unknown extensions → Custom format
@@ -71,7 +80,7 @@ Testing all 22 supported AI model formats:
 - ✅ `test_all_legacy_formats` - Legacy formats (3 formats)
 - ✅ `test_all_data_formats` - Data formats (3 formats)
 
-**Coverage**: All 22 formats, metadata, custom formats, edge cases
+**Coverage**: All 23+ formats, metadata, custom formats, edge cases
 
 ### 3. Configuration & Error Tests (`tests/config_error_tests.rs`) - 22 tests
 Comprehensive testing of configuration and error handling:
@@ -215,11 +224,12 @@ Module-specific functionality:
 
 | Feature                   | Unit | Integration | Edge Cases | Performance  |
 | ------------------------- | ---- | ----------- | ---------- | ------------ |
-| FIPS Crypto (AES-256-GCM) | ✅    | ✅           | ✅          | ⚠️ Benchmarks |
-| Key Derivation (Argon2id) | ✅    | ✅           | ✅          | ⚠️ Benchmarks |
-| Compression (Gzip/LZMA)   | ✅    | ✅           | ✅          | ⚠️ Benchmarks |
-| 22 Model Formats          | ✅    | ✅           | ✅          | -            |
+| FIPS Crypto (AES-256-GCM) | ✅    | ✅           | ✅          | ✅ Benchmarks |
+| Key Derivation (Argon2id) | ✅    | ✅           | ✅          | ✅ Benchmarks |
+| Compression (Gzip/LZMA)   | ✅    | ✅           | ✅          | ✅ Benchmarks |
+| 23+ Model Formats         | ✅    | ✅           | ✅          | -            |
 | Format Detection          | ✅    | ✅           | ✅          | -            |
+| Format Conversion         | ✅    | ✅           | ✅          | -            |
 | Metadata Builder          | ✅    | ✅           | ✅          | -            |
 | Version Control           | ✅    | ✅           | ✅          | -            |
 | Encrypted Storage         | ✅    | ✅           | ✅          | -            |
@@ -238,6 +248,13 @@ Module-specific functionality:
 | Model Analysis            | ✅    | -           | ✅          | -            |
 | Model Export              | ✅    | -           | ✅          | -            |
 | Deduplication             | ✅    | -           | ✅          | -            |
+| Model Cards               | ✅    | ✅           | ✅          | -            |
+| CLI Handlers              | ✅    | ✅           | ✅          | -            |
+| VaultBuilder              | ✅    | ✅           | ✅          | -            |
+| RAG System                | ✅    | -           | ✅          | -            |
+| Blockchain Audit          | ✅    | -           | ✅          | -            |
+| Federation                | ✅    | -           | ✅          | -            |
+| Telemetry                 | ✅    | -           | ✅          | -            |
 
 ✅ = Tested | ⚠️ = Partial | - = Not applicable/needed
 
@@ -250,11 +267,18 @@ cargo test --all
 
 ### Run Specific Test Suite
 ```bash
-cargo test --test crypto_tests          # Cryptography tests
-cargo test --test format_tests           # Format detection tests
+cargo test --test cli_tests              # CLI handler tests
 cargo test --test config_error_tests     # Configuration and error tests
+cargo test --test conversion_tests       # Format conversion tests
+cargo test --test coverage_tests         # Comprehensive coverage tests
+cargo test --test crypto_tests           # Cryptography tests
+cargo test --test format_tests           # Format detection tests
 cargo test --test integration_tests      # Integration tests
+cargo test --test model_card_tests       # Model card tests
+cargo test --test model_card_integration_tests  # Model card integration tests
+cargo test --test rag_tests              # RAG system tests
 cargo test --test utils_tests            # Model utilities tests
+cargo test --test vault_builder_tests    # Vault builder tests
 ```
 
 ### Run Unit Tests Only
@@ -288,7 +312,7 @@ Benchmarks cover:
 
 Current test coverage metrics:
 - **Crypto Module**: ~95% (all critical paths covered)
-- **Formats Module**: 100% (all 22 formats tested)
+- **Formats Module**: 100% (all 23+ formats tested)
 - **Config Module**: ~90% (all settings tested)
 - **Error Module**: ~95% (all error types tested)
 - **Utils Module**: ~95% (all utilities tested)
@@ -421,7 +445,7 @@ All warnings are non-critical and don't affect functionality.
 
 **Test suite provides comprehensive coverage of:**
 - ✅ All cryptographic operations (FIPS 140-3 compliant)
-- ✅ All 22 model formats
+- ✅ All 23+ model formats
 - ✅ Complete storage workflows
 - ✅ Version control system
 - ✅ Compression algorithms

@@ -99,7 +99,7 @@ Execution Time: ~10 seconds
 ### 1.4 Format Detection Tests (15 tests)
 
 **Coverage**:
-- ✅ All 22+ model formats
+- ✅ All 23+ model formats
   - LLM formats: Safetensors, GGUF, PyTorch
   - Production: TensorRT, ONNX, TFLite
   - Platform: MLX, Core ML, OpenVINO
@@ -375,7 +375,7 @@ Execution Time: ~10 seconds
 | **Encryption**      | AES-256-GCM    | 6     | ✅ 100% |
 | **Key Derivation**  | Argon2id       | 4     | ✅ 100% |
 | **Compression**     | gzip/lzma/zlib | 7     | ✅ 100% |
-| **Formats**         | 22+ formats    | 15    | ✅ 100% |
+| **Formats**         | 23+ formats    | 15    | ✅ 100% |
 | **Version Control** | Full lineage   | 4     | ✅ 100% |
 | **Utilities**       | 8 components   | 38    | ✅ 100% |
 | **Compliance**      | FIPS/CMMC      | 1     | ✅ 100% |
@@ -403,7 +403,7 @@ Execution Time: ~10 seconds
 **Ratio Calculation**:
 - Edge cases: ✅ Handled (zero size, etc.)
 - Various sizes: ✅ Accurate
-- Format estimates: ✅ All 22 formats
+- Format estimates: ✅ All 23+ formats
 
 **Analysis Report**:
 - Space saved: ✅ Correct (25.0%)

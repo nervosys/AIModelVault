@@ -1,15 +1,15 @@
 """
-NeuralVault - Universal secure vault for AI model formats
+AI Model Vault - Universal secure vault for AI model formats
 
 Native Rust bindings via PyO3. Falls back to pure-Python CLI wrappers
 if the native extension is not available (e.g. source installs without Rust).
 """
 
-__version__ = "0.1.0"
+__version__ = "1.1.0"
 
 try:
     # Native Rust bindings (installed via maturin)
-    from neuralvault._native import (  # type: ignore[attr-defined]
+    from aimodelvault._native import (  # type: ignore[attr-defined]
         ModelCard,
         ModelFormat,
         ModelMetadata,
@@ -24,9 +24,9 @@ try:
     _NATIVE = True
 except ImportError:
     # Fallback to pure-Python CLI wrappers
-    from neuralvault.core.vault import Vault  # type: ignore[assignment]
-    from neuralvault.core.config import VaultConfig  # type: ignore[assignment]
-    from neuralvault.formats.registry import ModelFormat  # type: ignore[assignment]
+    from aimodelvault.core.vault import Vault  # type: ignore[assignment]
+    from aimodelvault.core.config import VaultConfig  # type: ignore[assignment]
+    from aimodelvault.formats.registry import ModelFormat  # type: ignore[assignment]
 
     ModelMetadata = None  # type: ignore[assignment,misc]
     ModelStream = None  # type: ignore[assignment,misc]

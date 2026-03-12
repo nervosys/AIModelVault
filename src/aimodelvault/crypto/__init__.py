@@ -1,7 +1,7 @@
 """Cryptography module initialization."""
 
-from neuralvault.crypto.fips import FIPSCrypto, KeyManager
-from neuralvault.crypto.compression import (
+from aimodelvault.crypto.fips import FIPSCrypto, KeyManager
+from aimodelvault.crypto.compression import (
     get_compressor,
     CompressionLevel,
     GzipCompressor,
