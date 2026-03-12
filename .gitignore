@@ -83,6 +83,9 @@ tarpaulin_stderr.log
 # Cache
 .cache/
 
+# Videos (contains node_modules)
+videos/
+
 # Test outputs (keep committed for reference)
 # reports/*.txt can be gitignored if you prefer
 

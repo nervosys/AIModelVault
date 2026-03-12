@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Fuzz testing targets** — 3 `cargo-fuzz` targets in `fuzz/`: `fuzz_crypto_roundtrip` (AES-256-GCM encrypt/decrypt roundtrip), `fuzz_format_detection` (ModelFormat::from_extension with arbitrary input), `fuzz_model_metadata` (ModelMetadata builder with fuzzed strings)
 - **Code coverage baseline** — 83.83% line coverage (3,676/4,385 lines) measured with cargo-tarpaulin; 8 modules at 100% coverage
-- **Performance baselines** — updated `docs/PERFORMANCE.md` with measured crypto benchmark results (AES-256-GCM, Argon2id, gzip/LZMA compression) and per-module coverage table
+- **Performance baselines** — updated `docs/PERFORMANCE.md` with measured crypto benchmark results (AES-256-GCM, Argon2id, gzip/LZMA compression), vault benchmark results (store/retrieve, format detection, SHA-256, model card serialization), and per-module coverage table
+- **Coverage improvements** — 53 new tests for low-coverage modules: `federation.rs` (VectorClock, delta computation, FederationManager lifecycle), `telemetry.rs` (event serialization, client enable/disable, tracking), `compliance.rs` (serialization, severity variants, checker toggle); total lib tests 447 → 500
+- **Vault benchmark fix** — fixed TempDir lifetime bug in `vault_bench.rs` (replaced `_` with `_tmp` to prevent premature directory cleanup)
 
 ## [1.2.0]
 

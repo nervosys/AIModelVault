@@ -289,4 +289,139 @@ mod tests {
         let s = format!("{:?}", sev);
         assert!(s.contains("Critical"));
     }
+
+    #[test]
+    fn test_violation_severity_all_variants() {
+        let variants = vec![
+            ViolationSeverity::Critical,
+            ViolationSeverity::High,
+            ViolationSeverity::Medium,
+            ViolationSeverity::Low,
+            ViolationSeverity::Info,
+        ];
+        for v in variants {
+            let json = serde_json::to_string(&v).unwrap();
+            let _: ViolationSeverity = serde_json::from_str(&json).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_compliance_violation_serialization() {
+        let violation = ComplianceViolation {
+            standard: "FIPS 140-3".to_string(),
+            control: "Crypto Module".to_string(),
+            severity: ViolationSeverity::Critical,
+            description: "Non-FIPS algorithm".to_string(),
+            remediation: Some("Use approved algorithm".to_string()),
+        };
+        let json = serde_json::to_string(&violation).unwrap();
+        assert!(json.contains("FIPS"));
+        let d: ComplianceViolation = serde_json::from_str(&json).unwrap();
+        assert_eq!(d.standard, "FIPS 140-3");
+        assert!(d.remediation.is_some());
+    }
+
+    #[test]
+    fn test_compliance_violation_without_remediation() {
+        let violation = ComplianceViolation {
+            standard: "CVE".to_string(),
+            control: "Vuln Mgmt".to_string(),
+            severity: ViolationSeverity::Low,
+            description: "Minor issue".to_string(),
+            remediation: None,
+        };
+        let json = serde_json::to_string(&violation).unwrap();
+        let d: ComplianceViolation = serde_json::from_str(&json).unwrap();
+        assert!(d.remediation.is_none());
+    }
+
+    #[test]
+    fn test_compliance_status_serialization() {
+        let status = ComplianceStatus {
+            fips_140_3: true,
+            cve_scan_passed: true,
+            mitre_attack_aligned: true,
+            cmmc_level: 2,
+            violations: vec![],
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        let d: ComplianceStatus = serde_json::from_str(&json).unwrap();
+        assert!(d.fips_140_3);
+        assert_eq!(d.cmmc_level, 2);
+        assert!(d.violations.is_empty());
+    }
+
+    #[test]
+    fn test_compliance_status_with_violations() {
+        let status = ComplianceStatus {
+            fips_140_3: false,
+            cve_scan_passed: false,
+            mitre_attack_aligned: true,
+            cmmc_level: 1,
+            violations: vec![
+                ComplianceViolation {
+                    standard: "FIPS".to_string(),
+                    control: "AES".to_string(),
+                    severity: ViolationSeverity::Critical,
+                    description: "Bad algo".to_string(),
+                    remediation: None,
+                },
+                ComplianceViolation {
+                    standard: "CVE".to_string(),
+                    control: "Vuln".to_string(),
+                    severity: ViolationSeverity::High,
+                    description: "CVE-2024-1234".to_string(),
+                    remediation: Some("Update dep".to_string()),
+                },
+            ],
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        let d: ComplianceStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(d.violations.len(), 2);
+    }
+
+    #[test]
+    fn test_set_check_enabled_toggle() {
+        let mut checker = ComplianceChecker::new();
+        assert!(checker.is_check_enabled("fips_140_3"));
+        checker.set_check_enabled("fips_140_3", false);
+        assert!(!checker.is_check_enabled("fips_140_3"));
+        checker.set_check_enabled("fips_140_3", true);
+        assert!(checker.is_check_enabled("fips_140_3"));
+    }
+
+    #[test]
+    fn test_set_custom_check() {
+        let mut checker = ComplianceChecker::new();
+        assert!(!checker.is_check_enabled("custom_check"));
+        checker.set_check_enabled("custom_check", true);
+        assert!(checker.is_check_enabled("custom_check"));
+    }
+
+    #[test]
+    fn test_checker_default_trait() {
+        let checker = ComplianceChecker::default();
+        assert!(checker.is_check_enabled("fips_140_3"));
+        assert!(checker.is_check_enabled("cve"));
+        assert!(checker.is_check_enabled("mitre_attack"));
+        assert!(checker.is_check_enabled("cmmc"));
+    }
+
+    #[test]
+    fn test_check_fips_enabled() {
+        let checker = ComplianceChecker::new();
+        assert!(checker.check_fips_140_3());
+    }
+
+    #[test]
+    fn test_check_mitre_enabled() {
+        let checker = ComplianceChecker::new();
+        assert!(checker.check_mitre_attack());
+    }
+
+    #[test]
+    fn test_check_cmmc_enabled() {
+        let checker = ComplianceChecker::new();
+        assert_eq!(checker.check_cmmc(), 2);
+    }
 }

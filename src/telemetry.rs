@@ -617,6 +617,8 @@ mod tests {
         assert!(!config.enabled);
         assert!(!config.device_id.is_empty());
         assert!(config.endpoint.contains("telemetry"));
+        assert_eq!(config.batch_size, 25);
+        assert_eq!(config.flush_interval_secs, 300);
     }
 
     #[test]
@@ -630,6 +632,81 @@ mod tests {
         assert!(client.is_enabled());
         client.disable();
         assert!(!client.is_enabled());
+    }
+
+    #[test]
+    fn test_telemetry_client_enable() {
+        let config = TelemetryConfig {
+            enabled: false,
+            ..TelemetryConfig::default()
+        };
+        let client = TelemetryClient::new(config);
+        assert!(!client.is_enabled());
+        client.enable();
+        assert!(client.is_enabled());
+    }
+
+    #[test]
+    fn test_telemetry_client_device_id() {
+        let config = TelemetryConfig::default();
+        let expected_id = config.device_id.clone();
+        let client = TelemetryClient::new(config);
+        assert_eq!(client.device_id(), expected_id);
+    }
+
+    #[test]
+    fn test_telemetry_client_track_when_disabled() {
+        let config = TelemetryConfig {
+            enabled: false,
+            ..TelemetryConfig::default()
+        };
+        let client = TelemetryClient::new(config);
+
+        // Should be a no-op when disabled
+        client.track(TelemetryEvent::CommandRun {
+            command: "test".to_string(),
+            subcommand: None,
+            duration_ms: 0,
+            success: true,
+        });
+
+        // Events list should be empty
+        let events = client.events.lock();
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn test_telemetry_client_track_when_enabled() {
+        let config = TelemetryConfig {
+            enabled: true,
+            batch_size: 100, // high batch size to avoid auto-flush
+            ..TelemetryConfig::default()
+        };
+        let client = TelemetryClient::new(config);
+
+        client.track(TelemetryEvent::CommandRun {
+            command: "store".to_string(),
+            subcommand: Some("model".to_string()),
+            duration_ms: 150,
+            success: true,
+        });
+
+        let events = client.events.lock();
+        assert_eq!(events.len(), 1);
+        assert!(!events[0].device_id.is_empty());
+        assert!(!events[0].session_id.is_empty());
+        assert!(events[0].timestamp > 0);
+    }
+
+    #[test]
+    fn test_telemetry_client_flush_when_disabled() {
+        let config = TelemetryConfig {
+            enabled: false,
+            ..TelemetryConfig::default()
+        };
+        let client = TelemetryClient::new(config);
+        // Should not panic
+        client.flush();
     }
 
     #[test]
@@ -662,5 +739,136 @@ mod tests {
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains("command_run"));
         assert!(json.contains("store"));
+    }
+
+    #[test]
+    fn test_event_app_start_serialization() {
+        let event = TelemetryEvent::AppStart {
+            version: "1.2.0".to_string(),
+            os: "windows".to_string(),
+            arch: "x86_64".to_string(),
+            features: vec!["api".to_string(), "cloud".to_string()],
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("app_start"));
+        assert!(json.contains("1.2.0"));
+    }
+
+    #[test]
+    fn test_event_model_operation_serialization() {
+        let event = TelemetryEvent::ModelOperation {
+            operation: "store".to_string(),
+            format: "safetensors".to_string(),
+            size_bucket: "medium".to_string(),
+            duration_ms: 3000,
+            success: true,
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("model_operation"));
+    }
+
+    #[test]
+    fn test_event_conversion_serialization() {
+        let event = TelemetryEvent::Conversion {
+            source_format: "pytorch".to_string(),
+            target_format: "onnx".to_string(),
+            duration_ms: 5000,
+            success: false,
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("conversion"));
+        assert!(json.contains("false"));
+    }
+
+    #[test]
+    fn test_event_api_call_serialization() {
+        let event = TelemetryEvent::ApiCall {
+            endpoint: "/api/v1/models".to_string(),
+            method: "GET".to_string(),
+            status_code: 200,
+            duration_ms: 50,
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("api_call"));
+        assert!(json.contains("200"));
+    }
+
+    #[test]
+    fn test_event_error_serialization() {
+        let event = TelemetryEvent::Error {
+            error_type: "CryptoError".to_string(),
+            context: Some("decryption failed".to_string()),
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("error"));
+        assert!(json.contains("CryptoError"));
+
+        // Without context
+        let event2 = TelemetryEvent::Error {
+            error_type: "IoError".to_string(),
+            context: None,
+        };
+        let json2 = serde_json::to_string(&event2).unwrap();
+        assert!(!json2.contains("context"));
+    }
+
+    #[test]
+    fn test_event_feature_used_serialization() {
+        let event = TelemetryEvent::FeatureUsed {
+            feature: "cloud_push".to_string(),
+            detail: Some("s3".to_string()),
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("feature_used"));
+
+        let event2 = TelemetryEvent::FeatureUsed {
+            feature: "rag".to_string(),
+            detail: None,
+        };
+        let json2 = serde_json::to_string(&event2).unwrap();
+        assert!(!json2.contains("detail"));
+    }
+
+    #[test]
+    fn test_telemetry_config_serialization_roundtrip() {
+        let config = TelemetryConfig::default();
+        let yaml = serde_yaml_ng::to_string(&config).unwrap();
+        let deserialized: TelemetryConfig = serde_yaml_ng::from_str(&yaml).unwrap();
+        assert_eq!(deserialized.batch_size, config.batch_size);
+        assert_eq!(deserialized.flush_interval_secs, config.flush_interval_secs);
+    }
+
+    #[test]
+    fn test_get_queue_file_path() {
+        let path = TelemetryClient::get_queue_file_path();
+        assert!(path.to_string_lossy().contains("telemetry"));
+        assert!(path.to_string_lossy().contains("events.jsonl"));
+    }
+
+    #[test]
+    fn test_tracking_timer() {
+        let timer = TrackingTimer::new("test-cmd", Some("sub"));
+        assert_eq!(timer.command, "test-cmd");
+        assert_eq!(timer.subcommand.as_deref(), Some("sub"));
+        // Don't call finish() since global telemetry isn't initialized
+    }
+
+    #[test]
+    fn test_tracking_timer_no_subcommand() {
+        let timer = TrackingTimer::new("list", None);
+        assert!(timer.subcommand.is_none());
+    }
+
+    #[test]
+    fn test_collect_enabled_features() {
+        let features = collect_enabled_features();
+        // Result depends on compile features, but should not panic
+        assert!(features.len() <= 10);
+    }
+
+    #[test]
+    fn test_global_is_enabled_without_init() {
+        // Without initialization, should return false
+        assert!(!is_enabled());
     }
 }

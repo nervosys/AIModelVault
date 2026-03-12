@@ -44,6 +44,47 @@ All benchmarks run on the default (non-GPU) code path.
 | LZMA      | 10 KB     | ~388 µs       |
 | LZMA      | 100 KB    | ~1.99 ms      |
 
+## Vault Operations (`benches/vault_bench.rs`)
+
+### Store & Retrieve (AES-256-GCM + Argon2id)
+
+| Operation   | Data Size | Time (median) |
+| ----------- | --------- | ------------- |
+| Store       | 1 KB      | ~46 ms        |
+| Retrieve    | 1 KB      | ~25 ms        |
+| Store       | 10 KB     | ~49 ms        |
+| Retrieve    | 10 KB     | ~18 ms        |
+| Store       | 100 KB    | ~45 ms        |
+| Retrieve    | 100 KB    | ~16 ms        |
+
+> Store/retrieve times are dominated by Argon2id key derivation (~40 ms per call).
+
+### Format Detection
+
+| Operation           | Time (median) |
+| ------------------- | ------------- |
+| `from_extension()`  | ~462 ns       |
+| `format_name()`     | ~4 ns         |
+
+### SHA-256 Hashing
+
+| Data Size | Time (median) |
+| --------- | ------------- |
+| 1 KB      | ~453 ns       |
+| 10 KB     | ~5.3 µs       |
+| 100 KB    | ~53 µs        |
+| 1 MB      | ~571 µs       |
+
+### Model Card Serialization
+
+| Operation              | Time (median) |
+| ---------------------- | ------------- |
+| `to_json()`            | ~4.4 µs       |
+| `to_yaml()`            | ~22 µs        |
+| `to_markdown()`        | ~1.5 µs       |
+| `from_json()`          | ~4.5 µs       |
+| `from_yaml()`          | ~59 µs        |
+
 ## Code Coverage
 
 | Metric     | Value            |

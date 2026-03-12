@@ -41,7 +41,7 @@ fn bench_store_and_retrieve(c: &mut Criterion) {
                     let (tmp, vault) = create_test_vault();
                     (tmp, vault, data.clone())
                 },
-                |(_, mut vault, data)| {
+                |(_tmp, mut vault, data)| {
                     let meta = ModelMetadata::new("bench_model".into(), ModelFormat::PyTorch);
                     vault
                         .store_model("bench_model", black_box(data), meta, None)
@@ -60,7 +60,7 @@ fn bench_store_and_retrieve(c: &mut Criterion) {
                         .unwrap();
                     (tmp, vault)
                 },
-                |(_, vault)| {
+                |(_tmp, vault)| {
                     black_box(vault.get_model("bench_model", None).unwrap());
                 },
             );

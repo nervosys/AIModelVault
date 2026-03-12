@@ -845,10 +845,546 @@ mod tests {
     }
 
     #[test]
+    fn test_vector_clock_multiple_increments() {
+        let mut clock = VectorClock::new();
+        clock.increment("a");
+        clock.increment("a");
+        clock.increment("a");
+        assert_eq!(clock.timestamps.get("a"), Some(&3));
+    }
+
+    #[test]
+    fn test_vector_clock_merge_takes_max() {
+        let mut c1 = VectorClock::new();
+        let mut c2 = VectorClock::new();
+
+        c1.increment("a");
+        c1.increment("a"); // a=2
+        c2.increment("a"); // a=1
+        c2.increment("b"); // b=1
+
+        c1.merge(&c2);
+        assert_eq!(c1.timestamps.get("a"), Some(&2)); // max(2,1)
+        assert_eq!(c1.timestamps.get("b"), Some(&1)); // new entry
+    }
+
+    #[test]
+    fn test_vector_clock_equal_after_merge() {
+        let mut c1 = VectorClock::new();
+        c1.increment("a");
+        let c2 = c1.clone();
+        assert_eq!(c1.compare(&c2), ClockComparison::Equal);
+    }
+
+    #[test]
+    fn test_vector_clock_serialization() {
+        let mut clock = VectorClock::new();
+        clock.increment("node1");
+        let json = serde_json::to_string(&clock).unwrap();
+        let deserialized: VectorClock = serde_json::from_str(&json).unwrap();
+        assert_eq!(clock, deserialized);
+    }
+
+    #[test]
+    fn test_clock_comparison_debug() {
+        assert_eq!(format!("{:?}", ClockComparison::Equal), "Equal");
+        assert_eq!(format!("{:?}", ClockComparison::Before), "Before");
+        assert_eq!(format!("{:?}", ClockComparison::After), "After");
+        assert_eq!(format!("{:?}", ClockComparison::Concurrent), "Concurrent");
+    }
+
+    #[test]
     fn test_federation_config_default() {
         let config = FederationConfig::default();
         assert!(!config.node_id.is_empty());
         assert_eq!(config.sync_interval_secs, 300);
         assert!(config.auto_resolve_conflicts);
+        assert_eq!(config.max_concurrent_syncs, 4);
+        assert!(config.peers.is_empty());
+        assert!(!config.node_name.is_empty());
+    }
+
+    #[test]
+    fn test_federation_config_serialization() {
+        let config = FederationConfig::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: FederationConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.sync_interval_secs, 300);
+        assert!(deserialized.auto_resolve_conflicts);
+    }
+
+    #[test]
+    fn test_peer_config_zeroize_on_drop() {
+        let peer = PeerConfig {
+            node_id: "peer1".to_string(),
+            name: "Test Peer".to_string(),
+            endpoint: "https://example.com".to_string(),
+            api_key: Some("secret-key-12345".to_string()),
+            enabled: true,
+        };
+        // Drop should zeroize the api_key
+        drop(peer);
+    }
+
+    #[test]
+    fn test_peer_config_without_api_key() {
+        let peer = PeerConfig {
+            node_id: "peer1".to_string(),
+            name: "Test Peer".to_string(),
+            endpoint: "https://example.com".to_string(),
+            api_key: None,
+            enabled: false,
+        };
+        assert!(!peer.enabled);
+        drop(peer);
+    }
+
+    #[test]
+    fn test_peer_config_serialization() {
+        let peer = PeerConfig {
+            node_id: "p1".to_string(),
+            name: "Peer 1".to_string(),
+            endpoint: "https://peer1.example.com".to_string(),
+            api_key: Some("key".to_string()),
+            enabled: true,
+        };
+        let json = serde_json::to_string(&peer).unwrap();
+        let deserialized: PeerConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.node_id, "p1");
+        assert_eq!(deserialized.api_key.as_deref(), Some("key"));
+    }
+
+    #[test]
+    fn test_model_sync_state_default_fields() {
+        let state = ModelSyncState {
+            name: "test-model".to_string(),
+            clock: VectorClock::new(),
+            last_sync: HashMap::new(),
+            known_versions: HashSet::new(),
+            pending_upload: HashSet::new(),
+            pending_download: HashSet::new(),
+        };
+        assert_eq!(state.name, "test-model");
+        assert!(state.known_versions.is_empty());
+    }
+
+    #[test]
+    fn test_sync_manifest_serialization() {
+        let manifest = SyncManifest {
+            source_node: "node-a".to_string(),
+            timestamp: Utc::now(),
+            models: vec![],
+            clock: VectorClock::new(),
+        };
+        let json = serde_json::to_string(&manifest).unwrap();
+        let deserialized: SyncManifest = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.source_node, "node-a");
+    }
+
+    #[test]
+    fn test_sync_result_serialization() {
+        let result = SyncResult {
+            peer_id: "peer-1".to_string(),
+            timestamp: Utc::now(),
+            duration_ms: 1500,
+            models_synced: 3,
+            versions_uploaded: 2,
+            versions_downloaded: 1,
+            conflicts: vec![],
+            errors: vec![],
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("peer-1"));
+    }
+
+    #[test]
+    fn test_sync_conflict_serialization() {
+        let conflict = SyncConflict {
+            model: "llama".to_string(),
+            local_version: "abc".to_string(),
+            remote_version: "def".to_string(),
+            remote_node: "node-b".to_string(),
+            resolution: Some(ConflictResolution::KeepLocal),
+        };
+        let json = serde_json::to_string(&conflict).unwrap();
+        assert!(json.contains("KeepLocal"));
+    }
+
+    #[test]
+    fn test_conflict_resolution_variants() {
+        let keep = ConflictResolution::KeepLocal;
+        let remote = ConflictResolution::UseRemote;
+        let branch = ConflictResolution::Branch {
+            local_name: "local-v2".to_string(),
+            remote_name: "remote-v2".to_string(),
+        };
+        let manual = ConflictResolution::Manual;
+
+        // Serialization round-trip
+        for r in [keep, remote, manual] {
+            let json = serde_json::to_string(&r).unwrap();
+            let _: ConflictResolution = serde_json::from_str(&json).unwrap();
+        }
+        let json = serde_json::to_string(&branch).unwrap();
+        assert!(json.contains("local-v2"));
+    }
+
+    #[test]
+    fn test_version_manifest_entry() {
+        let entry = VersionManifestEntry {
+            version: 3,
+            checkpoint_id: "cp-xyz".to_string(),
+            created_at: Utc::now(),
+            checksum: "sha256-abc".to_string(),
+            size_bytes: 1024,
+            parent_id: Some("cp-prev".to_string()),
+            origin_node: "node-a".to_string(),
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        let deserialized: VersionManifestEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.version, 3);
+        assert_eq!(deserialized.checkpoint_id, "cp-xyz");
+    }
+
+    #[test]
+    fn test_federation_status_serialization() {
+        let status = FederationStatus {
+            node_id: "n1".to_string(),
+            node_name: "Node One".to_string(),
+            peer_count: 2,
+            model_count: 5,
+            last_sync: Some(Utc::now()),
+            clock: VectorClock::new(),
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        let d: FederationStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(d.peer_count, 2);
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_new() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+        assert!(!mgr.node_id().is_empty());
+        assert!(mgr.peers().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_add_remove_peer() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mut mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let peer = PeerConfig {
+            node_id: "peer-1".to_string(),
+            name: "Peer 1".to_string(),
+            endpoint: "https://peer1.example.com".to_string(),
+            api_key: None,
+            enabled: true,
+        };
+        mgr.add_peer(peer);
+        assert_eq!(mgr.peers().len(), 1);
+
+        mgr.remove_peer("peer-1");
+        assert!(mgr.peers().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_status() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = FederationConfig::default();
+        config.node_name = "test-node".to_string();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let status = mgr.status().await;
+        assert_eq!(status.node_name, "test-node");
+        assert_eq!(status.peer_count, 0);
+        assert_eq!(status.model_count, 0);
+        assert!(status.last_sync.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_get_history_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let history = mgr.get_history(None).await;
+        assert!(history.is_empty());
+
+        let limited = mgr.get_history(Some(5)).await;
+        assert!(limited.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_generate_manifest_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let manifest = mgr.generate_manifest(vec![]).await;
+        assert!(manifest.models.is_empty());
+        assert_eq!(manifest.source_node, mgr.node_id());
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_generate_manifest_with_models() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let versions = vec![crate::version::ModelVersion {
+            version: 1,
+            checkpoint_id: "cp-1".to_string(),
+            timestamp: Utc::now(),
+            checksum_sha256: "abc123".to_string(),
+            size_bytes: 1024,
+            compressed_size_bytes: 800,
+            parent_version: None,
+            format: "safetensors".to_string(),
+            metadata: HashMap::new(),
+            file_path: "models/cp-1.enc".to_string(),
+        }];
+
+        let manifest = mgr.generate_manifest(vec![("my-model".to_string(), versions)]).await;
+        assert_eq!(manifest.models.len(), 1);
+        assert_eq!(manifest.models[0].name, "my-model");
+        assert_eq!(manifest.models[0].versions.len(), 1);
+    }
+
+    #[test]
+    fn test_compute_delta_empty_manifests() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let local = SyncManifest {
+            source_node: "a".to_string(),
+            timestamp: Utc::now(),
+            models: vec![],
+            clock: VectorClock::new(),
+        };
+        let remote = SyncManifest {
+            source_node: "b".to_string(),
+            timestamp: Utc::now(),
+            models: vec![],
+            clock: VectorClock::new(),
+        };
+
+        let delta = mgr.compute_delta(&local, &remote);
+        assert!(delta.to_upload.is_empty());
+        assert!(delta.to_download.is_empty());
+        assert!(delta.conflicts.is_empty());
+    }
+
+    #[test]
+    fn test_compute_delta_local_only_model() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let local = SyncManifest {
+            source_node: "a".to_string(),
+            timestamp: Utc::now(),
+            models: vec![ModelManifestEntry {
+                name: "model-x".to_string(),
+                versions: vec![VersionManifestEntry {
+                    version: 1,
+                    checkpoint_id: "cp-1".to_string(),
+                    created_at: Utc::now(),
+                    checksum: "sha".to_string(),
+                    size_bytes: 100,
+                    parent_id: None,
+                    origin_node: "a".to_string(),
+                }],
+                clock: VectorClock::new(),
+            }],
+            clock: VectorClock::new(),
+        };
+        let remote = SyncManifest {
+            source_node: "b".to_string(),
+            timestamp: Utc::now(),
+            models: vec![],
+            clock: VectorClock::new(),
+        };
+
+        let delta = mgr.compute_delta(&local, &remote);
+        assert_eq!(delta.to_upload.len(), 1);
+        assert_eq!(delta.to_upload[0].model, "model-x");
+        assert!(delta.to_download.is_empty());
+    }
+
+    #[test]
+    fn test_compute_delta_remote_only_model() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let local = SyncManifest {
+            source_node: "a".to_string(),
+            timestamp: Utc::now(),
+            models: vec![],
+            clock: VectorClock::new(),
+        };
+        let remote = SyncManifest {
+            source_node: "b".to_string(),
+            timestamp: Utc::now(),
+            models: vec![ModelManifestEntry {
+                name: "model-y".to_string(),
+                versions: vec![VersionManifestEntry {
+                    version: 1,
+                    checkpoint_id: "cp-2".to_string(),
+                    created_at: Utc::now(),
+                    checksum: "sha2".to_string(),
+                    size_bytes: 200,
+                    parent_id: None,
+                    origin_node: "b".to_string(),
+                }],
+                clock: VectorClock::new(),
+            }],
+            clock: VectorClock::new(),
+        };
+
+        let delta = mgr.compute_delta(&local, &remote);
+        assert!(delta.to_upload.is_empty());
+        assert_eq!(delta.to_download.len(), 1);
+        assert_eq!(delta.to_download[0].model, "model-y");
+    }
+
+    #[test]
+    fn test_compute_delta_conflict() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let local = SyncManifest {
+            source_node: "a".to_string(),
+            timestamp: Utc::now(),
+            models: vec![ModelManifestEntry {
+                name: "model-z".to_string(),
+                versions: vec![VersionManifestEntry {
+                    version: 1,
+                    checkpoint_id: "cp-local".to_string(),
+                    created_at: Utc::now(),
+                    checksum: "sha-l".to_string(),
+                    size_bytes: 100,
+                    parent_id: None,
+                    origin_node: "a".to_string(),
+                }],
+                clock: VectorClock::new(),
+            }],
+            clock: VectorClock::new(),
+        };
+        let remote = SyncManifest {
+            source_node: "b".to_string(),
+            timestamp: Utc::now(),
+            models: vec![ModelManifestEntry {
+                name: "model-z".to_string(),
+                versions: vec![VersionManifestEntry {
+                    version: 1,
+                    checkpoint_id: "cp-remote".to_string(),
+                    created_at: Utc::now(),
+                    checksum: "sha-r".to_string(),
+                    size_bytes: 100,
+                    parent_id: None,
+                    origin_node: "b".to_string(),
+                }],
+                clock: VectorClock::new(),
+            }],
+            clock: VectorClock::new(),
+        };
+
+        let delta = mgr.compute_delta(&local, &remote);
+        assert_eq!(delta.conflicts.len(), 1);
+        assert_eq!(delta.conflicts[0].model, "model-z");
+    }
+
+    #[test]
+    fn test_compute_delta_shared_versions() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        // Both nodes have the same version — no sync needed
+        let entry = VersionManifestEntry {
+            version: 1,
+            checkpoint_id: "cp-same".to_string(),
+            created_at: Utc::now(),
+            checksum: "sha".to_string(),
+            size_bytes: 100,
+            parent_id: None,
+            origin_node: "a".to_string(),
+        };
+        let local = SyncManifest {
+            source_node: "a".to_string(),
+            timestamp: Utc::now(),
+            models: vec![ModelManifestEntry {
+                name: "m".to_string(),
+                versions: vec![entry.clone()],
+                clock: VectorClock::new(),
+            }],
+            clock: VectorClock::new(),
+        };
+        let remote = SyncManifest {
+            source_node: "b".to_string(),
+            timestamp: Utc::now(),
+            models: vec![ModelManifestEntry {
+                name: "m".to_string(),
+                versions: vec![entry],
+                clock: VectorClock::new(),
+            }],
+            clock: VectorClock::new(),
+        };
+
+        let delta = mgr.compute_delta(&local, &remote);
+        assert!(delta.to_upload.is_empty());
+        assert!(delta.to_download.is_empty());
+        assert!(delta.conflicts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_load_existing_state() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_file = dir.path().join("federation_state.json");
+        let saved = SavedFederationState {
+            models: HashMap::new(),
+            clock: {
+                let mut c = VectorClock::new();
+                c.increment("existing");
+                c
+            },
+            history: vec![],
+        };
+        std::fs::write(&state_file, serde_json::to_string(&saved).unwrap()).unwrap();
+
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let status = mgr.status().await;
+        assert_eq!(status.clock.timestamps.get("existing"), Some(&1));
+    }
+
+    #[test]
+    fn test_sync_item_debug() {
+        let item = SyncItem {
+            model: "m".to_string(),
+            checkpoint_id: "cp".to_string(),
+            size_bytes: 42,
+        };
+        let dbg = format!("{:?}", item);
+        assert!(dbg.contains("42"));
+    }
+
+    #[test]
+    fn test_model_manifest_entry_serialization() {
+        let entry = ModelManifestEntry {
+            name: "llm".to_string(),
+            versions: vec![],
+            clock: VectorClock::new(),
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        let d: ModelManifestEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(d.name, "llm");
     }
 }
