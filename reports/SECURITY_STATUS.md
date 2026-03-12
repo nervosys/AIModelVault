@@ -95,7 +95,7 @@ Command: cargo test --lib
 Status: ✅ ALL PASSED
 Tests: 37/37 (100%)
 Time: 7.98s
-Coverage: ~90% (estimated)
+Coverage: 92.82% (cargo-llvm-cov)
 ```
 
 ## Security Features Active

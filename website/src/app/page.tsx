@@ -171,7 +171,7 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-center mb-12">At a Glance</h2>
           <div className="grid md:grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold text-[var(--color-primary)] mb-2">1,609</div>
+              <div className="text-4xl font-bold text-[var(--color-primary)] mb-2">1,667</div>
               <div className="text-[var(--color-text-secondary)]">Tests Passing</div>
             </div>
             <div>

@@ -5,8 +5,8 @@
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-1662%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
-[![Coverage](https://img.shields.io/badge/coverage-83.83%25-brightgreen.svg)](docs/PERFORMANCE.md)
+[![Tests](https://img.shields.io/badge/tests-1667%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![Coverage](https://img.shields.io/badge/coverage-92.82%25-brightgreen.svg)](docs/PERFORMANCE.md)
 [![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
 
@@ -104,7 +104,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ### 10. 🔄 Production-Ready Reliability
 
 **Why it matters**: Trust it with your most important models
-- 1,609 comprehensive tests (100% passing)
+- 1,667 comprehensive tests (100% passing)
 - Type-safe Rust implementation (no memory bugs)
 - Comprehensive error handling
 - Detailed logging and debugging support
@@ -431,7 +431,7 @@ AI Model Vault/
 │   ├── config.rs          # XDG-compliant configuration
 │   ├── utils.rs           # Model utilities (8 tools)
 │   └── python.rs          # Python bindings (PyO3)
-├── tests/                 # 1,609 comprehensive tests
+├── tests/                 # 1,667 comprehensive tests
 ├── docs/                  # Documentation
 ├── website/               # Next.js documentation site
 ├── deploy/                # Dockerfile & Helm chart
@@ -833,7 +833,8 @@ let result = server.execute_tool(
 | [Development Guide](DEVELOPMENT.md)              | For contributors and developers        |
 | [Security Policy](SECURITY.md)                   | Security standards and reporting       |
 | [Roadmap](ROADMAP.md)                            | Full development roadmap               |
-| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,609 tests) |
+| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,667 tests) |
+| [Python Bindings](docs/PYTHON_BINDINGS.md)       | PyO3 native bindings & pure-Python API |
 | [Changelog](CHANGELOG.md)                        | Version history and changes            |
 | [Documentation Website](website/)                | Next.js documentation site             |
 
@@ -865,7 +866,7 @@ User Passphrase
 ### Security Documentation
 
 - **[SECURITY_STATUS.md](reports/SECURITY_STATUS.md)** - 🟢 Production-ready status report (2025-01-04)
-- **[SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)** - Complete security audit (1,400+ lines)
+- **[SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)** - Complete security audit
 - **[docs/SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md)** - Production deployment guide
 - **[SECURITY.md](SECURITY.md)** - Security policy and vulnerability reporting
 
@@ -895,7 +896,7 @@ User Passphrase
 ## 🧪 Testing & Quality
 
 ```bash
-# Run all tests (1,609 tests)
+# Run all tests (1,667 tests)
 cargo test
 
 # Run specific test suites
@@ -920,8 +921,8 @@ cargo bench --bench vault_bench               # Store/retrieve/list operations
 cargo bench --bench api_bench --features api  # REST API endpoint latency
 ```
 
-**Test Coverage**: 1,609 tests, all passing ✅
-- Library unit tests: 447
+**Test Coverage**: 1,667 tests, all passing ✅
+- Library unit tests: 505
 - Coverage & edge case tests: 873
 - Conversion tests: 31
 - Crypto tests: 14

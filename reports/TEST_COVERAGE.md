@@ -4,8 +4,8 @@
 Comprehensive test suite for AI Model Vault covering all major functionality areas.
 
 ## Test Statistics
-- **Total Tests**: 1,609
-  - Unit Tests (lib.rs): 447
+- **Total Tests**: 1,667
+  - Unit Tests (lib.rs): 505
   - CLI Tests: 17
   - Config/Error Tests: 22
   - Conversion Tests: 31
@@ -318,7 +318,7 @@ Current test coverage metrics:
 - **Utils Module**: ~95% (all utilities tested)
 - **Vault Module**: ~80% (main workflows covered)
 - **Version Control**: ~75% (core functionality covered)
-- **Overall**: ~90% line coverage
+- **Overall**: 92.82% line coverage (measured with cargo-llvm-cov)
 
 ## What's Tested
 

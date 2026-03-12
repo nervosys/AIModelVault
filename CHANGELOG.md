@@ -9,10 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Fuzz testing targets** — 3 `cargo-fuzz` targets in `fuzz/`: `fuzz_crypto_roundtrip` (AES-256-GCM encrypt/decrypt roundtrip), `fuzz_format_detection` (ModelFormat::from_extension with arbitrary input), `fuzz_model_metadata` (ModelMetadata builder with fuzzed strings)
-- **Code coverage baseline** — 83.83% line coverage (3,676/4,385 lines) measured with cargo-tarpaulin; 8 modules at 100% coverage
+- **Code coverage baseline** — 92.82% line coverage (12,094/13,029 lines) measured with cargo-llvm-cov (full features); 87.35% function coverage; 8 modules at 100% coverage
 - **Performance baselines** — updated `docs/PERFORMANCE.md` with measured crypto benchmark results (AES-256-GCM, Argon2id, gzip/LZMA compression), vault benchmark results (store/retrieve, format detection, SHA-256, model card serialization), and per-module coverage table
-- **Coverage improvements** — 53 new tests for low-coverage modules: `federation.rs` (VectorClock, delta computation, FederationManager lifecycle), `telemetry.rs` (event serialization, client enable/disable, tracking), `compliance.rs` (serialization, severity variants, checker toggle); total lib tests 447 → 500
+- **Coverage improvements** — 53 new tests for low-coverage modules: `federation.rs` (VectorClock, delta computation, FederationManager lifecycle), `telemetry.rs` (event serialization, client enable/disable, tracking), `compliance.rs` (serialization, severity variants, checker toggle); total lib tests 447 → 505, full-feature tests 1,667
 - **Vault benchmark fix** — fixed TempDir lifetime bug in `vault_bench.rs` (replaced `_` with `_tmp` to prevent premature directory cleanup)
+- **Python bindings: VaultBuilder export** — registered `PyVaultBuilder` in the PyO3 module init and added `VaultBuilder` to `__init__.py` exports
+- **Python bindings documentation** — new `docs/PYTHON_BINDINGS.md` with complete API reference for all 8 PyO3 classes, installation guide, quick start, and feature matrix
+- **Python bindings: parse_format tests** — 25 Rust-side unit tests in `src/python.rs` covering all 23+ format aliases and case-insensitive parsing
+- **Python test suite expansion** — added compression roundtrip tests, package init tests, vault property/error tests, and compression level tests
+
+### Changed
+- **Python package version** — bumped from 1.1.0 to 1.2.0 in both `pyproject.toml` and `__init__.py`
+- **Documentation polish** — updated 17 stale references across 10 files: test count 1,609→1,667, lib tests 447→505, coverage ~90%→92.82%, tarpaulin→cargo-llvm-cov
 
 ## [1.2.0]
 

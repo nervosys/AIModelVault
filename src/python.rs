@@ -828,7 +828,150 @@ fn aimodelvault_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyVault>()?;
     m.add_class::<PyModelCard>()?;
     m.add_class::<PyModelStream>()?;
+    m.add_class::<PyVaultBuilder>()?;
     m.add_function(wrap_pyfunction!(sha256_hex, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     Ok(())
+}
+
+// ── tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // parse_format tests — no Python runtime needed
+
+    #[test]
+    fn parse_format_safetensors() {
+        assert!(matches!(parse_format("safetensors").unwrap(), ModelFormat::Safetensors));
+    }
+
+    #[test]
+    fn parse_format_gguf() {
+        assert!(matches!(parse_format("gguf").unwrap(), ModelFormat::GGUF));
+    }
+
+    #[test]
+    fn parse_format_pytorch_aliases() {
+        assert!(matches!(parse_format("pytorch").unwrap(), ModelFormat::PyTorch));
+        assert!(matches!(parse_format("pt").unwrap(), ModelFormat::PyTorch));
+        assert!(matches!(parse_format("pth").unwrap(), ModelFormat::PyTorch));
+    }
+
+    #[test]
+    fn parse_format_tensorrt_aliases() {
+        assert!(matches!(parse_format("tensorrt").unwrap(), ModelFormat::TensorRT));
+        assert!(matches!(parse_format("plan").unwrap(), ModelFormat::TensorRT));
+    }
+
+    #[test]
+    fn parse_format_onnx() {
+        assert!(matches!(parse_format("onnx").unwrap(), ModelFormat::ONNX));
+    }
+
+    #[test]
+    fn parse_format_mlx() {
+        assert!(matches!(parse_format("mlx").unwrap(), ModelFormat::MLX));
+    }
+
+    #[test]
+    fn parse_format_coreml_aliases() {
+        assert!(matches!(parse_format("coreml").unwrap(), ModelFormat::CoreML));
+        assert!(matches!(parse_format("mlmodel").unwrap(), ModelFormat::CoreML));
+    }
+
+    #[test]
+    fn parse_format_torchscript() {
+        assert!(matches!(parse_format("torchscript").unwrap(), ModelFormat::TorchScript));
+    }
+
+    #[test]
+    fn parse_format_tflite() {
+        assert!(matches!(parse_format("tflite").unwrap(), ModelFormat::TFLite));
+    }
+
+    #[test]
+    fn parse_format_tensorflow_aliases() {
+        assert!(matches!(parse_format("tensorflow").unwrap(), ModelFormat::TensorFlow));
+        assert!(matches!(parse_format("tf").unwrap(), ModelFormat::TensorFlow));
+        assert!(matches!(parse_format("pb").unwrap(), ModelFormat::TensorFlow));
+    }
+
+    #[test]
+    fn parse_format_keras_aliases() {
+        assert!(matches!(parse_format("keras").unwrap(), ModelFormat::Keras));
+        assert!(matches!(parse_format("h5").unwrap(), ModelFormat::Keras));
+    }
+
+    #[test]
+    fn parse_format_openvino() {
+        assert!(matches!(parse_format("openvino").unwrap(), ModelFormat::OpenVINO));
+    }
+
+    #[test]
+    fn parse_format_tvm() {
+        assert!(matches!(parse_format("tvm").unwrap(), ModelFormat::TVM));
+    }
+
+    #[test]
+    fn parse_format_ncnn() {
+        assert!(matches!(parse_format("ncnn").unwrap(), ModelFormat::NCNN));
+    }
+
+    #[test]
+    fn parse_format_mnn() {
+        assert!(matches!(parse_format("mnn").unwrap(), ModelFormat::MNN));
+    }
+
+    #[test]
+    fn parse_format_rknn() {
+        assert!(matches!(parse_format("rknn").unwrap(), ModelFormat::RKNN));
+    }
+
+    #[test]
+    fn parse_format_caffe() {
+        assert!(matches!(parse_format("caffe").unwrap(), ModelFormat::Caffe));
+    }
+
+    #[test]
+    fn parse_format_mxnet() {
+        assert!(matches!(parse_format("mxnet").unwrap(), ModelFormat::MXNet));
+    }
+
+    #[test]
+    fn parse_format_darknet() {
+        assert!(matches!(parse_format("darknet").unwrap(), ModelFormat::Darknet));
+    }
+
+    #[test]
+    fn parse_format_hdf5() {
+        assert!(matches!(parse_format("hdf5").unwrap(), ModelFormat::HDF5));
+    }
+
+    #[test]
+    fn parse_format_pickle_aliases() {
+        assert!(matches!(parse_format("pickle").unwrap(), ModelFormat::Pickle));
+        assert!(matches!(parse_format("pkl").unwrap(), ModelFormat::Pickle));
+    }
+
+    #[test]
+    fn parse_format_numpy_aliases() {
+        assert!(matches!(parse_format("numpy").unwrap(), ModelFormat::NumPy));
+        assert!(matches!(parse_format("npy").unwrap(), ModelFormat::NumPy));
+        assert!(matches!(parse_format("npz").unwrap(), ModelFormat::NumPy));
+    }
+
+    #[test]
+    fn parse_format_unknown_returns_custom() {
+        let fmt = parse_format("unknown_format").unwrap();
+        assert!(matches!(fmt, ModelFormat::Custom(ref s) if s == "unknown_format"));
+    }
+
+    #[test]
+    fn parse_format_case_insensitive() {
+        assert!(matches!(parse_format("SAFETENSORS").unwrap(), ModelFormat::Safetensors));
+        assert!(matches!(parse_format("PyTorch").unwrap(), ModelFormat::PyTorch));
+        assert!(matches!(parse_format("ONNX").unwrap(), ModelFormat::ONNX));
+    }
 }

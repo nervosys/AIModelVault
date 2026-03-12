@@ -5,7 +5,7 @@ Native Rust bindings via PyO3. Falls back to pure-Python CLI wrappers
 if the native extension is not available (e.g. source installs without Rust).
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 try:
     # Native Rust bindings (installed via maturin)
@@ -16,6 +16,7 @@ try:
         ModelStream,
         ModelVersion,
         Vault,
+        VaultBuilder,
         VaultConfig,
         sha256_hex,
         version as rust_version,
@@ -32,12 +33,14 @@ except ImportError:
     ModelStream = None  # type: ignore[assignment,misc]
     ModelVersion = None  # type: ignore[assignment,misc]
     ModelCard = None  # type: ignore[assignment,misc]
+    VaultBuilder = None  # type: ignore[assignment,misc]
     sha256_hex = None  # type: ignore[assignment]
     rust_version = None  # type: ignore[assignment]
     _NATIVE = False
 
 __all__ = [
     "Vault",
+    "VaultBuilder",
     "VaultConfig",
     "ModelFormat",
     "ModelMetadata",

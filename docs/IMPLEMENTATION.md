@@ -202,7 +202,7 @@ cargo build --all-features
 cargo test
 
 # With coverage
-cargo tarpaulin --out Html
+cargo llvm-cov --html
 
 # Integration tests
 cargo test --test integration_tests

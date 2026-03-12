@@ -6,6 +6,8 @@ Tests cover:
 - VaultConfig initialization and defaults
 - Vault class subprocess interface
 - FIPSCrypto (standalone, NOT interop with Rust)
+- Compression utilities
+- Package initialization and version
 """
 
 import os
@@ -322,3 +324,176 @@ class TestFIPSCrypto:
         ciphertext = crypto.encrypt(plaintext, key)
         decrypted = crypto.decrypt(ciphertext, key)
         assert decrypted == plaintext
+
+
+# ---------------------------------------------------------------------------
+# Compression tests
+# ---------------------------------------------------------------------------
+
+class TestCompression:
+    """Tests for aimodelvault.crypto.compression module."""
+
+    def test_gzip_roundtrip(self):
+        from aimodelvault.crypto.compression import GzipCompressor
+        c = GzipCompressor()
+        data = b"AI Model Vault compression test" * 100
+        compressed = c.compress(data)
+        assert c.decompress(compressed) == data
+
+    def test_zlib_roundtrip(self):
+        from aimodelvault.crypto.compression import ZlibCompressor
+        c = ZlibCompressor()
+        data = b"Zlib compression test data" * 100
+        compressed = c.compress(data)
+        assert c.decompress(compressed) == data
+
+    def test_lzma_roundtrip(self):
+        from aimodelvault.crypto.compression import LZMACompressor
+        c = LZMACompressor()
+        data = b"LZMA compression test data" * 100
+        compressed = c.compress(data)
+        assert c.decompress(compressed) == data
+
+    def test_compression_reduces_size(self):
+        from aimodelvault.crypto.compression import GzipCompressor
+        c = GzipCompressor()
+        data = b"A" * 10_000
+        compressed = c.compress(data)
+        assert len(compressed) < len(data)
+
+    def test_empty_data_roundtrip(self):
+        from aimodelvault.crypto.compression import GzipCompressor
+        c = GzipCompressor()
+        compressed = c.compress(b"")
+        assert c.decompress(compressed) == b""
+
+    def test_get_compressor_gzip(self):
+        from aimodelvault.crypto.compression import get_compressor, GzipCompressor
+        c = get_compressor("gzip")
+        assert isinstance(c, GzipCompressor)
+
+    def test_get_compressor_lzma(self):
+        from aimodelvault.crypto.compression import get_compressor, LZMACompressor
+        c = get_compressor("lzma")
+        assert isinstance(c, LZMACompressor)
+
+    def test_get_compressor_zlib(self):
+        from aimodelvault.crypto.compression import get_compressor, ZlibCompressor
+        c = get_compressor("zlib")
+        assert isinstance(c, ZlibCompressor)
+
+    def test_get_compressor_unknown_raises(self):
+        from aimodelvault.crypto.compression import get_compressor
+        with pytest.raises(ValueError):
+            get_compressor("brotli")
+
+    def test_compression_levels(self):
+        from aimodelvault.crypto.compression import GzipCompressor
+        c = GzipCompressor()
+        data = b"Test data for compression levels" * 500
+        fast = c.compress(data, level=1)
+        maximum = c.compress(data, level=9)
+        # Both should decompress correctly
+        assert c.decompress(fast) == data
+        assert c.decompress(maximum) == data
+        # Maximum compression should be at least as good (usually better)
+        assert len(maximum) <= len(fast)
+
+
+# ---------------------------------------------------------------------------
+# Package initialization tests
+# ---------------------------------------------------------------------------
+
+class TestPackageInit:
+    """Tests for aimodelvault package initialization."""
+
+    def test_version_is_set(self):
+        import aimodelvault
+        assert aimodelvault.__version__ == "1.2.0"
+
+    def test_native_flag_exists(self):
+        import aimodelvault
+        assert isinstance(aimodelvault._NATIVE, bool)
+
+    def test_vault_is_importable(self):
+        from aimodelvault import Vault
+        assert Vault is not None
+
+    def test_vault_config_is_importable(self):
+        from aimodelvault import VaultConfig
+        assert VaultConfig is not None
+
+    def test_model_format_is_importable(self):
+        from aimodelvault import ModelFormat
+        assert ModelFormat is not None
+
+
+# ---------------------------------------------------------------------------
+# Vault path and property tests
+# ---------------------------------------------------------------------------
+
+class TestVaultProperties:
+    """Tests for Vault class properties and initialization."""
+
+    def test_vault_path_property(self):
+        from aimodelvault.core.vault import Vault
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("aimodelvault.core.config.user_config_dir", return_value=os.path.join(tmpdir, "config")), \
+                 patch("aimodelvault.core.config.user_data_dir", return_value=os.path.join(tmpdir, "data")), \
+                 patch("aimodelvault.core.config.user_cache_dir", return_value=os.path.join(tmpdir, "cache")):
+                vault_dir = os.path.join(tmpdir, "test_vault")
+                vault = Vault(vault_dir)
+                assert vault.path == Path(vault_dir)
+                assert vault.path.exists()
+
+    def test_vault_creates_directory(self):
+        from aimodelvault.core.vault import Vault
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("aimodelvault.core.config.user_config_dir", return_value=os.path.join(tmpdir, "config")), \
+                 patch("aimodelvault.core.config.user_data_dir", return_value=os.path.join(tmpdir, "data")), \
+                 patch("aimodelvault.core.config.user_cache_dir", return_value=os.path.join(tmpdir, "cache")):
+                vault_dir = os.path.join(tmpdir, "nested", "vault", "dir")
+                vault = Vault(vault_dir)
+                assert Path(vault_dir).exists()
+
+    def test_vault_store_calls_aim(self):
+        from aimodelvault.core.vault import Vault
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("aimodelvault.core.config.user_config_dir", return_value=os.path.join(tmpdir, "config")), \
+                 patch("aimodelvault.core.config.user_data_dir", return_value=os.path.join(tmpdir, "data")), \
+                 patch("aimodelvault.core.config.user_cache_dir", return_value=os.path.join(tmpdir, "cache")):
+                vault = Vault(os.path.join(tmpdir, "vault"))
+                with patch("subprocess.run") as mock_run:
+                    mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+                    vault.store("test-model", "/path/to/model.pt",
+                                passphrase="secret", description="A test model")
+                    mock_run.assert_called_once()
+                    args = mock_run.call_args[0][0]
+                    assert "store" in args
+                    assert "test-model" in args
+                    assert "--description" in args
+
+    def test_vault_aim_not_found_raises(self):
+        from aimodelvault.core.vault import Vault
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("aimodelvault.core.config.user_config_dir", return_value=os.path.join(tmpdir, "config")), \
+                 patch("aimodelvault.core.config.user_data_dir", return_value=os.path.join(tmpdir, "data")), \
+                 patch("aimodelvault.core.config.user_cache_dir", return_value=os.path.join(tmpdir, "cache")):
+                vault = Vault(os.path.join(tmpdir, "vault"))
+                with patch("subprocess.run", side_effect=FileNotFoundError):
+                    with pytest.raises(FileNotFoundError, match="aim"):
+                        vault.list_models()
+
+    def test_vault_aim_error_raises_runtime(self):
+        from aimodelvault.core.vault import Vault
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("aimodelvault.core.config.user_config_dir", return_value=os.path.join(tmpdir, "config")), \
+                 patch("aimodelvault.core.config.user_data_dir", return_value=os.path.join(tmpdir, "data")), \
+                 patch("aimodelvault.core.config.user_cache_dir", return_value=os.path.join(tmpdir, "cache")):
+                vault = Vault(os.path.join(tmpdir, "vault"))
+                with patch("subprocess.run") as mock_run:
+                    mock_run.return_value = MagicMock(
+                        returncode=1, stdout="", stderr="error: vault not found"
+                    )
+                    with pytest.raises(RuntimeError, match="aim command failed"):
+                        vault.list_models()

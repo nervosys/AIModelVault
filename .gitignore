@@ -80,6 +80,10 @@ target/
 tarpaulin-report.json
 tarpaulin_stderr.log
 
+# LLVM coverage artifacts
+*.profraw
+*.profdata
+
 # Cache
 .cache/
 
