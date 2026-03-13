@@ -167,6 +167,17 @@ gpu = ["ocl"]
 # Python native bindings
 python = ["dep:pyo3"]
 
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "allow", priority = -1 }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [profile.release]
 opt-level = 3
 lto = true

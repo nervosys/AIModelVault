@@ -71,30 +71,39 @@ cargo install cargo-watch
 git clone https://github.com/nervosys/AIModelVault.git
 cd AIModelVault
 
-# Build
+# Build (default features: safetensors, ndarray, sqlite)
 cargo build
 
-# Build with all features
-cargo build --all-features
+# Build with all features (all backends + API + GraphQL)
+cargo build --features "full,graphql"
 
 # Build optimized release
-cargo build --release
+cargo build --release --features "full,graphql"
+
+# Build with specific features
+cargo build --features "api,sqlite,s3"
 ```
 
 ### Testing
 
 ```bash
-# Run all tests
-cargo test
+# Run all tests (lib + integration)
+cargo test --features "full,graphql"
+
+# Run lib tests only (623 tests)
+cargo test --lib --features "full,graphql"
+
+# Run a specific test
+cargo test test_name
 
 # Run with output
 cargo test -- --nocapture
 
-# Run specific test
-cargo test test_name
+# Run with coverage (requires cargo-llvm-cov)
+cargo llvm-cov --features "full,graphql" --lcov --output-path lcov.info
 
-# Run with coverage (requires tarpaulin)
-cargo tarpaulin --out Html
+# Run fuzz targets (requires nightly + cargo-fuzz)
+cargo +nightly fuzz run crypto_roundtrip -- -max_total_time=60
 ```
 
 ### Code Quality
