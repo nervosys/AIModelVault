@@ -190,11 +190,202 @@ fn bench_compliance(c: &mut Criterion) {
     });
 }
 
+fn bench_store_model(c: &mut Criterion) {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    c.bench_function("api_store_model_10kb", |b| {
+        b.iter(|| {
+            rt.block_on(async {
+                let dir = tempfile::tempdir().unwrap();
+                let state = bench_state(&dir);
+
+                let mut vault = state.vault.write().await;
+                vault
+                    .unlock(b"bench-passphrase-with-entropy".to_vec())
+                    .unwrap();
+                drop(vault);
+
+                let token = ai_model_vault::api::auth::create_token(
+                    &state.config.jwt_secret,
+                    state.config.token_expiry_secs,
+                )
+                .unwrap();
+
+                // Build multipart body with a 10 KB payload
+                let boundary = "----BenchBoundary";
+                let payload = vec![0xABu8; 10 * 1024];
+                let body_bytes = format!(
+                    "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"bench.safetensors\"\r\nContent-Type: application/octet-stream\r\n\r\n",
+                )
+                .into_bytes()
+                .into_iter()
+                .chain(payload)
+                .chain(format!("\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"format\"\r\n\r\nsafetensors\r\n--{boundary}--\r\n").into_bytes())
+                .collect::<Vec<u8>>();
+
+                let app = bench_router(state);
+                let resp = app
+                    .oneshot(
+                        Request::builder()
+                            .method("POST")
+                            .uri("/api/v1/models/bench-model")
+                            .header(
+                                header::CONTENT_TYPE,
+                                format!("multipart/form-data; boundary={boundary}"),
+                            )
+                            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+                            .body(Body::from(body_bytes))
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                assert_eq!(black_box(resp.status()), StatusCode::CREATED);
+            });
+        });
+    });
+}
+
+fn bench_stats(c: &mut Criterion) {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    c.bench_function("api_stats", |b| {
+        b.iter(|| {
+            rt.block_on(async {
+                let dir = tempfile::tempdir().unwrap();
+                let state = bench_state(&dir);
+
+                let mut vault = state.vault.write().await;
+                vault
+                    .unlock(b"bench-passphrase-with-entropy".to_vec())
+                    .unwrap();
+                drop(vault);
+
+                let token = ai_model_vault::api::auth::create_token(
+                    &state.config.jwt_secret,
+                    state.config.token_expiry_secs,
+                )
+                .unwrap();
+
+                let app = bench_router(state);
+                let resp = app
+                    .oneshot(
+                        Request::builder()
+                            .uri("/api/v1/stats")
+                            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                assert_eq!(black_box(resp.status()), StatusCode::OK);
+            });
+        });
+    });
+}
+
+fn bench_list_conversions(c: &mut Criterion) {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    c.bench_function("api_list_conversions", |b| {
+        b.iter(|| {
+            rt.block_on(async {
+                let dir = tempfile::tempdir().unwrap();
+                let state = bench_state(&dir);
+                let app = bench_router(state);
+
+                let resp = app
+                    .oneshot(
+                        Request::builder()
+                            .uri("/api/v1/conversions")
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                assert_eq!(black_box(resp.status()), StatusCode::OK);
+            });
+        });
+    });
+}
+
+fn bench_openapi_json(c: &mut Criterion) {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    c.bench_function("api_openapi_json", |b| {
+        b.iter(|| {
+            rt.block_on(async {
+                let dir = tempfile::tempdir().unwrap();
+                let state = bench_state(&dir);
+                let app = bench_router(state);
+
+                let resp = app
+                    .oneshot(
+                        Request::builder()
+                            .uri("/api/v1/openapi.json")
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                assert_eq!(black_box(resp.status()), StatusCode::OK);
+            });
+        });
+    });
+}
+
+fn bench_metrics(c: &mut Criterion) {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    c.bench_function("api_metrics", |b| {
+        b.iter(|| {
+            rt.block_on(async {
+                let dir = tempfile::tempdir().unwrap();
+                let state = bench_state(&dir);
+
+                let mut vault = state.vault.write().await;
+                vault
+                    .unlock(b"bench-passphrase-with-entropy".to_vec())
+                    .unwrap();
+                drop(vault);
+
+                let token = ai_model_vault::api::auth::create_token(
+                    &state.config.jwt_secret,
+                    state.config.token_expiry_secs,
+                )
+                .unwrap();
+
+                let app = bench_router(state);
+                let resp = app
+                    .oneshot(
+                        Request::builder()
+                            .uri("/api/v1/metrics")
+                            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                assert_eq!(black_box(resp.status()), StatusCode::OK);
+            });
+        });
+    });
+}
+
 criterion_group!(
     benches,
     bench_health,
     bench_auth_token,
     bench_list_models,
     bench_compliance,
+    bench_store_model,
+    bench_stats,
+    bench_list_conversions,
+    bench_openapi_json,
+    bench_metrics,
 );
 criterion_main!(benches);
