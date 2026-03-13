@@ -744,14 +744,14 @@ mod tests {
     #[test]
     fn test_event_app_start_serialization() {
         let event = TelemetryEvent::AppStart {
-            version: "1.2.0".to_string(),
+            version: "1.2.1".to_string(),
             os: "windows".to_string(),
             arch: "x86_64".to_string(),
             features: vec!["api".to_string(), "cloud".to_string()],
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains("app_start"));
-        assert!(json.contains("1.2.0"));
+        assert!(json.contains("1.2.1"));
     }
 
     #[test]
@@ -890,7 +890,7 @@ mod tests {
 
         // Track several different event types
         client.track(TelemetryEvent::AppStart {
-            version: "1.2.0".to_string(),
+            version: "1.2.1".to_string(),
             os: "windows".to_string(),
             arch: "x86_64".to_string(),
             features: vec!["api".to_string()],

@@ -409,7 +409,7 @@ class TestPackageInit:
 
     def test_version_is_set(self):
         import aimodelvault
-        assert aimodelvault.__version__ == "1.2.0"
+        assert aimodelvault.__version__ == "1.2.1"
 
     def test_native_flag_exists(self):
         import aimodelvault

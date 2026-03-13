@@ -33,7 +33,7 @@ fn test_cli_version() {
         .arg("--version")
         .assert()
         .success()
-        .stdout(predicate::str::contains("1.1.0").or(predicate::str::contains("aim")));
+        .stdout(predicate::str::contains("1.2.1").or(predicate::str::contains("aim")));
 }
 
 #[test]

@@ -697,7 +697,7 @@ fn demo_export_formats() -> Result<()> {
 fn demo_fairness_metrics() -> Result<()> {
     let details = ModelDetails {
         name: "ResumeScreener-BERT".to_string(),
-        version: "1.2.0".to_string(),
+        version: "1.2.1".to_string(),
         description: "BERT-based model for automated resume screening".to_string(),
         model_type: "Binary Classification".to_string(),
         architecture: "BERT-base".to_string(),
