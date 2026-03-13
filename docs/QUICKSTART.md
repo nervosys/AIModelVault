@@ -1,5 +1,18 @@
 # aimodelvault Quick Start Guide
 
+> **Current version: 1.2.1** — See [CHANGELOG](../CHANGELOG.md) for details.
+
+## What's New in v1.2
+
+- **Domain Events** — `VaultEvent` enum with `EventBus` subscriber system for audit, metrics, and agent observability
+- **Vault Metrics** — `VaultMetrics` atomic counters (models stored/retrieved/deleted, bytes, errors); `MetricsSnapshot` for point-in-time reporting
+- **Observability API** — `GET /api/v1/metrics` and `GET /api/v1/events` endpoints; enhanced `GET /api/v1/health` with vault state
+- **VaultBuilder** — Fluent builder pattern: `.config()`, `.sqlite_versions()`, `.subscriber()`, `.no_default_subscribers()`
+- **SQLite Version Backend** — ACID-compliant version storage with WAL mode; auto-migration from JSON; enable with `--sqlite-versions` or `AIM_SQLITE_VERSIONS=1`
+- **Streaming Encryption** — Chunked AES-256-GCM for large models with constant 8 MiB memory budget
+- **Agent-Addressable URIs** — `aimv://vault/model@version/resource?query` scheme
+- **Domain Error Types** — `CryptoError`, `StorageError`, `ConversionError` with `From` into `VaultError`
+
 ## Installation
 
 ### From Source

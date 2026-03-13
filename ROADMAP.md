@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-03-11  
-> Current version: **1.2.0** (RBAC, domain errors, API expansion)  
-> Status: Production release — v1.2.0 shipped with RBAC, 5 new REST endpoints, GraphQL routing
+> Last updated: 2026-03-13  
+> Current version: **1.2.1** (testing, CI/CD, coverage)  
+> Status: Production release — v1.2.1 shipped with expanded test suite, CI hardening, fuzz targets
 
 ---
 
@@ -482,6 +482,14 @@ These are tracked but not planned for any specific release:
 
 - Google Cloud Storage (blocked by RUSTSEC-2025-0009/0010 in `cloud-storage` crate)
 - Model training integration
+
+## Completed in v1.2.1
+
+- [x] **Test coverage expansion** — 39 new Rust unit tests (API routes, error handling, rate limiter, domain errors); 623 lib tests total
+- [x] **Python binding tests** — 21 new pytest tests (VersionControl, FIPSCrypto extended); 83 total, 85% Python coverage
+- [x] **Fuzz testing** — 2 new fuzz targets (version_parsing, conversion_pipeline); 5 total
+- [x] **CI/CD hardening** — MSRV 1.75 job, Python test job, fuzz CI, cargo-doc check, cargo-llvm-cov, security audit job
+- [x] **Coverage** — 85.4% overall (15,187 / 17,786 lines), library-only ~92%
 
 ## Completed in v1.2.0
 
