@@ -87,26 +87,26 @@ All benchmarks run on the default (non-GPU) code path.
 
 ## REST API Endpoints (`benches/api_bench.rs`)
 
-| Endpoint          | Method | Time (median) |
-| ----------------- | ------ | ------------- |
-| `/api/v1/health`  | GET    | ~90 ms        |
-| `/api/v1/auth/token` | POST | ~311 ms    |
-| `/api/v1/models`  | GET    | ~195 ms       |
-| `/api/v1/compliance` | GET | ~1.55 s      |
+| Endpoint             | Method | Time (median) |
+| -------------------- | ------ | ------------- |
+| `/api/v1/health`     | GET    | ~90 ms        |
+| `/api/v1/auth/token` | POST   | ~311 ms       |
+| `/api/v1/models`     | GET    | ~195 ms       |
+| `/api/v1/compliance` | GET    | ~1.55 s       |
 
 > API benchmarks include per-request vault setup (tempdir + init). The `/api/v1/compliance`
 > endpoint runs `cargo audit` (external process), which dominates its latency.
 
 ## Code Coverage
 
-| Metric    | Value                      |
-| --------- | -------------------------- |
-| Tool      | cargo-llvm-cov             |
-| Features  | full, graphql              |
-| Lines     | 13,883 / 16,988            |
-| Coverage  | **81.72%**                 |
-| Functions | 1,299 / 1,650 (78.73%)     |
-| Regions   | 23,285 / 28,254 (82.41%)   |
+| Metric    | Value                    |
+| --------- | ------------------------ |
+| Tool      | cargo-llvm-cov           |
+| Features  | full, graphql            |
+| Lines     | 13,883 / 16,988          |
+| Coverage  | **81.72%**               |
+| Functions | 1,299 / 1,650 (78.73%)   |
+| Regions   | 23,285 / 28,254 (82.41%) |
 
 > Note: Line counts are higher than prior reports because cargo-llvm-cov now instrumenting
 > all code compiled with `--features "full,graphql"` including CLI handlers. Library-only
