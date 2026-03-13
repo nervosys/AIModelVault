@@ -844,7 +844,10 @@ mod tests {
 
     #[test]
     fn parse_format_safetensors() {
-        assert!(matches!(parse_format("safetensors").unwrap(), ModelFormat::Safetensors));
+        assert!(matches!(
+            parse_format("safetensors").unwrap(),
+            ModelFormat::Safetensors
+        ));
     }
 
     #[test]
@@ -854,15 +857,24 @@ mod tests {
 
     #[test]
     fn parse_format_pytorch_aliases() {
-        assert!(matches!(parse_format("pytorch").unwrap(), ModelFormat::PyTorch));
+        assert!(matches!(
+            parse_format("pytorch").unwrap(),
+            ModelFormat::PyTorch
+        ));
         assert!(matches!(parse_format("pt").unwrap(), ModelFormat::PyTorch));
         assert!(matches!(parse_format("pth").unwrap(), ModelFormat::PyTorch));
     }
 
     #[test]
     fn parse_format_tensorrt_aliases() {
-        assert!(matches!(parse_format("tensorrt").unwrap(), ModelFormat::TensorRT));
-        assert!(matches!(parse_format("plan").unwrap(), ModelFormat::TensorRT));
+        assert!(matches!(
+            parse_format("tensorrt").unwrap(),
+            ModelFormat::TensorRT
+        ));
+        assert!(matches!(
+            parse_format("plan").unwrap(),
+            ModelFormat::TensorRT
+        ));
     }
 
     #[test]
@@ -877,25 +889,46 @@ mod tests {
 
     #[test]
     fn parse_format_coreml_aliases() {
-        assert!(matches!(parse_format("coreml").unwrap(), ModelFormat::CoreML));
-        assert!(matches!(parse_format("mlmodel").unwrap(), ModelFormat::CoreML));
+        assert!(matches!(
+            parse_format("coreml").unwrap(),
+            ModelFormat::CoreML
+        ));
+        assert!(matches!(
+            parse_format("mlmodel").unwrap(),
+            ModelFormat::CoreML
+        ));
     }
 
     #[test]
     fn parse_format_torchscript() {
-        assert!(matches!(parse_format("torchscript").unwrap(), ModelFormat::TorchScript));
+        assert!(matches!(
+            parse_format("torchscript").unwrap(),
+            ModelFormat::TorchScript
+        ));
     }
 
     #[test]
     fn parse_format_tflite() {
-        assert!(matches!(parse_format("tflite").unwrap(), ModelFormat::TFLite));
+        assert!(matches!(
+            parse_format("tflite").unwrap(),
+            ModelFormat::TFLite
+        ));
     }
 
     #[test]
     fn parse_format_tensorflow_aliases() {
-        assert!(matches!(parse_format("tensorflow").unwrap(), ModelFormat::TensorFlow));
-        assert!(matches!(parse_format("tf").unwrap(), ModelFormat::TensorFlow));
-        assert!(matches!(parse_format("pb").unwrap(), ModelFormat::TensorFlow));
+        assert!(matches!(
+            parse_format("tensorflow").unwrap(),
+            ModelFormat::TensorFlow
+        ));
+        assert!(matches!(
+            parse_format("tf").unwrap(),
+            ModelFormat::TensorFlow
+        ));
+        assert!(matches!(
+            parse_format("pb").unwrap(),
+            ModelFormat::TensorFlow
+        ));
     }
 
     #[test]
@@ -906,7 +939,10 @@ mod tests {
 
     #[test]
     fn parse_format_openvino() {
-        assert!(matches!(parse_format("openvino").unwrap(), ModelFormat::OpenVINO));
+        assert!(matches!(
+            parse_format("openvino").unwrap(),
+            ModelFormat::OpenVINO
+        ));
     }
 
     #[test]
@@ -941,7 +977,10 @@ mod tests {
 
     #[test]
     fn parse_format_darknet() {
-        assert!(matches!(parse_format("darknet").unwrap(), ModelFormat::Darknet));
+        assert!(matches!(
+            parse_format("darknet").unwrap(),
+            ModelFormat::Darknet
+        ));
     }
 
     #[test]
@@ -951,7 +990,10 @@ mod tests {
 
     #[test]
     fn parse_format_pickle_aliases() {
-        assert!(matches!(parse_format("pickle").unwrap(), ModelFormat::Pickle));
+        assert!(matches!(
+            parse_format("pickle").unwrap(),
+            ModelFormat::Pickle
+        ));
         assert!(matches!(parse_format("pkl").unwrap(), ModelFormat::Pickle));
     }
 
@@ -970,8 +1012,14 @@ mod tests {
 
     #[test]
     fn parse_format_case_insensitive() {
-        assert!(matches!(parse_format("SAFETENSORS").unwrap(), ModelFormat::Safetensors));
-        assert!(matches!(parse_format("PyTorch").unwrap(), ModelFormat::PyTorch));
+        assert!(matches!(
+            parse_format("SAFETENSORS").unwrap(),
+            ModelFormat::Safetensors
+        ));
+        assert!(matches!(
+            parse_format("PyTorch").unwrap(),
+            ModelFormat::PyTorch
+        ));
         assert!(matches!(parse_format("ONNX").unwrap(), ModelFormat::ONNX));
     }
 }
