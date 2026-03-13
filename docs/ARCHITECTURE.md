@@ -6,53 +6,75 @@
 flowchart TB
     subgraph User["User Interface"]
         CLI[CLI Application]
-        API[Rust API]
+        RESTAPI[REST API / Axum]
+        GraphQL[GraphQL]
+        PyBindings[Python Bindings / PyO3]
     end
     
     subgraph Vault["Vault Core"]
-        VaultLogic[Vault Logic]
-        Config[Configuration]
+        VaultLogic[Vault Logic + VaultBuilder]
+        Config[Configuration / XDG]
         VersionCtrl[Version Control]
+        SQLiteVer[SQLite Version Backend]
     end
     
     subgraph Security["Security Layer"]
         Crypto[FIPS Crypto Module]
+        Streaming[Streaming Encryption]
         Audit[Audit Logger]
         Compliance[Compliance Checker]
+        Blockchain[Blockchain Audit Trail]
     end
     
     subgraph Storage["Storage Backend"]
         EncStorage[Encrypted Storage]
         Compression[Compression]
         FileSystem[File System]
+        Cloud[Cloud Storage / S3, Azure, GCS]
     end
     
-    subgraph Formats["Model Formats"]
-        PyTorch[PyTorch]
-        TensorFlow[TensorFlow]
-        ONNX[ONNX]
-        Safetensors[Safetensors]
-        Other[Other Formats]
+    subgraph Intelligence["AI/ML Features"]
+        Formats[23+ Model Formats]
+        Conversion[Format Conversion Pipeline]
+        ModelCards[Model Cards]
+        RAG[RAG / MCP Tools]
+    end
+    
+    subgraph Network["Distributed"]
+        Federation[Federated Vault Sync]
+        Telemetry[Telemetry / opt-in]
     end
     
     CLI --> VaultLogic
-    API --> VaultLogic
+    RESTAPI --> VaultLogic
+    GraphQL --> VaultLogic
+    PyBindings --> VaultLogic
     
     VaultLogic --> Config
     VaultLogic --> VersionCtrl
+    VaultLogic --> SQLiteVer
     VaultLogic --> Crypto
     VaultLogic --> Audit
+    VaultLogic --> Blockchain
     
     Crypto --> EncStorage
+    Crypto --> Streaming
     EncStorage --> Compression
     Compression --> FileSystem
+    Compression --> Cloud
     
     VaultLogic --> Formats
+    VaultLogic --> Conversion
+    VaultLogic --> ModelCards
+    VaultLogic --> RAG
+    VaultLogic --> Federation
     Compliance --> Audit
     
     style Crypto fill:#f9f,stroke:#333,stroke-width:2px
     style Audit fill:#ff9,stroke:#333,stroke-width:2px
     style VaultLogic fill:#9ff,stroke:#333,stroke-width:2px
+    style RESTAPI fill:#9f9,stroke:#333,stroke-width:2px
+    style Conversion fill:#f96,stroke:#333,stroke-width:2px
 ```
 
 ## Data Flow - Store Model
@@ -66,7 +88,7 @@ sequenceDiagram
     participant Storage
     participant FS as File System
     
-    User->>CLI: aimv store model.pt
+    User->>CLI: aim store model.pt
     CLI->>Vault: store_model()
     
     Note over Vault: Validate input
@@ -104,7 +126,7 @@ sequenceDiagram
     participant Storage
     participant FS as File System
     
-    User->>CLI: aimv get model
+    User->>CLI: aim get model
     CLI->>Vault: get_model()
     
     Note over Vault: Verify authentication
@@ -382,13 +404,15 @@ graph TD
 ```mermaid
 graph LR
     Main[main.rs] --> Vault
-    Main --> CLI[clap CLI]
+    Main --> CLI[cli/ handlers]
     
     Vault[vault.rs] --> Config[config.rs]
     Vault --> Storage[storage.rs]
     Vault --> Version[version.rs]
+    Vault --> SQLite[version_sqlite.rs]
     Vault --> Crypto
     Vault --> Audit[audit.rs]
+    Vault --> Traits[traits.rs]
     
     Storage --> Crypto[crypto/mod.rs]
     Storage --> FS[File System]
@@ -396,14 +420,39 @@ graph LR
     Crypto --> AES[aes-gcm]
     Crypto --> Argon[argon2]
     Crypto --> Compress[compression.rs]
+    Crypto --> Stream[streaming.rs]
     
     Compress --> Gzip[flate2]
     Compress --> LZMA[lzma-rs]
     
     Audit --> Log[tracing]
+    Audit --> Blockchain[blockchain.rs]
     
     Config --> XDG[directories]
     
+    Conversion[conversion.rs] --> Formats[formats.rs]
+    ModelCard[model_card.rs] --> Vault
+    Federation[federation.rs] --> Vault
+    Telemetry[telemetry.rs] --> Config
+    API[api/] --> Vault
+    API --> Auth[JWT auth]
+    RAG[rag/] --> Storage
+    Python[python.rs] --> Vault
+    
     style Vault fill:#9ff,stroke:#333,stroke-width:2px
     style Crypto fill:#f9f,stroke:#333,stroke-width:2px
+    style API fill:#9f9,stroke:#333,stroke-width:2px
+    style Conversion fill:#f96,stroke:#333,stroke-width:2px
 ```
+
+## Test Coverage
+
+| Metric          | Value       |
+| --------------- | ----------- |
+| Library tests   | 584         |
+| Python tests    | 62          |
+| Line coverage   | 86.1%       |
+| Modules at 100% | 8           |
+| Clippy warnings | 0           |
+
+Coverage is measured with `cargo-llvm-cov` using `--features "full,graphql"`.

@@ -226,3 +226,533 @@ fn test_cli_compliance_runs() {
         .assert()
         .success();
 }
+
+// ──────────────────────────────────────────────────────────────
+// Additional Subcommand Help Tests
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_versions_help() {
+    aim()
+        .args(["versions", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("version").or(predicate::str::contains("Version")));
+}
+
+#[test]
+fn test_cli_lineage_help() {
+    aim()
+        .args(["lineage", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("lineage").or(predicate::str::contains("history")));
+}
+
+#[test]
+fn test_cli_delete_help() {
+    aim()
+        .args(["delete", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("delete").or(predicate::str::contains("Delete")));
+}
+
+#[test]
+fn test_cli_archive_help() {
+    aim()
+        .args(["archive", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("archive").or(predicate::str::contains("Archive")));
+}
+
+#[test]
+fn test_cli_extract_help() {
+    aim()
+        .args(["extract", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("extract").or(predicate::str::contains("Extract")));
+}
+
+#[test]
+fn test_cli_analyze_help() {
+    aim()
+        .args(["analyze", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("analyze").or(predicate::str::contains("Analyze")));
+}
+
+#[test]
+fn test_cli_deduplicate_help() {
+    aim()
+        .args(["deduplicate", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("deduplicate").or(predicate::str::contains("duplicate")));
+}
+
+#[test]
+fn test_cli_export_help() {
+    aim()
+        .args(["export", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("export").or(predicate::str::contains("Export")));
+}
+
+#[test]
+fn test_cli_cache_help() {
+    aim()
+        .args(["cache", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("cache").or(predicate::str::contains("Cache")));
+}
+
+#[test]
+fn test_cli_change_passphrase_help() {
+    aim()
+        .args(["change-passphrase", "--help"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("passphrase")
+                .or(predicate::str::contains("Passphrase"))
+                .or(predicate::str::contains("Change")),
+        );
+}
+
+#[test]
+fn test_cli_cloud_help() {
+    aim()
+        .args(["cloud", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("cloud").or(predicate::str::contains("Cloud")));
+}
+
+#[test]
+fn test_cli_database_help() {
+    aim()
+        .args(["database", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("database").or(predicate::str::contains("Database")));
+}
+
+#[test]
+fn test_cli_card_help() {
+    aim()
+        .args(["card", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("card").or(predicate::str::contains("Card")));
+}
+
+#[test]
+fn test_cli_telemetry_help() {
+    aim()
+        .args(["telemetry", "--help"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("telemetry").or(predicate::str::contains("Telemetry")),
+        );
+}
+
+// ──────────────────────────────────────────────────────────────
+// Telemetry Subcommands (non-interactive)
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_telemetry_status() {
+    aim()
+        .args(["telemetry", "status"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("Telemetry")
+                .or(predicate::str::contains("telemetry"))
+                .or(predicate::str::contains("enabled"))
+                .or(predicate::str::contains("disabled")),
+        );
+}
+
+#[test]
+fn test_cli_telemetry_disable_then_status() {
+    // Disable telemetry, then check status reports disabled
+    aim()
+        .args(["telemetry", "disable"])
+        .env("DO_NOT_TRACK", "1")
+        .assert()
+        .success();
+
+    aim()
+        .args(["telemetry", "status"])
+        .env("DO_NOT_TRACK", "1")
+        .assert()
+        .success();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Database Subcommands (non-interactive)
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_database_init_and_stats() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+
+    aim()
+        .args([
+            "database",
+            "init",
+            "--path",
+            db_path.to_str().unwrap(),
+            "--db-type",
+            "sqlite",
+        ])
+        .assert()
+        .success();
+
+    aim()
+        .args(["database", "stats", "--path", db_path.to_str().unwrap()])
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_database_list_empty() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+
+    aim()
+        .args([
+            "database",
+            "init",
+            "--path",
+            db_path.to_str().unwrap(),
+            "--db-type",
+            "sqlite",
+        ])
+        .assert()
+        .success();
+
+    aim()
+        .args(["database", "list", "--path", db_path.to_str().unwrap()])
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_database_store_and_search() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+    let doc_path = dir.path().join("doc.txt");
+    std::fs::write(&doc_path, "The transformer architecture uses attention mechanisms.").unwrap();
+
+    aim()
+        .args([
+            "database",
+            "init",
+            "--path",
+            db_path.to_str().unwrap(),
+            "--db-type",
+            "sqlite",
+        ])
+        .assert()
+        .success();
+
+    aim()
+        .args([
+            "database",
+            "store",
+            "--path",
+            db_path.to_str().unwrap(),
+            "--input",
+            doc_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    aim()
+        .args([
+            "database",
+            "search",
+            "--path",
+            db_path.to_str().unwrap(),
+            "transformer",
+        ])
+        .assert()
+        .success();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Model Card Subcommands (non-interactive)
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_card_template_basic() {
+    let dir = tempdir().unwrap();
+    let output = dir.path().join("card.json");
+
+    aim()
+        .args([
+            "card",
+            "template",
+            "--template-type",
+            "basic",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    // Verify the template file was created
+    assert!(output.exists());
+}
+
+#[test]
+fn test_cli_card_create_and_validate() {
+    let dir = tempdir().unwrap();
+    let output = dir.path().join("card.json");
+
+    aim()
+        .args([
+            "card",
+            "create",
+            "test-model",
+            "--version",
+            "1.0",
+            "--description",
+            "A test model",
+            "--model-type",
+            "classifier",
+            "--architecture",
+            "ResNet-50",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(output.exists());
+
+    aim()
+        .args(["card", "validate", output.to_str().unwrap()])
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_card_create_and_show() {
+    let dir = tempdir().unwrap();
+    let output = dir.path().join("card.yaml");
+
+    aim()
+        .args([
+            "card",
+            "create",
+            "my-llm",
+            "--version",
+            "2.0",
+            "--description",
+            "A language model",
+            "--model-type",
+            "LLM",
+            "--architecture",
+            "Transformer",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    aim()
+        .args([
+            "card",
+            "show",
+            output.to_str().unwrap(),
+            "--format",
+            "markdown",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("my-llm").or(predicate::str::contains("language model")));
+}
+
+#[test]
+fn test_cli_card_convert_json_to_yaml() {
+    let dir = tempdir().unwrap();
+    let json_out = dir.path().join("card.json");
+    let yaml_out = dir.path().join("card.yaml");
+
+    aim()
+        .args([
+            "card",
+            "create",
+            "conv-model",
+            "--version",
+            "1.0",
+            "--description",
+            "For conversion test",
+            "--model-type",
+            "classifier",
+            "--architecture",
+            "CNN",
+            "--output",
+            json_out.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    aim()
+        .args([
+            "card",
+            "convert",
+            json_out.to_str().unwrap(),
+            yaml_out.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    assert!(yaml_out.exists());
+}
+
+// ──────────────────────────────────────────────────────────────
+// Additional Error Cases
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_delete_missing_args() {
+    aim()
+        .args(["delete"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_archive_missing_args() {
+    aim()
+        .args(["archive"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_versions_missing_args() {
+    aim()
+        .args(["versions"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_lineage_missing_args() {
+    aim()
+        .args(["lineage"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_export_missing_args() {
+    aim()
+        .args(["export"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+// ──────────────────────────────────────────────────────────────
+// Vault Lifecycle — Extended
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_cache_on_vault() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["cache"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_list_conversions_contains_formats() {
+    // Validate that list-conversions includes expected format names
+    aim()
+        .args(["list-conversions"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("ONNX").or(predicate::str::contains("onnx")))
+        .stdout(
+            predicate::str::contains("PyTorch")
+                .or(predicate::str::contains("pytorch"))
+                .or(predicate::str::contains("pt")),
+        );
+}
+
+#[test]
+fn test_cli_init_custom_name() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init", "--name", "my-custom-vault"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("my-custom-vault")
+                .or(predicate::str::contains("Vault"))
+                .or(predicate::str::contains("initialized")),
+        );
+}
+
+#[test]
+fn test_cli_sqlite_versions_with_stats() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["--sqlite-versions", "init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["--sqlite-versions", "stats"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_sqlite_versions_with_compliance() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["--sqlite-versions", "init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["--sqlite-versions", "compliance"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}

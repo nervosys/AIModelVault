@@ -120,6 +120,7 @@ pub enum Commands {
     /// Archive models to TAR or ZIP
     Archive {
         /// Model names to archive
+        #[arg(required = true)]
         models: Vec<String>,
 
         /// Output archive path
@@ -306,7 +307,7 @@ pub enum DatabaseCommands {
         input: PathBuf,
 
         /// Document ID (optional, generated if not provided)
-        #[arg(short, long)]
+        #[arg(short = 'I', long)]
         id: Option<String>,
 
         /// Metadata key=value pairs

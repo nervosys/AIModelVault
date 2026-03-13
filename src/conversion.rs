@@ -2483,4 +2483,438 @@ mod tests {
         let msg = format!("{}", result.unwrap_err());
         assert!(msg.contains("exceeds data"));
     }
+
+    // ── Additional coverage: ONNX extractor edge cases ──
+
+    #[test]
+    fn test_onnx_metadata_empty_data() {
+        let result = OnnxMetadataExtractor
+            .convert(&[], &ConversionOptions::default(), None)
+            .unwrap();
+        let meta: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(meta["ir_version"], 0);
+        assert_eq!(meta["producer"], "");
+    }
+
+    #[test]
+    fn test_onnx_metadata_skip_unknown_wire_type() {
+        // Wire type 3 or 4 (unknown) should cause break
+        let mut data = vec![
+            0x08, 0x05, // field 1 varint = 5
+        ];
+        // Wire type 3 (start group), field 20: tag = 20<<3 | 3 = 163 = 0xA3
+        data.push(0xA3);
+        data.push(0x01);
+        // Parser should break on wire type 3, but ir_version should be extracted
+        let result = OnnxMetadataExtractor
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap();
+        let meta: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(meta["ir_version"], 5);
+    }
+
+    #[test]
+    fn test_onnx_metadata_skip_varint_field() {
+        // Unknown varint field (e.g. field 3) should be skipped
+        let data = vec![
+            0x08, 0x03, // field 1: ir_version = 3
+            0x18, 0x42, // field 3: unknown varint (skipped)
+            0x28, 0x01, // field 5: model_version = 1
+        ];
+        let result = OnnxMetadataExtractor
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap();
+        let meta: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(meta["ir_version"], 3);
+        assert_eq!(meta["model_version"], 1);
+    }
+
+    #[test]
+    fn test_onnx_metadata_skip_length_delimited_field() {
+        // Unknown length-delimited field (e.g. field 7) should be skipped
+        let mut data = vec![
+            0x08, 0x04, // field 1: ir_version = 4
+            0x3A, 0x03, // field 7: length-delimited, length = 3
+        ];
+        data.extend_from_slice(b"abc"); // 3 bytes of payload for field 7
+        data.extend_from_slice(&[0x28, 0x0A]); // field 5: model_version = 10
+
+        let result = OnnxMetadataExtractor
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap();
+        let meta: serde_json::Value = serde_json::from_slice(&result).unwrap();
+        assert_eq!(meta["ir_version"], 4);
+        assert_eq!(meta["model_version"], 10);
+    }
+
+    // ── Additional coverage: SafeTensors → PyTorch edge cases ──
+
+    #[test]
+    fn test_safetensors_to_pytorch_header_too_large() {
+        // Covers header > 100MB cap
+        let mut data = Vec::new();
+        let huge = 200 * 1024 * 1024u64; // 200 MB
+        data.extend_from_slice(&huge.to_le_bytes());
+        data.extend_from_slice(&[0u8; 16]);
+        let err = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap_err();
+        assert!(format!("{err}").contains("too large"));
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_missing_dtype() {
+        let header = serde_json::json!({
+            "weight": { "shape": [2], "data_offsets": [0, 8] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        data.extend_from_slice(&[0u8; 8]);
+        let err = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap_err();
+        assert!(format!("{err}").contains("dtype"));
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_missing_shape() {
+        let header = serde_json::json!({
+            "weight": { "dtype": "F32", "data_offsets": [0, 8] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        data.extend_from_slice(&[0u8; 8]);
+        let err = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap_err();
+        assert!(format!("{err}").contains("shape"));
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_missing_offsets() {
+        let header = serde_json::json!({
+            "weight": { "dtype": "F32", "shape": [2] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        data.extend_from_slice(&[0u8; 8]);
+        let err = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap_err();
+        assert!(format!("{err}").contains("data_offsets"));
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_tensor_not_object() {
+        let header = serde_json::json!({
+            "weight": "not an object"
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        let err = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap_err();
+        assert!(format!("{err}").contains("not an object"));
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_out_of_bounds_offsets() {
+        let header = serde_json::json!({
+            "weight": { "dtype": "F32", "shape": [100], "data_offsets": [0, 99999] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        data.extend_from_slice(&[0u8; 16]); // Only 16 bytes of tensor data
+        let err = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap_err();
+        assert!(format!("{err}").contains("out of bounds"));
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_unsupported_dtype() {
+        let header = serde_json::json!({
+            "weight": { "dtype": "COMPLEX128", "shape": [2], "data_offsets": [0, 16] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        data.extend_from_slice(&[0u8; 16]);
+        let err = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap_err();
+        assert!(format!("{err}").contains("Unsupported dtype"));
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_metadata_skipped() {
+        // __metadata__ key should be skipped (not treated as tensor)
+        let header = serde_json::json!({
+            "__metadata__": { "format": "pt" },
+            "bias": { "dtype": "F32", "shape": [4], "data_offsets": [0, 16] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        data.extend_from_slice(&[0u8; 16]);
+        let result = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap();
+        assert_eq!(&result[0..2], b"PK"); // ZIP archive
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_with_progress() {
+        let header = serde_json::json!({
+            "w": { "dtype": "F32", "shape": [2], "data_offsets": [0, 8] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        data.extend_from_slice(&[0u8; 8]);
+
+        let msgs = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let mc = msgs.clone();
+        let cb: ProgressCallback = Box::new(move |p| {
+            mc.lock().unwrap().push(p.message.clone());
+        });
+        let result = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), Some(&cb))
+            .unwrap();
+        assert!(!result.is_empty());
+        assert!(msgs.lock().unwrap().len() >= 2);
+    }
+
+    // ── Additional coverage: PyTorch → SafeTensors edge cases ──
+
+    #[test]
+    fn test_pytorch_to_safetensors_with_progress() {
+        // Create a valid SafeTensors → PyTorch → SafeTensors round trip with progress
+        let header = serde_json::json!({
+            "w": { "dtype": "F32", "shape": [2], "data_offsets": [0, 8] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut st_data = Vec::new();
+        st_data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        st_data.extend_from_slice(&hdr_bytes);
+        st_data.extend_from_slice(&[0u8; 8]);
+
+        let pt_bytes = SafeTensorsToPyTorchConverter
+            .convert(&st_data, &ConversionOptions::default(), None)
+            .unwrap();
+
+        let msgs = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let mc = msgs.clone();
+        let cb: ProgressCallback = Box::new(move |p| {
+            mc.lock().unwrap().push(p.message.clone());
+        });
+        let result = PyTorchToSafeTensorsConverter
+            .convert(&pt_bytes, &ConversionOptions::default(), Some(&cb))
+            .unwrap();
+        assert!(!result.is_empty());
+        assert!(!msgs.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_pytorch_to_safetensors_fallback_no_pickle() {
+        // Create a ZIP without data.pkl — exercises fallback path
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut zip = zip::ZipWriter::new(&mut buf);
+            let opts = zip::write::SimpleFileOptions::default()
+                .compression_method(zip::CompressionMethod::Stored);
+            zip.start_file("archive/data/0", opts).unwrap();
+            std::io::Write::write_all(&mut zip, &[1u8, 2, 3, 4]).unwrap();
+            zip.finish().unwrap();
+        }
+        let pt_bytes = buf.into_inner();
+        let result = PyTorchToSafeTensorsConverter
+            .convert(&pt_bytes, &ConversionOptions::default(), None)
+            .unwrap();
+        let hdr_len = u64::from_le_bytes(result[0..8].try_into().unwrap()) as usize;
+        let hdr: serde_json::Value = serde_json::from_slice(&result[8..8 + hdr_len]).unwrap();
+        // Fallback should create storage_0 with U8 dtype
+        assert!(hdr.get("storage_0").is_some());
+        let entry = &hdr["storage_0"];
+        assert_eq!(entry["dtype"], "U8");
+    }
+
+    // ── Additional coverage: dtype mapping ──
+
+    #[test]
+    fn test_safetensors_dtype_to_pytorch_all_types() {
+        assert_eq!(safetensors_dtype_to_pytorch("F64"), Some(("DoubleStorage", 8)));
+        assert_eq!(safetensors_dtype_to_pytorch("F32"), Some(("FloatStorage", 4)));
+        assert_eq!(safetensors_dtype_to_pytorch("F16"), Some(("HalfStorage", 2)));
+        assert_eq!(safetensors_dtype_to_pytorch("BF16"), Some(("BFloat16Storage", 2)));
+        assert_eq!(safetensors_dtype_to_pytorch("I64"), Some(("LongStorage", 8)));
+        assert_eq!(safetensors_dtype_to_pytorch("I32"), Some(("IntStorage", 4)));
+        assert_eq!(safetensors_dtype_to_pytorch("I16"), Some(("ShortStorage", 2)));
+        assert_eq!(safetensors_dtype_to_pytorch("I8"), Some(("CharStorage", 1)));
+        assert_eq!(safetensors_dtype_to_pytorch("U8"), Some(("ByteStorage", 1)));
+        assert_eq!(safetensors_dtype_to_pytorch("BOOL"), Some(("BoolStorage", 1)));
+        assert_eq!(safetensors_dtype_to_pytorch("UNKNOWN"), None);
+    }
+
+    #[test]
+    fn test_pytorch_storage_to_safetensors_dtype_all_types() {
+        assert_eq!(pytorch_storage_to_safetensors_dtype("DoubleStorage"), Some(("F64", 8)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("FloatStorage"), Some(("F32", 4)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("HalfStorage"), Some(("F16", 2)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("BFloat16Storage"), Some(("BF16", 2)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("LongStorage"), Some(("I64", 8)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("IntStorage"), Some(("I32", 4)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("ShortStorage"), Some(("I16", 2)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("CharStorage"), Some(("I8", 1)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("ByteStorage"), Some(("U8", 1)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("UntypedStorage"), Some(("U8", 1)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("BoolStorage"), Some(("BOOL", 1)));
+        assert_eq!(pytorch_storage_to_safetensors_dtype("UnknownStorage"), None);
+    }
+
+    // ── Additional coverage: pickle helpers ──
+
+    #[test]
+    fn test_write_short_binunicode_short() {
+        let mut pkl = Vec::new();
+        write_short_binunicode(&mut pkl, "abc");
+        assert_eq!(pkl[0], 0x8c); // SHORT_BINUNICODE
+        assert_eq!(pkl[1], 3);
+        assert_eq!(&pkl[2..5], b"abc");
+    }
+
+    #[test]
+    fn test_write_short_binunicode_long() {
+        let mut pkl = Vec::new();
+        let s = "x".repeat(300);
+        write_short_binunicode(&mut pkl, &s);
+        assert_eq!(pkl[0], 0x8d); // BINUNICODE
+        let len = u32::from_le_bytes(pkl[1..5].try_into().unwrap());
+        assert_eq!(len, 300);
+    }
+
+    #[test]
+    fn test_write_pickle_int_ranges() {
+        // BININT1: 0 - 255
+        let mut pkl = Vec::new();
+        write_pickle_int(&mut pkl, 42);
+        assert_eq!(pkl[0], 0x4b);
+        assert_eq!(pkl[1], 42);
+
+        // BININT2: 256 - 65535
+        pkl.clear();
+        write_pickle_int(&mut pkl, 1000);
+        assert_eq!(pkl[0], 0x4d);
+        assert_eq!(u16::from_le_bytes(pkl[1..3].try_into().unwrap()), 1000);
+
+        // BININT: i32 range
+        pkl.clear();
+        write_pickle_int(&mut pkl, 100_000);
+        assert_eq!(pkl[0], 0x4a);
+        assert_eq!(i32::from_le_bytes(pkl[1..5].try_into().unwrap()), 100_000);
+
+        // LONG1: > i32 range
+        pkl.clear();
+        write_pickle_int(&mut pkl, i64::MAX);
+        assert_eq!(pkl[0], 0x8a); // LONG1
+    }
+
+    #[test]
+    fn test_write_pickle_int_negative() {
+        let mut pkl = Vec::new();
+        write_pickle_int(&mut pkl, -100);
+        assert_eq!(pkl[0], 0x4a); // BININT (i32 range)
+        assert_eq!(i32::from_le_bytes(pkl[1..5].try_into().unwrap()), -100);
+
+        // Large negative (< i32::MIN) — LONG1
+        pkl.clear();
+        write_pickle_int(&mut pkl, i64::MIN);
+        assert_eq!(pkl[0], 0x8a); // LONG1
+    }
+
+    #[test]
+    fn test_extract_tensor_info_from_pickle_empty() {
+        let infos = extract_tensor_info_from_pickle(&[]);
+        assert!(infos.is_empty());
+    }
+
+    #[test]
+    fn test_extract_tensor_info_from_pickle_roundtrip() {
+        // Build a pickle via build_pytorch_pickle, then extract info back
+        let tensors = vec![ConvTensorEntry {
+            name: "model.weight".to_string(),
+            dtype: "F32".to_string(),
+            shape: vec![3, 4],
+            data_start: 0,
+            data_end: 48,
+        }];
+        let pkl = build_pytorch_pickle(&tensors).unwrap();
+        let infos = extract_tensor_info_from_pickle(&pkl);
+        assert!(!infos.is_empty());
+        assert_eq!(infos[0].name, "model.weight");
+        assert_eq!(infos[0].dtype, "F32");
+    }
+
+    #[test]
+    fn test_safetensors_to_pytorch_multiple_dtypes() {
+        // Multi-tensor with different dtypes
+        let header = serde_json::json!({
+            "w1": { "dtype": "F32", "shape": [2], "data_offsets": [0, 8] },
+            "w2": { "dtype": "F16", "shape": [4], "data_offsets": [8, 16] },
+            "w3": { "dtype": "I64", "shape": [1], "data_offsets": [16, 24] }
+        });
+        let hdr_bytes = serde_json::to_vec(&header).unwrap();
+        let mut data = Vec::new();
+        data.extend_from_slice(&(hdr_bytes.len() as u64).to_le_bytes());
+        data.extend_from_slice(&hdr_bytes);
+        data.extend_from_slice(&[0u8; 24]);
+        let result = SafeTensorsToPyTorchConverter
+            .convert(&data, &ConversionOptions::default(), None)
+            .unwrap();
+        assert_eq!(&result[0..2], b"PK");
+
+        // Roundtrip back
+        let st2 = PyTorchToSafeTensorsConverter
+            .convert(&result, &ConversionOptions::default(), None)
+            .unwrap();
+        let hdr_len = u64::from_le_bytes(st2[0..8].try_into().unwrap()) as usize;
+        let hdr: serde_json::Value = serde_json::from_slice(&st2[8..8 + hdr_len]).unwrap();
+        assert!(hdr.as_object().unwrap().len() >= 3);
+    }
+
+    #[test]
+    fn test_pipeline_convert_no_path() {
+        // Covers the error path in convert() when find_path returns None
+        let pipeline = ConversionPipeline::with_builtins();
+        let err = pipeline
+            .convert(
+                b"data",
+                &ModelFormat::MXNet,
+                &ModelFormat::Darknet,
+                &ConversionOptions::default(),
+                None,
+            )
+            .unwrap_err();
+        assert!(format!("{err}").contains("No conversion path"));
+    }
+
+    #[test]
+    fn test_validate_magic_bytes_onnx_short_data() {
+        // ONNX needs at least 2 bytes; short data should fail
+        let check = validate_magic_bytes(b"", &ModelFormat::ONNX);
+        assert!(!check.passed);
+    }
 }

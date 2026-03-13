@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - **Fuzz testing targets** — 3 `cargo-fuzz` targets in `fuzz/`: `fuzz_crypto_roundtrip` (AES-256-GCM encrypt/decrypt roundtrip), `fuzz_format_detection` (ModelFormat::from_extension with arbitrary input), `fuzz_model_metadata` (ModelMetadata builder with fuzzed strings)
 - **Code coverage baseline** — 92.82% line coverage (12,094/13,029 lines) measured with cargo-llvm-cov (full features); 87.35% function coverage; 8 modules at 100% coverage
 - **Performance baselines** — updated `docs/PERFORMANCE.md` with measured crypto benchmark results (AES-256-GCM, Argon2id, gzip/LZMA compression), vault benchmark results (store/retrieve, format detection, SHA-256, model card serialization), and per-module coverage table
@@ -19,12 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Python test suite expansion** — added compression roundtrip tests, package init tests, vault property/error tests, and compression level tests
 
 ### Changed
+
 - **Python package version** — bumped from 1.1.0 to 1.2.0 in both `pyproject.toml` and `__init__.py`
 - **Documentation polish** — updated 17 stale references across 10 files: test count 1,609→1,667, lib tests 447→505, coverage ~90%→92.82%, tarpaulin→cargo-llvm-cov
 
 ## [1.2.0]
 
 ### Added
+
 - **Domain-specific error types** — introduced `CryptoError`, `StorageError`, and `ConversionError` enums in `src/error.rs` with typed variants and `From` conversions into the top-level `VaultError`. All three types are re-exported from the crate root.
 - **REST API endpoints for model cards** — `GET /api/v1/models/{name}/card` generates a model card from vault metadata; `POST /api/v1/models/{name}/card` creates/overwrites a custom model card from JSON
 - **REST API endpoint for compliance checks** — `GET /api/v1/compliance` runs FIPS 140-3, CVE, MITRE ATT&CK, and CMMC 2.0 checks and returns results as JSON
@@ -32,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GraphQL routing** — wired existing `async-graphql` schema into the Axum router at `/graphql` (GET for Playground, POST for queries/mutations), gated behind `#[cfg(feature = "graphql")]`
 
 ### Changed
+
 - **Removed `async-graphql-axum` dependency** — replaced with a manual bridge handler to avoid axum 0.7 / 0.8 version conflict; the `graphql` feature now only requires `async-graphql`
 - **Fixed deprecated `TimeoutLayer::new`** — migrated to `TimeoutLayer::with_status_code(REQUEST_TIMEOUT, ...)` per tower-http 0.6.7+
 - **Added `timeout` feature to tower-http** in Cargo.toml (was missing, caused compilation failure with `api` feature)
@@ -39,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Version bump** — 1.1.0 → 1.2.0
 
 ### Changed
+
 - **Real SafeTensors ↔ PyTorch converters** — replaced shim/plan converters with real pure-Rust implementations
   - SafeTensors → PyTorch: generates valid ZIP archives with pickle v2 bytecode and tensor data files
   - PyTorch → SafeTensors: parses ZIP archives, extracts tensor metadata from pickle bytecode, produces SafeTensors binary output
@@ -88,6 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed all remaining "22+" → "23+" format count references** — ROADMAP.md, examples/huggingface_demo.rs, docs/EXECUTIVE_SUMMARY.md, docs/TOP_10_FEATURES.md, docs/guide/formats.rst, docs/archived/LAUNCH_READINESS.md, docs/archived/LAUNCH_READY.md, reports/COMPREHENSIVE_TEST_REPORT.md, reports/FEATURES_DEMO.md, reports/PRODUCTION_READY.md, reports/PROJECT_COMPLETE.md, reports/TESTING_COMPLETE.md, reports/UTILITIES_IMPLEMENTATION_COMPLETE.md
 
 ### Fixed
+
 - Fixed all clippy warnings (29 warnings → 0)
   - Replaced `field_reassign_with_default` patterns with struct init syntax across src/ and tests/
   - Replaced `vec_init_then_push` with pre-initialized `vec![]` literals
@@ -108,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `#[allow(clippy::too_many_arguments)]` where appropriate
 
 ### Added
+
 - **Next.js documentation website** (`website/`)
 - **docs/FEATURE_FLAGS.md** — comprehensive documentation of all Cargo feature flags with build recipes
 - **docs/PERFORMANCE.md** — benchmark baseline for encryption, hashing, compression, model card serialization
@@ -125,6 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-02-10
 
 ### Changed
+
 - **Version bump to 1.0.0** — first production-stable release
   - Cargo.toml: `0.1.0` → `1.0.0`
   - pyproject.toml: `0.1.0` → `1.0.0`, classifier `Alpha` → `Production/Stable`
@@ -132,6 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - OpenAPI spec: `0.5.0` → `1.0.0`
 
 ### Added
+
 - **Multi-stage Dockerfile** with Alpine (default, ~12 MB) and Debian variants
   - Static musl binary via `x86_64-unknown-linux-musl` target
   - Non-root user, tini init, XDG volume mounts
@@ -159,6 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2026-02-10
 
 ### Added
+
 - **REST API server** (`src/api/`, ~1200 lines, behind `api` feature flag)
   - Axum 0.7 HTTP server with 14 RESTful endpoints
   - JWT authentication (`jsonwebtoken` 9.3) with Bearer token auth
@@ -185,6 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - 2026-02-10
 
 ### Added
+
 - **Format conversion pipeline** (`src/conversion.rs`, ~1350 lines)
   - `Converter` trait with `convert()`, `validate()`, `name()`, `source_format()`, `target_format()`
   - `ConversionPipeline` with BFS multi-step path finding and `with_builtins()` factory
@@ -204,6 +215,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-02-10
 
 ### Added
+
 - **Native Python bindings via PyO3** (`src/python.rs`, ~640 lines)
   - `Vault`: create, unlock, lock, store_model, get_model, list_models, list_versions, get_lineage, delete_version, get_stats, change_passphrase
   - `VaultConfig`: XDG-compliant configuration with optional custom vault directory
@@ -227,12 +239,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Quick start and installation guides (uv-based)
 
 ### Changed
+
 - Python package now uses native Rust FFI instead of CLI subprocess wrappers when built with maturin
 - `pyproject.toml`: build system switched from setuptools to maturin ≥1.7
 
 ## [0.2.0] - 2026-02-10
 
 ### Changed
+
 - **License**: Switched from MIT to AGPL-3.0-or-later with commercial dual-license option + CLA
 - **Architecture**: Split `rag.rs` (2,168 lines) into 7 submodules with backward-compatible re-exports
 - **Architecture**: Split `main.rs` (2,931 lines) into 87-line dispatcher + `cli/` module tree (11 files)
@@ -240,6 +254,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Performance**: `model_card.rs` uses `write!()` instead of `format!()+push_str()`, `String::with_capacity(2048)`
 
 ### Added
+
 - `COMMERCIAL_LICENSE.md` for proprietary/commercial licensing inquiries
 - `Vault::key_manager()` getter (resolves dead_code suppression)
 - `VersionControl::vault_path()` getter (resolves dead_code suppression)
@@ -248,10 +263,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `vault_bench` benchmarks: store/retrieve, format detection, SHA-256, model card ser/de
 
 ### Fixed
+
 - Resolved all 5 `#[allow(dead_code)]` annotations in production code
 - Removed redundant `CachedResult.query_hash` field; used timestamp in LRU eviction as tiebreaker
 
 ### Removed
+
 - 10 temporary artifacts from root (test outputs, status files)
 - Moved 23 status/completion files to `reports/`
 - Moved 12 guides/demo scripts to `docs/`
@@ -259,6 +276,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2026-02-07
 
 ### Fixed
+
 - **Critical**: Replaced panicking `.expect()` in `Vault::new()` with `match` returning `Result`
 - **Critical**: Guarded `validate_sql_identifier()` against empty-string panic
 - Deprecated `actions-rs/toolchain@v1` → `dtolnay/rust-toolchain@stable` in CI
@@ -267,12 +285,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made heavyweight Python deps optional in `pyproject.toml` (`[project.optional-dependencies] ml`)
 
 ### Added
+
 - 40+ Python tests for ModelFormat, VaultConfig, Vault, FIPSCrypto
 - `#[must_use]` annotations on all 15 pure functions
 - `///` doc comments on 17+ public types and builder methods
 - Warning docstring to `fips.py` documenting PBKDF2 vs Argon2id incompatibility
 
 ### Changed
+
 - Synced Python `ModelFormat` enum 1:1 with Rust's 23-variant enum
 - Committed `Cargo.lock` for reproducible binary builds
 - Updated test count references from 171/119 → 227
@@ -280,6 +300,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-11-03
 
 ### Added
+
 - **Core Vault System**
   - FIPS 140-3 compliant encryption using AES-256-GCM
   - Argon2id key derivation function (64MB memory, 3 iterations)
@@ -385,6 +406,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Test coverage report
 
 ### Security
+
 - **FIPS 140-3** approved cryptographic algorithms
 - **Authenticated encryption** with AES-256-GCM (128-bit auth tags)
 - **Secure key derivation** with Argon2id (64MB memory, 3 iterations)
@@ -396,18 +418,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CVE scanning** with automated vulnerability checks
 
 ### Changed
+
 - Made HDF5 support optional (requires system library installation)
 - Separated HDF5 into `hdf5-support` feature flag
 - Updated build to work without HDF5 by default
 - Optimized compression for large model files
 
 ### Fixed
+
 - HDF5 build dependency issue (now truly optional)
 - Build failures on systems without HDF5 installed
 - Generic array deprecation warnings
 - Cross-platform path handling improvements
 
 ### Documentation
+
 - Added comprehensive HDF5 support guide
 - Created launch readiness checklist
 - Updated README with HDF5 installation instructions
@@ -417,11 +442,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Future Releases
 
 ### Planned for v0.3.0
+
 - Native Python bindings (PyO3/maturin)
 - Direct Python API without subprocess
 - PyPI publication as `aimodelvault`
 
 ### Planned for v0.4.0
+
 - Real model format conversion pipeline
 - PyTorch ↔ ONNX, SafeTensors ↔ PyTorch, GGUF ↔ SafeTensors
 

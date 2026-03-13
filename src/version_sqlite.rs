@@ -849,4 +849,236 @@ mod tests {
         let repo = SqliteVersionRepo::new(dir.path()).unwrap();
         assert_eq!(repo.vault_path(), dir.path());
     }
+
+    #[test]
+    fn test_sqlite_delete_nonexistent_model() {
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        // Delete from a model that doesn't exist — should return Ok(false)
+        let result = repo.delete_version("no_model", 1).unwrap();
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_sqlite_cleanup_empty_model() {
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        // Cleanup on a model with no versions — should return empty vec
+        let deleted = repo.cleanup_old_versions("no_model", 5).unwrap();
+        assert!(deleted.is_empty());
+    }
+
+    #[test]
+    fn test_sqlite_list_versions_empty() {
+        let repo = SqliteVersionRepo::in_memory().unwrap();
+        let versions = repo.list_versions("nonexistent");
+        assert!(versions.is_empty());
+    }
+
+    #[test]
+    fn test_sqlite_list_models_empty() {
+        let repo = SqliteVersionRepo::in_memory().unwrap();
+        assert!(repo.list_models().is_empty());
+    }
+
+    #[test]
+    fn test_sqlite_lineage_nonexistent() {
+        let repo = SqliteVersionRepo::in_memory().unwrap();
+        let lineage = repo.get_lineage("no_model", 1);
+        assert!(lineage.is_empty());
+    }
+
+    #[test]
+    fn test_sqlite_lineage_no_parent() {
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        repo.add_version("m", "f.enc", "pt", 100, 50, "c1", None, None)
+            .unwrap();
+        let lineage = repo.get_lineage("m", 1);
+        assert_eq!(lineage.len(), 1);
+        assert_eq!(lineage[0].version, 1);
+    }
+
+    #[test]
+    fn test_sqlite_lineage_broken_chain() {
+        // Lineage with a missing parent version
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        repo.add_version("m", "f1.enc", "pt", 100, 50, "c1", None, None).unwrap();
+        repo.add_version("m", "f2.enc", "pt", 100, 50, "c2", None, Some(1)).unwrap();
+        repo.add_version("m", "f3.enc", "pt", 100, 50, "c3", None, Some(2)).unwrap();
+        // Delete version 1, breaking the chain
+        repo.delete_version("m", 1).unwrap();
+        // Lineage from v3 should stop at v2 (parent v1 missing)
+        let lineage = repo.get_lineage("m", 3);
+        assert_eq!(lineage.len(), 2);
+        assert_eq!(lineage[0].version, 2);
+        assert_eq!(lineage[1].version, 3);
+    }
+
+    #[test]
+    fn test_sqlite_get_version_specific_and_latest() {
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        repo.add_version("m", "f1.enc", "pt", 100, 50, "c1", None, None).unwrap();
+        repo.add_version("m", "f2.enc", "onnx", 200, 100, "c2", None, Some(1)).unwrap();
+        repo.add_version("m", "f3.enc", "st", 300, 150, "c3", None, Some(2)).unwrap();
+
+        // Get specific versions
+        assert_eq!(repo.get_version("m", Some(1)).unwrap().format, "pt");
+        assert_eq!(repo.get_version("m", Some(2)).unwrap().format, "onnx");
+
+        // Get latest (None) should return v3
+        assert_eq!(repo.get_version("m", None).unwrap().version, 3);
+
+        // Get nonexistent version number
+        assert!(repo.get_version("m", Some(99)).is_none());
+    }
+
+    #[test]
+    fn test_sqlite_verify_checksum_nonexistent_model() {
+        let repo = SqliteVersionRepo::in_memory().unwrap();
+        assert!(!repo.verify_checksum("no_model", 1, b"data"));
+    }
+
+    #[test]
+    fn test_sqlite_get_metadata_nonexistent_model() {
+        let repo = SqliteVersionRepo::in_memory().unwrap();
+        assert!(repo.get_metadata("no_model", 1, "key").is_none());
+    }
+
+    #[test]
+    fn test_sqlite_multiple_models_independent() {
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        repo.add_version("alpha", "a.enc", "pt", 100, 50, "ca", None, None).unwrap();
+        repo.add_version("beta", "b.enc", "onnx", 200, 100, "cb", None, None).unwrap();
+        repo.add_version("alpha", "a2.enc", "st", 300, 150, "ca2", None, Some(1)).unwrap();
+
+        // Alpha has 2 versions, beta has 1
+        assert_eq!(repo.list_versions("alpha").len(), 2);
+        assert_eq!(repo.list_versions("beta").len(), 1);
+
+        // Delete alpha v1 — beta should be unaffected
+        repo.delete_version("alpha", 1).unwrap();
+        assert_eq!(repo.list_versions("alpha").len(), 1);
+        assert_eq!(repo.list_versions("beta").len(), 1);
+
+        let mut models = repo.list_models();
+        models.sort();
+        assert_eq!(models, vec!["alpha", "beta"]);
+    }
+
+    #[test]
+    fn test_sqlite_add_version_auto_increment() {
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        let v1 = repo.add_version("m", "f.enc", "pt", 100, 50, "c1", None, None).unwrap();
+        let v2 = repo.add_version("m", "f2.enc", "pt", 100, 50, "c2", None, None).unwrap();
+        let v3 = repo.add_version("m", "f3.enc", "pt", 100, 50, "c3", None, None).unwrap();
+        assert_eq!(v1.version, 1);
+        assert_eq!(v2.version, 2);
+        assert_eq!(v3.version, 3);
+    }
+
+    #[test]
+    fn test_sqlite_update_metadata_multiple_keys() {
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        repo.add_version("m", "f.enc", "pt", 100, 50, "c1", None, None).unwrap();
+
+        repo.update_metadata("m", 1, "key1", "val1".to_string()).unwrap();
+        repo.update_metadata("m", 1, "key2", "val2".to_string()).unwrap();
+        repo.update_metadata("m", 1, "key3", "val3".to_string()).unwrap();
+
+        assert_eq!(repo.get_metadata("m", 1, "key1"), Some("val1".to_string()));
+        assert_eq!(repo.get_metadata("m", 1, "key2"), Some("val2".to_string()));
+        assert_eq!(repo.get_metadata("m", 1, "key3"), Some("val3".to_string()));
+    }
+
+    #[test]
+    fn test_sqlite_cleanup_keeps_latest() {
+        let mut repo = SqliteVersionRepo::in_memory().unwrap();
+        for i in 0..10 {
+            repo.add_version(
+                "m", &format!("f{}.enc", i), "pt", 100, 50, &format!("c{}", i),
+                None, if i > 0 { Some(i as u32) } else { None },
+            ).unwrap();
+        }
+
+        let deleted = repo.cleanup_old_versions("m", 3).unwrap();
+        assert_eq!(deleted.len(), 7);
+        let remaining = repo.list_versions("m");
+        assert_eq!(remaining.len(), 3);
+        // Kept should be the 3 most recent (v8, v9, v10)
+        let versions: Vec<u32> = remaining.iter().map(|v| v.version).collect();
+        assert!(versions.contains(&8));
+        assert!(versions.contains(&9));
+        assert!(versions.contains(&10));
+    }
+
+    #[test]
+    fn test_sqlite_migration_no_json_file() {
+        // When no versions.json exists, migration should be a no-op
+        let dir = tempfile::tempdir().unwrap();
+        let repo = SqliteVersionRepo::new(dir.path()).unwrap();
+        assert!(repo.list_models().is_empty());
+    }
+
+    #[test]
+    fn test_sqlite_migration_with_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault_path = dir.path();
+
+        let mut versions: HashMap<String, Vec<ModelVersion>> = HashMap::new();
+        let mut meta = HashMap::new();
+        meta.insert("author".to_string(), "migrator".to_string());
+        meta.insert("task".to_string(), "classification".to_string());
+
+        versions.insert("migrated_model".to_string(), vec![
+            ModelVersion {
+                version: 1,
+                checkpoint_id: "mig-v1".to_string(),
+                timestamp: Utc::now(),
+                parent_version: None,
+                format: "safetensors".to_string(),
+                size_bytes: 5000,
+                compressed_size_bytes: 2500,
+                checksum_sha256: "mig_chk".to_string(),
+                metadata: meta,
+                file_path: "migrated.enc".to_string(),
+            },
+        ]);
+
+        std::fs::write(
+            vault_path.join("versions.json"),
+            serde_json::to_string(&versions).unwrap(),
+        ).unwrap();
+
+        let repo = SqliteVersionRepo::new(vault_path).unwrap();
+        let v = repo.get_version("migrated_model", Some(1)).unwrap();
+        assert_eq!(v.format, "safetensors");
+        assert_eq!(v.metadata.get("author"), Some(&"migrator".to_string()));
+        assert_eq!(v.metadata.get("task"), Some(&"classification".to_string()));
+    }
+
+    #[test]
+    fn test_sqlite_disk_persistence_metadata() {
+        // Verify metadata survives close + reopen
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let mut repo = SqliteVersionRepo::new(dir.path()).unwrap();
+            let mut meta = HashMap::new();
+            meta.insert("framework".to_string(), "pytorch".to_string());
+            repo.add_version("persist", "f.enc", "pt", 100, 50, "c1", Some(meta), None).unwrap();
+            repo.update_metadata("persist", 1, "extra", "value".to_string()).unwrap();
+        }
+        // Reopen
+        let repo2 = SqliteVersionRepo::new(dir.path()).unwrap();
+        let v = repo2.get_version("persist", Some(1)).unwrap();
+        assert_eq!(v.metadata.get("framework"), Some(&"pytorch".to_string()));
+        assert_eq!(v.metadata.get("extra"), Some(&"value".to_string()));
+    }
+
+    #[test]
+    fn test_sqlite_generate_checkpoint_id() {
+        let id1 = SqliteVersionRepo::generate_checkpoint_id("model", 1);
+        let id2 = SqliteVersionRepo::generate_checkpoint_id("model", 1);
+        assert!(id1.starts_with("model-v1-"));
+        assert!(id2.starts_with("model-v1-"));
+        // UUIDs should differ
+        assert_ne!(id1, id2);
+    }
 }
