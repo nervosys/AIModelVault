@@ -497,3 +497,197 @@ class TestVaultProperties:
                     )
                     with pytest.raises(RuntimeError, match="aim command failed"):
                         vault.list_models()
+
+
+# ---------------------------------------------------------------------------
+# Version control tests
+# ---------------------------------------------------------------------------
+
+class TestVersionControl:
+    """Tests for version control system."""
+
+    def test_model_version_dataclass(self):
+        from aimodelvault.version.control import ModelVersion
+        ver = ModelVersion(
+            version=1,
+            checkpoint_id="m1-v1-abc",
+            timestamp="2025-01-01T00:00:00Z",
+            parent_version=None,
+            format="safetensors",
+            size_bytes=1024,
+            compressed_size_bytes=512,
+            checksum_sha256="deadbeef",
+            metadata={},
+            file_path="/tmp/model.enc",
+        )
+        assert ver.version == 1
+        assert ver.format == "safetensors"
+        assert ver.parent_version is None
+
+    def test_model_version_to_dict(self):
+        from aimodelvault.version.control import ModelVersion
+        ver = ModelVersion(1, "id", "ts", None, "onnx", 100, 50, "abc", {}, "/f")
+        d = ver.to_dict()
+        assert d["version"] == 1
+        assert d["format"] == "onnx"
+        assert isinstance(d, dict)
+
+    def test_model_version_from_dict(self):
+        from aimodelvault.version.control import ModelVersion
+        data = {
+            "version": 2, "checkpoint_id": "cp2", "timestamp": "t",
+            "parent_version": 1, "format": "pytorch", "size_bytes": 200,
+            "compressed_size_bytes": 100, "checksum_sha256": "ff",
+            "metadata": {"key": "val"}, "file_path": "/x",
+        }
+        ver = ModelVersion.from_dict(data)
+        assert ver.version == 2
+        assert ver.parent_version == 1
+        assert ver.metadata["key"] == "val"
+
+    def test_version_control_add_and_list(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc = VersionControl(Path(tmpdir))
+            v1 = vc.add_version("model", "/f", "safetensors", 100, 50, "abc")
+            assert v1.version == 1
+            v2 = vc.add_version("model", "/f2", "onnx", 200, 100, "def")
+            assert v2.version == 2
+            versions = vc.list_versions("model")
+            assert len(versions) == 2
+            assert versions[0].version == 1
+            assert versions[1].version == 2
+
+    def test_version_control_get_latest(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc = VersionControl(Path(tmpdir))
+            vc.add_version("m", "/f", "pt", 1, 1, "a")
+            vc.add_version("m", "/f", "pt", 2, 2, "b")
+            latest = vc.get_version("m")
+            assert latest.version == 2
+
+    def test_version_control_get_specific(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc = VersionControl(Path(tmpdir))
+            vc.add_version("m", "/f", "pt", 1, 1, "a")
+            vc.add_version("m", "/f", "pt", 2, 2, "b")
+            v1 = vc.get_version("m", 1)
+            assert v1.version == 1
+
+    def test_version_control_get_nonexistent(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc = VersionControl(Path(tmpdir))
+            assert vc.get_version("nonexistent") is None
+            assert vc.get_version("nonexistent", 1) is None
+
+    def test_version_control_delete(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc = VersionControl(Path(tmpdir))
+            vc.add_version("m", "/f", "pt", 1, 1, "a")
+            assert vc.delete_version("m", 1) is True
+            assert vc.delete_version("m", 1) is False
+            assert vc.delete_version("x", 1) is False
+
+    def test_version_control_lineage(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc = VersionControl(Path(tmpdir))
+            vc.add_version("m", "/f", "pt", 1, 1, "a")
+            vc.add_version("m", "/f", "pt", 2, 2, "b", parent_version=1)
+            lineage = vc.get_lineage("m", 2)
+            assert len(lineage) == 2
+            assert lineage[0].version == 1
+            assert lineage[1].version == 2
+
+    def test_version_control_persistence(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc1 = VersionControl(Path(tmpdir))
+            vc1.add_version("m", "/f", "pt", 100, 50, "abc")
+            # Re-load from disk
+            vc2 = VersionControl(Path(tmpdir))
+            versions = vc2.list_versions("m")
+            assert len(versions) == 1
+            assert versions[0].checksum_sha256 == "abc"
+
+    def test_version_control_list_empty_model(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc = VersionControl(Path(tmpdir))
+            assert vc.list_versions("none") == []
+
+    def test_version_control_cleanup(self):
+        from aimodelvault.version.control import VersionControl
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vc = VersionControl(Path(tmpdir))
+            for i in range(5):
+                vc.add_version("m", f"/f{i}", "pt", 1, 1, "a")
+            removed = vc.cleanup_old_versions("m", keep_count=2)
+            assert len(removed) == 3
+            assert len(vc.list_versions("m")) == 2
+
+
+# ---------------------------------------------------------------------------
+# FIPS crypto extended tests 
+# ---------------------------------------------------------------------------
+
+class TestFIPSCryptoExtended:
+    """Extended tests for FIPS crypto module."""
+
+    def test_generate_passphrase_default_length(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        pp = FIPSCrypto.generate_passphrase()
+        assert len(pp) == 64  # 32 bytes = 64 hex chars
+
+    def test_generate_passphrase_custom_length(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        pp = FIPSCrypto.generate_passphrase(16)
+        assert len(pp) == 32
+
+    def test_secure_compare_equal(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        assert FIPSCrypto.secure_compare(b"abc", b"abc") is True
+
+    def test_secure_compare_different(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        assert FIPSCrypto.secure_compare(b"abc", b"xyz") is False
+
+    def test_secure_compare_different_length(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        assert FIPSCrypto.secure_compare(b"ab", b"abc") is False
+
+    def test_encrypt_bad_key_size(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        crypto = FIPSCrypto()
+        with pytest.raises(ValueError, match="Key must be"):
+            crypto.encrypt(b"data", b"short_key")
+
+    def test_decrypt_bad_key_size(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        crypto = FIPSCrypto()
+        with pytest.raises(ValueError, match="Key must be"):
+            crypto.decrypt(b"\x00" * 28, b"short_key")
+
+    def test_decrypt_tampered_data(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        from cryptography.exceptions import InvalidTag
+        crypto = FIPSCrypto()
+        key, salt = crypto.generate_key(b"testpass")
+        encrypted = crypto.encrypt(b"secret data", key)
+        # Tamper with ciphertext
+        tampered = bytearray(encrypted)
+        tampered[-1] ^= 0xFF
+        with pytest.raises(InvalidTag):
+            crypto.decrypt(bytes(tampered), key)
+
+    def test_key_derivation_with_explicit_salt(self):
+        from aimodelvault.crypto.fips import FIPSCrypto
+        crypto = FIPSCrypto()
+        salt = b"\x00" * 32
+        key1, _ = crypto.generate_key(b"pass", salt)
+        key2, _ = crypto.generate_key(b"pass", salt)
+        assert key1 == key2  # Same salt + pass = same key

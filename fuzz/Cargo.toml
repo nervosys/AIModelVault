@@ -9,6 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+serde_json = "1"
 
 [dependencies.ai-model-vault]
 path = ".."
@@ -30,4 +31,14 @@ doc = false
 [[bin]]
 name = "fuzz_model_metadata"
 path = "fuzz_targets/fuzz_model_metadata.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_version_parsing"
+path = "fuzz_targets/fuzz_version_parsing.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_conversion_pipeline"
+path = "fuzz_targets/fuzz_conversion_pipeline.rs"
 doc = false

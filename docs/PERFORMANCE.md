@@ -103,14 +103,13 @@ All benchmarks run on the default (non-GPU) code path.
 | --------- | ------------------------ |
 | Tool      | cargo-llvm-cov           |
 | Features  | full, graphql            |
-| Lines     | 13,883 / 16,988          |
-| Coverage  | **81.72%**               |
-| Functions | 1,299 / 1,650 (78.73%)   |
-| Regions   | 23,285 / 28,254 (82.41%) |
+| Lines     | 15,187 / 17,786          |
+| Coverage  | **85.4%**                |
+| Lib tests | 623                      |
+| Total     | 1,818 (lib + integration)|
 
-> Note: Line counts are higher than prior reports because cargo-llvm-cov now instrumenting
-> all code compiled with `--features "full,graphql"` including CLI handlers. Library-only
-> coverage (via `--lib`) remains above 92%.
+> Note: Line counts include CLI handlers (binary code at 0% library-only coverage).
+> Library-only coverage remains above 92%.
 
 ### Per-Module Coverage (library)
 

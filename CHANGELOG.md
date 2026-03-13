@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Fuzz testing targets** — 3 `cargo-fuzz` targets in `fuzz/`: `fuzz_crypto_roundtrip` (AES-256-GCM encrypt/decrypt roundtrip), `fuzz_format_detection` (ModelFormat::from_extension with arbitrary input), `fuzz_model_metadata` (ModelMetadata builder with fuzzed strings)
+- **Fuzz testing targets** — 5 `cargo-fuzz` targets in `fuzz/`: `fuzz_crypto_roundtrip` (AES-256-GCM encrypt/decrypt roundtrip), `fuzz_format_detection` (ModelFormat::from_extension with arbitrary input), `fuzz_model_metadata` (ModelMetadata builder with fuzzed strings), `fuzz_version_parsing` (ModelVersion JSON deserialization), `fuzz_conversion_pipeline` (format string parsing and conversion path lookup)
+- **API route tests** — 17 unit tests for `src/api/routes.rs`: `parse_format` (all 34 format aliases), `validate_model_name` (valid/empty/too-long/special-chars), `is_security_event` (all event types + negatives), `uuid_v4_simple` uniqueness, response struct serialization, stateless route handlers (`health`, `list_conversions`, `openapi_json`, `dashboard_index`)
+- **API error tests** — 15 unit tests for `src/api/error.rs`: all 6 constructor methods (`bad_request`, `not_found`, `unauthorized`, `internal`, `conflict`, `rate_limited`), `IntoResponse` impl, `From<VaultError>` for all 7 match arms, `ApiErrorBody` serialization
+- **API server tests** — 7 unit tests for `src/api/server.rs`: `RateLimiter` under/over limit, per-IP isolation, window reset, prune expired/active entries
+- **Domain error Display tests** — exercises all `CryptoError`, `StorageError`, and `ConversionError` Display variants
 - **Code coverage baseline** — 92.82% line coverage (12,094/13,029 lines) measured with cargo-llvm-cov (full features); 87.35% function coverage; 8 modules at 100% coverage
 - **Performance baselines** — updated `docs/PERFORMANCE.md` with measured crypto benchmark results (AES-256-GCM, Argon2id, gzip/LZMA compression), vault benchmark results (store/retrieve, format detection, SHA-256, model card serialization), and per-module coverage table
 - **Coverage improvements** — 53 new tests for low-coverage modules: `federation.rs` (VectorClock, delta computation, FederationManager lifecycle), `telemetry.rs` (event serialization, client enable/disable, tracking), `compliance.rs` (serialization, severity variants, checker toggle); total lib tests 447 → 505, full-feature tests 1,667
@@ -18,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Python bindings documentation** — new `docs/PYTHON_BINDINGS.md` with complete API reference for all 8 PyO3 classes, installation guide, quick start, and feature matrix
 - **Python bindings: parse_format tests** — 25 Rust-side unit tests in `src/python.rs` covering all 23+ format aliases and case-insensitive parsing
 - **Python test suite expansion** — added compression roundtrip tests, package init tests, vault property/error tests, and compression level tests
+- **CLI integration tests** — 50 `assert_cmd` tests covering all major subcommands, help text, error handling, and format listings
 
 ### Changed
 

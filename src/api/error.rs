@@ -93,3 +93,112 @@ impl From<VaultError> for ApiError {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bad_request() {
+        let err = ApiError::bad_request("oops");
+        assert_eq!(err.status, StatusCode::BAD_REQUEST);
+        assert_eq!(err.message, "oops");
+    }
+
+    #[test]
+    fn test_not_found() {
+        let err = ApiError::not_found("missing");
+        assert_eq!(err.status, StatusCode::NOT_FOUND);
+        assert_eq!(err.message, "missing");
+    }
+
+    #[test]
+    fn test_unauthorized() {
+        let err = ApiError::unauthorized("denied");
+        assert_eq!(err.status, StatusCode::UNAUTHORIZED);
+        assert_eq!(err.message, "denied");
+    }
+
+    #[test]
+    fn test_internal() {
+        let err = ApiError::internal("boom");
+        assert_eq!(err.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(err.message, "boom");
+    }
+
+    #[test]
+    fn test_conflict() {
+        let err = ApiError::conflict("exists");
+        assert_eq!(err.status, StatusCode::CONFLICT);
+        assert_eq!(err.message, "exists");
+    }
+
+    #[test]
+    fn test_rate_limited() {
+        let err = ApiError::rate_limited("slow down");
+        assert_eq!(err.status, StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(err.message, "slow down");
+    }
+
+    #[test]
+    fn test_into_response() {
+        let err = ApiError::bad_request("test error");
+        let response = err.into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_from_vault_error_model_not_found() {
+        let err: ApiError = VaultError::ModelNotFound("m1".into()).into();
+        assert_eq!(err.status, StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_from_vault_error_version_not_found() {
+        let err: ApiError = VaultError::VersionNotFound(1, "m1".into()).into();
+        assert_eq!(err.status, StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_from_vault_error_auth_failed() {
+        let err: ApiError = VaultError::AuthenticationFailed.into();
+        assert_eq!(err.status, StatusCode::UNAUTHORIZED);
+    }
+
+    #[test]
+    fn test_from_vault_error_security_violation() {
+        let err: ApiError = VaultError::SecurityViolation("bad".into()).into();
+        assert_eq!(err.status, StatusCode::UNAUTHORIZED);
+    }
+
+    #[test]
+    fn test_from_vault_error_invalid_input() {
+        let err: ApiError = VaultError::InvalidInput("bad input".into()).into();
+        assert_eq!(err.status, StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_from_vault_error_unsupported_format() {
+        let err: ApiError = VaultError::UnsupportedFormat("xyz".into()).into();
+        assert_eq!(err.status, StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_from_vault_error_internal() {
+        let err: ApiError = VaultError::CryptoError("crypto fail".into()).into();
+        assert_eq!(err.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(err.message, "An internal error occurred");
+    }
+
+    #[test]
+    fn test_api_error_body_serialization() {
+        let body = ApiErrorBody {
+            error: "not found".into(),
+            code: 404,
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("not found"));
+        assert!(json.contains("404"));
+    }
+}

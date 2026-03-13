@@ -946,3 +946,208 @@ fn is_security_event(entry: &serde_json::Value) -> bool {
         .iter()
         .any(|t| event_type.eq_ignore_ascii_case(t))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_format_valid() {
+        let cases = vec![
+            ("safetensors", ModelFormat::Safetensors),
+            ("gguf", ModelFormat::GGUF),
+            ("pytorch", ModelFormat::PyTorch),
+            ("pt", ModelFormat::PyTorch),
+            ("pth", ModelFormat::PyTorch),
+            ("onnx", ModelFormat::ONNX),
+            ("tensorrt", ModelFormat::TensorRT),
+            ("trt", ModelFormat::TensorRT),
+            ("coreml", ModelFormat::CoreML),
+            ("mlmodel", ModelFormat::CoreML),
+            ("tflite", ModelFormat::TFLite),
+            ("tensorflow", ModelFormat::TensorFlow),
+            ("tf", ModelFormat::TensorFlow),
+            ("pb", ModelFormat::TensorFlow),
+            ("keras", ModelFormat::Keras),
+            ("openvino", ModelFormat::OpenVINO),
+            ("mlx", ModelFormat::MLX),
+            ("hdf5", ModelFormat::HDF5),
+            ("h5", ModelFormat::HDF5),
+            ("numpy", ModelFormat::NumPy),
+            ("npy", ModelFormat::NumPy),
+            ("npz", ModelFormat::NumPy),
+            ("pickle", ModelFormat::Pickle),
+            ("pkl", ModelFormat::Pickle),
+            ("mxnet", ModelFormat::MXNet),
+            ("params", ModelFormat::MXNet),
+            ("caffe", ModelFormat::Caffe),
+            ("caffemodel", ModelFormat::Caffe),
+            ("ncnn", ModelFormat::NCNN),
+            ("param", ModelFormat::NCNN),
+            ("mnn", ModelFormat::MNN),
+            ("rknn", ModelFormat::RKNN),
+            ("darknet", ModelFormat::Darknet),
+            ("weights", ModelFormat::Darknet),
+        ];
+        for (input, expected) in cases {
+            let result = parse_format(input).unwrap();
+            assert_eq!(result, expected, "parse_format(\"{input}\") mismatch");
+        }
+    }
+
+    #[test]
+    fn test_parse_format_invalid() {
+        let err = parse_format("nonexistent");
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn test_validate_model_name_valid() {
+        assert!(validate_model_name("my-model").is_ok());
+        assert!(validate_model_name("a").is_ok());
+        assert!(validate_model_name("model_v2.1").is_ok());
+        assert!(validate_model_name("ABC-123").is_ok());
+    }
+
+    #[test]
+    fn test_validate_model_name_empty() {
+        assert!(validate_model_name("").is_err());
+    }
+
+    #[test]
+    fn test_validate_model_name_too_long() {
+        let long = "a".repeat(129);
+        assert!(validate_model_name(&long).is_err());
+    }
+
+    #[test]
+    fn test_validate_model_name_invalid_chars() {
+        assert!(validate_model_name("model name").is_err()); // space
+        assert!(validate_model_name("model/path").is_err()); // slash
+        assert!(validate_model_name("model;drop").is_err()); // semicolon
+    }
+
+    #[test]
+    fn test_is_security_event_true() {
+        for event_type in &[
+            "SECURITY_VIOLATION",
+            "INTEGRITY_FAILURE",
+            "AUTH_FAILURE",
+            "KEY_DERIVED",
+            "security_violation", // case-insensitive
+        ] {
+            let entry = serde_json::json!({ "event_type": event_type });
+            assert!(
+                is_security_event(&entry),
+                "{event_type} should be a security event"
+            );
+        }
+    }
+
+    #[test]
+    fn test_is_security_event_false() {
+        let entry = serde_json::json!({ "event_type": "MODEL_STORED" });
+        assert!(!is_security_event(&entry));
+
+        let entry2 = serde_json::json!({ "action": "store" });
+        assert!(!is_security_event(&entry2));
+
+        let entry3 = serde_json::json!({});
+        assert!(!is_security_event(&entry3));
+    }
+
+    #[test]
+    fn test_health_response_serialization() {
+        let resp = HealthResponse {
+            status: "ok".to_string(),
+            version: "1.2.0".to_string(),
+            vault_state: Some("locked".to_string()),
+            model_count: Some(5),
+            uptime_seconds: None,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(json.contains("ok"));
+        assert!(json.contains("1.2.0"));
+        assert!(json.contains("locked"));
+        assert!(!json.contains("uptime_seconds")); // skipped
+    }
+
+    #[test]
+    fn test_health_response_minimal() {
+        let resp = HealthResponse {
+            status: "ok".to_string(),
+            version: "1.0.0".to_string(),
+            vault_state: None,
+            model_count: None,
+            uptime_seconds: None,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(!json.contains("vault_state"));
+        assert!(!json.contains("model_count"));
+    }
+
+    #[test]
+    fn test_conversion_info_serialization() {
+        let info = ConversionInfo {
+            name: "SafeTensorsToPyTorch".to_string(),
+            source: "safetensors".to_string(),
+            target: "pytorch".to_string(),
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        assert!(json.contains("SafeTensorsToPyTorch"));
+    }
+
+    #[test]
+    fn test_stats_response_serialization() {
+        let resp = StatsResponse {
+            model_count: 3,
+            total_versions: 7,
+            total_size_bytes: 1024 * 1024,
+            file_count: 10,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["model_count"], 3);
+        assert_eq!(parsed["total_versions"], 7);
+    }
+
+    #[tokio::test]
+    async fn test_health_without_state() {
+        let resp = health(None).await;
+        assert_eq!(resp.0.status, "ok");
+        assert!(resp.0.vault_state.is_none());
+        assert!(resp.0.model_count.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_list_conversions_returns_entries() {
+        let Json(entries) = list_conversions().await;
+        assert!(!entries.is_empty());
+        for e in &entries {
+            assert!(!e.name.is_empty());
+            assert!(!e.source.is_empty());
+            assert!(!e.target.is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_openapi_json_returns_valid() {
+        let Json(spec) = openapi_json().await;
+        assert!(spec.get("openapi").is_some() || spec.get("info").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_dashboard_index_returns_html() {
+        let Html(html) = dashboard_index().await;
+        assert!(html.contains("<html") || html.contains("<!DOCTYPE"));
+    }
+
+    #[test]
+    fn test_uuid_v4_simple_unique() {
+        let a = uuid_v4_simple();
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        let b = uuid_v4_simple();
+        assert_ne!(a, b);
+        assert!(!a.is_empty());
+    }
+}

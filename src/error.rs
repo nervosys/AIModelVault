@@ -321,6 +321,51 @@ mod tests {
         assert!(debug.contains("StorageError"));
     }
 
+    #[test]
+    fn test_domain_error_display() {
+        // CryptoError Display
+        assert!(CryptoError::KeyDerivation("kdf".into())
+            .to_string()
+            .contains("kdf"));
+        assert!(CryptoError::Encryption("enc".into())
+            .to_string()
+            .contains("enc"));
+        assert!(CryptoError::Decryption("dec".into())
+            .to_string()
+            .contains("dec"));
+        assert!(CryptoError::Integrity("int".into())
+            .to_string()
+            .contains("int"));
+        assert!(CryptoError::Other("oth".into()).to_string().contains("oth"));
+
+        // StorageError Display
+        let io = StorageError::Io(std::io::Error::new(std::io::ErrorKind::Other, "io"));
+        assert!(io.to_string().contains("io"));
+        assert!(StorageError::Serialization("ser".into())
+            .to_string()
+            .contains("ser"));
+        assert!(StorageError::Compression("comp".into())
+            .to_string()
+            .contains("comp"));
+        assert!(StorageError::Database("db".into())
+            .to_string()
+            .contains("db"));
+        assert!(StorageError::Other("oth".into())
+            .to_string()
+            .contains("oth"));
+
+        // ConversionError Display
+        assert!(ConversionError::Unsupported("uns".into())
+            .to_string()
+            .contains("uns"));
+        assert!(ConversionError::Validation("val".into())
+            .to_string()
+            .contains("val"));
+        assert!(ConversionError::Other("oth".into())
+            .to_string()
+            .contains("oth"));
+    }
+
     // ── Domain-specific error conversion tests ──────────────────────────
 
     #[test]

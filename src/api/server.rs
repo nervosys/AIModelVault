@@ -203,3 +203,70 @@ pub async fn serve(vault_config: VaultConfig, api_config: ApiConfig) -> Result<(
 
     Ok(())
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rate_limiter_allows_under_limit() {
+        let limiter = RateLimiter::new(3, Duration::from_secs(60));
+        let ip: std::net::IpAddr = "127.0.0.1".parse().unwrap();
+        assert!(limiter.check(ip));
+        assert!(limiter.check(ip));
+        assert!(limiter.check(ip));
+    }
+
+    #[test]
+    fn test_rate_limiter_blocks_over_limit() {
+        let limiter = RateLimiter::new(2, Duration::from_secs(60));
+        let ip: std::net::IpAddr = "127.0.0.1".parse().unwrap();
+        assert!(limiter.check(ip));
+        assert!(limiter.check(ip));
+        assert!(!limiter.check(ip)); // 3rd attempt blocked
+    }
+
+    #[test]
+    fn test_rate_limiter_separate_ips() {
+        let limiter = RateLimiter::new(1, Duration::from_secs(60));
+        let ip1: std::net::IpAddr = "10.0.0.1".parse().unwrap();
+        let ip2: std::net::IpAddr = "10.0.0.2".parse().unwrap();
+        assert!(limiter.check(ip1));
+        assert!(limiter.check(ip2));
+        assert!(!limiter.check(ip1)); // ip1 blocked
+        assert!(!limiter.check(ip2)); // ip2 blocked
+    }
+
+    #[test]
+    fn test_rate_limiter_window_reset() {
+        let limiter = RateLimiter::new(1, Duration::from_millis(1));
+        let ip: std::net::IpAddr = "127.0.0.1".parse().unwrap();
+        assert!(limiter.check(ip));
+        assert!(!limiter.check(ip));
+        std::thread::sleep(Duration::from_millis(5));
+        assert!(limiter.check(ip)); // window expired, reset
+    }
+
+    #[test]
+    fn test_rate_limiter_prune_expired() {
+        let limiter = RateLimiter::new(5, Duration::from_millis(1));
+        let ip: std::net::IpAddr = "127.0.0.1".parse().unwrap();
+        limiter.check(ip);
+        std::thread::sleep(Duration::from_millis(5));
+        limiter.prune();
+        // State should be empty after prune
+        let state = limiter.state.lock().unwrap();
+        assert!(state.is_empty());
+    }
+
+    #[test]
+    fn test_rate_limiter_prune_keeps_active() {
+        let limiter = RateLimiter::new(5, Duration::from_secs(60));
+        let ip: std::net::IpAddr = "127.0.0.1".parse().unwrap();
+        limiter.check(ip);
+        limiter.prune();
+        let state = limiter.state.lock().unwrap();
+        assert_eq!(state.len(), 1); // still active
+    }
+}

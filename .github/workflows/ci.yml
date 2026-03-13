@@ -49,19 +49,31 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --features "full,graphql" --verbose
     
     - name: Run tests
-      run: cargo test --verbose
-
-    - name: Run API integration tests
-      run: cargo test --test api_tests --features "full,graphql" --verbose
+      run: cargo test --features "full,graphql" --verbose
 
     - name: Run clippy
-      run: cargo clippy -- -D warnings
+      run: cargo clippy --features "full,graphql" -- -D warnings
     
     - name: Check formatting
       run: cargo fmt -- --check
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install cargo-audit
+      run: cargo install cargo-audit --locked
+    
+    - name: Run audit
+      run: cargo audit
 
   coverage:
     name: Code Coverage
@@ -82,14 +94,14 @@ jobs:
           target
         key: ${{ runner.os }}-coverage-${{ hashFiles('**/Cargo.lock') }}
     
-    - name: Install tarpaulin
-      run: cargo install cargo-tarpaulin --locked
+    - name: Install cargo-llvm-cov
+      run: cargo install cargo-llvm-cov --locked
     
     - name: Generate coverage
-      run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+      run: cargo llvm-cov --features "full,graphql" --lcov --output-path lcov.info
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        files: ./cobertura.xml
+        files: ./lcov.info
         fail_ci_if_error: false

@@ -107,6 +107,7 @@ version = "0.0.0"
 dependencies = [
  "ai-model-vault",
  "libfuzzer-sys",
+ "serde_json",
 ]
 
 [[package]]
