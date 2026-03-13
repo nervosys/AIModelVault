@@ -137,6 +137,7 @@ nav:
       - Project Summary: PROJECT_SUMMARY.md
       - Implementation: IMPLEMENTATION.md
   - Development:
+      - Python Bindings: PYTHON_BINDINGS.md
       - PyTorch & UV Guide: PYTORCH_UV_GUIDE.md
       - UV Integration: UV_INTEGRATION.md
       - Executive Summary: EXECUTIVE_SUMMARY.md

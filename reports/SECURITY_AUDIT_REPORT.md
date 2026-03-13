@@ -1,11 +1,11 @@
-# Security Audit Report — AI Model Vault v1.2.0
+# Security Audit Report — AI Model Vault v1.2.1
 
 > **Classification:** INTERNAL — DO NOT PUBLISH EXTERNALLY  
 > **Audit Date:** 2025-07-11  
 > **Scope:** Full codebase security assessment  
 > **Standards:** NIST SP 800-53 rev5, NIST SP 800-171 rev2, FIPS 140-3, CMMC 2.0 Level 2, OWASP API Security Top 10, MITRE ATT&CK  
 > **Auditor:** AI-assisted static analysis with manual review  
-> **Crate:** `ai-model-vault` 1.2.0 (Rust edition 2021, MSRV 1.75)
+> **Crate:** `ai-model-vault` 1.2.1 (Rust edition 2021, MSRV 1.75)
 
 ---
 
@@ -921,7 +921,7 @@ Parse error message includes raw error detail that could leak vault state inform
 
 - **Build:** `cargo check --features full` — ✅ Clean
 - **Clippy:** `cargo clippy --features full -- -D warnings` — ✅ Zero warnings
-- **Tests:** `cargo test --features full` — ✅ 1,667 passed, 0 failed
+- **Tests:** `cargo test --features full` — ✅ 1,818 passed, 0 failed
 
 ---
 

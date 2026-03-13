@@ -274,7 +274,7 @@ from aimodelvault import sha256_hex, rust_version
 digest = sha256_hex(b"hello")
 
 # Library version
-print(rust_version())  # e.g. "1.2.0"
+print(rust_version())  # e.g. "1.2.1"
 ```
 
 ## Architecture

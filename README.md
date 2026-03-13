@@ -104,7 +104,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ### 10. 🔄 Production-Ready Reliability
 
 **Why it matters**: Trust it with your most important models
-- 1,667 comprehensive tests (100% passing)
+- 1,818 comprehensive tests (100% passing)
 - Type-safe Rust implementation (no memory bugs)
 - Comprehensive error handling
 - Detailed logging and debugging support
@@ -431,7 +431,7 @@ AI Model Vault/
 │   ├── config.rs          # XDG-compliant configuration
 │   ├── utils.rs           # Model utilities (8 tools)
 │   └── python.rs          # Python bindings (PyO3)
-├── tests/                 # 1,667 comprehensive tests
+├── tests/                 # 1,818 comprehensive tests
 ├── docs/                  # Documentation
 ├── website/               # Next.js documentation site
 ├── deploy/                # Dockerfile & Helm chart
@@ -833,7 +833,7 @@ let result = server.execute_tool(
 | [Development Guide](DEVELOPMENT.md)              | For contributors and developers        |
 | [Security Policy](SECURITY.md)                   | Security standards and reporting       |
 | [Roadmap](ROADMAP.md)                            | Full development roadmap               |
-| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,667 tests) |
+| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,818 tests) |
 | [Python Bindings](docs/PYTHON_BINDINGS.md)       | PyO3 native bindings & pure-Python API |
 | [Changelog](CHANGELOG.md)                        | Version history and changes            |
 | [Documentation Website](website/)                | Next.js documentation site             |
@@ -896,7 +896,7 @@ User Passphrase
 ## 🧪 Testing & Quality
 
 ```bash
-# Run all tests (1,667 tests)
+# Run all tests (1,818 tests)
 cargo test
 
 # Run specific test suites
@@ -921,8 +921,8 @@ cargo bench --bench vault_bench               # Store/retrieve/list operations
 cargo bench --bench api_bench --features api  # REST API endpoint latency
 ```
 
-**Test Coverage**: 1,667 tests, all passing ✅
-- Library unit tests: 505
+**Test Coverage**: 1,818 tests, all passing ✅
+- Library unit tests: 623
 - Coverage & edge case tests: 873
 - Conversion tests: 31
 - Crypto tests: 14

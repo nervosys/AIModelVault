@@ -1,4 +1,4 @@
-# Performance Baseline — v1.2.0
+# Performance Baseline — v1.2.1
 
 Benchmark results captured with `cargo bench` using Criterion 0.5 on Windows (x86_64).
 All benchmarks run on the default (non-GPU) code path.

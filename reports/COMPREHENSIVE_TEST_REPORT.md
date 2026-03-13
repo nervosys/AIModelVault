@@ -1,6 +1,6 @@
 # 🧪 Comprehensive Test Report - AI Model Vault
 **Test Date**: October 28, 2025  
-**Version**: 0.1.0  
+**Version**: 1.2.1  
 **Platform**: Windows (x86_64-pc-windows-msvc)  
 **Rust Version**: stable
 

@@ -65,7 +65,7 @@
     "operatingSystem": ["Linux", "macOS", "Windows"],
     "programmingLanguage": "Rust",
     "runtimePlatform": "Native Binary",
-    "softwareVersion": "1.1.0",
+    "softwareVersion": "1.2.1",
     "executableName": "aim",
     "license": "AGPL-3.0-or-later",
     "codeRepository": "https://github.com/nervosys/AIModelVault",

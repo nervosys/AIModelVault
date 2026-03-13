@@ -65,7 +65,7 @@ export default function Header() {
 
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-              v1.2.0
+              v1.2.1
             </span>
             <a
               href="https://crates.io/crates/ai-model-vault"

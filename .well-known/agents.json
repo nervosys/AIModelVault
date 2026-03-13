@@ -4,7 +4,7 @@
   "project": {
     "id": "ai-model-vault",
     "name": "AI Model Vault",
-    "version": "1.1.0",
+    "version": "1.2.1",
     "description": "Encrypted AI/ML model management system with versioning, format conversion, compliance validation, RAG, MCP tools, and federated sync.",
     "homepage": "https://github.com/nervosys/AIModelVault",
     "documentation": "https://github.com/nervosys/AIModelVault/tree/master/docs",
