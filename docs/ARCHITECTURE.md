@@ -447,12 +447,12 @@ graph LR
 
 ## Test Coverage
 
-| Metric          | Value       |
-| --------------- | ----------- |
-| Library tests   | 584         |
-| Python tests    | 62          |
-| Line coverage   | 86.1%       |
-| Modules at 100% | 8           |
-| Clippy warnings | 0           |
+| Metric          | Value |
+| --------------- | ----- |
+| Library tests   | 584   |
+| Python tests    | 62    |
+| Line coverage   | 86.1% |
+| Modules at 100% | 8     |
+| Clippy warnings | 0     |
 
 Coverage is measured with `cargo-llvm-cov` using `--features "full,graphql"`.

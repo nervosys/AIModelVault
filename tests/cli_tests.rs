@@ -68,10 +68,7 @@ fn test_cli_store_help() {
 
 #[test]
 fn test_cli_list_help() {
-    aim()
-        .args(["list", "--help"])
-        .assert()
-        .success();
+    aim().args(["list", "--help"]).assert().success();
 }
 
 #[test]
@@ -135,16 +132,12 @@ fn test_cli_list_empty_vault() {
 
 #[test]
 fn test_cli_list_conversions() {
-    aim()
-        .args(["list-conversions"])
-        .assert()
-        .success()
-        .stdout(
-            predicate::str::contains("safetensors")
-                .or(predicate::str::contains("Safetensors"))
-                .or(predicate::str::contains("GGUF"))
-                .or(predicate::str::contains("gguf")),
-        );
+    aim().args(["list-conversions"]).assert().success().stdout(
+        predicate::str::contains("safetensors")
+            .or(predicate::str::contains("Safetensors"))
+            .or(predicate::str::contains("GGUF"))
+            .or(predicate::str::contains("gguf")),
+    );
 }
 
 #[test]
@@ -170,10 +163,7 @@ fn test_cli_stats_on_vault() {
 
 #[test]
 fn test_cli_unknown_subcommand() {
-    aim()
-        .arg("nonexistent-command")
-        .assert()
-        .failure();
+    aim().arg("nonexistent-command").assert().failure();
 }
 
 #[test]
@@ -358,9 +348,7 @@ fn test_cli_telemetry_help() {
         .args(["telemetry", "--help"])
         .assert()
         .success()
-        .stdout(
-            predicate::str::contains("telemetry").or(predicate::str::contains("Telemetry")),
-        );
+        .stdout(predicate::str::contains("telemetry").or(predicate::str::contains("Telemetry")));
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -452,7 +440,11 @@ fn test_cli_database_store_and_search() {
     let dir = tempdir().unwrap();
     let db_path = dir.path().join("test.db");
     let doc_path = dir.path().join("doc.txt");
-    std::fs::write(&doc_path, "The transformer architecture uses attention mechanisms.").unwrap();
+    std::fs::write(
+        &doc_path,
+        "The transformer architecture uses attention mechanisms.",
+    )
+    .unwrap();
 
     aim()
         .args([
