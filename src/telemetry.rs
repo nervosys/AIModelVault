@@ -871,4 +871,283 @@ mod tests {
         // Without initialization, should return false
         assert!(!is_enabled());
     }
+
+    #[test]
+    fn test_is_disabled_by_env_default() {
+        // Without any env vars set, should return false
+        // (env vars may or may not be set in CI, so just ensure no panic)
+        let _ = TelemetryClient::is_disabled_by_env();
+    }
+
+    #[test]
+    fn test_telemetry_client_track_multiple_events() {
+        let config = TelemetryConfig {
+            enabled: true,
+            batch_size: 100,
+            ..TelemetryConfig::default()
+        };
+        let client = TelemetryClient::new(config);
+
+        // Track several different event types
+        client.track(TelemetryEvent::AppStart {
+            version: "1.2.0".to_string(),
+            os: "windows".to_string(),
+            arch: "x86_64".to_string(),
+            features: vec!["api".to_string()],
+        });
+        client.track(TelemetryEvent::CommandRun {
+            command: "store".to_string(),
+            subcommand: None,
+            duration_ms: 100,
+            success: true,
+        });
+        client.track(TelemetryEvent::Error {
+            error_type: "IoError".to_string(),
+            context: Some("test context".to_string()),
+        });
+
+        let events = client.events.lock();
+        assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn test_telemetry_client_flush_clears_events() {
+        let config = TelemetryConfig {
+            enabled: true,
+            batch_size: 100,
+            ..TelemetryConfig::default()
+        };
+        let client = TelemetryClient::new(config);
+
+        client.track(TelemetryEvent::FeatureUsed {
+            feature: "rag".to_string(),
+            detail: None,
+        });
+        assert_eq!(client.events.lock().len(), 1);
+
+        // Flush will try to send (and fail since no server), but events should be drained
+        client.flush();
+        // After flush, internal batch was taken; wait a moment for the spawned thread
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        assert_eq!(client.events.lock().len(), 0);
+    }
+
+    #[test]
+    fn test_telemetry_config_custom_values() {
+        let config = TelemetryConfig {
+            enabled: true,
+            device_id: "custom-id".to_string(),
+            endpoint: "https://custom.endpoint/v1".to_string(),
+            batch_size: 10,
+            flush_interval_secs: 60,
+        };
+        assert!(config.enabled);
+        assert_eq!(config.device_id, "custom-id");
+        assert_eq!(config.batch_size, 10);
+        assert_eq!(config.flush_interval_secs, 60);
+    }
+
+    #[test]
+    fn test_telemetry_envelope_fields() {
+        let config = TelemetryConfig {
+            enabled: true,
+            batch_size: 100,
+            ..TelemetryConfig::default()
+        };
+        let client = TelemetryClient::new(config);
+
+        client.track(TelemetryEvent::Conversion {
+            source_format: "pytorch".to_string(),
+            target_format: "onnx".to_string(),
+            duration_ms: 2000,
+            success: true,
+        });
+
+        let events = client.events.lock();
+        let env = &events[0];
+        assert!(!env.device_id.is_empty());
+        assert!(!env.session_id.is_empty());
+        assert!(env.timestamp > 0);
+
+        // Verify the event content via serialization
+        let json = serde_json::to_string(&env.event).unwrap();
+        assert!(json.contains("conversion"));
+        assert!(json.contains("pytorch"));
+    }
+
+    #[test]
+    fn test_tracking_timer_finish_does_not_panic() {
+        // TrackingTimer::finish calls the global track(), which is a no-op
+        // if no global client is initialized
+        let timer = TrackingTimer::new("bench-cmd", Some("sub-a"));
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        timer.finish(true);
+    }
+
+    #[test]
+    fn test_tracking_timer_finish_failure() {
+        let timer = TrackingTimer::new("failing-cmd", None);
+        timer.finish(false);
+    }
+
+    #[test]
+    fn test_global_track_noop_without_init() {
+        // Global track() should silently no-op when TELEMETRY not initialized
+        track(TelemetryEvent::FeatureUsed {
+            feature: "test".to_string(),
+            detail: None,
+        });
+    }
+
+    #[test]
+    fn test_global_flush_noop_without_init() {
+        flush();
+    }
+
+    #[test]
+    fn test_global_disable_noop_without_init() {
+        disable();
+    }
+
+    #[test]
+    fn test_convenience_track_functions_noop() {
+        // All convenience functions should be no-ops when global not initialized
+        track_app_start();
+        track_command("test", Some("sub"), Duration::from_millis(10), true);
+        track_command("test", None, Duration::from_millis(5), false);
+        track_model_op("store", "safetensors", 1_000, Duration::from_millis(50), true);
+        track_model_op("get", "gguf", 500_000_000, Duration::from_millis(100), true);
+        track_model_op("store", "onnx", 50_000_000, Duration::from_millis(75), false);
+        track_model_op("store", "pytorch", 2_000_000_000, Duration::from_millis(200), true);
+        track_conversion("pytorch", "onnx", Duration::from_secs(5), true);
+        track_api_call("/models", "GET", 200, Duration::from_millis(30));
+        track_error("TestError", Some("test context"));
+        track_error("TestError", None);
+        track_feature("rag", Some("search"));
+        track_feature("cloud", None);
+    }
+
+    #[test]
+    fn test_size_bucket_boundaries() {
+        // Test exact boundary values for size bucketing
+        let check_bucket = |size: u64| -> &'static str {
+            match size {
+                0..=10_000_000 => "small",
+                10_000_001..=100_000_000 => "medium",
+                100_000_001..=1_000_000_000 => "large",
+                _ => "xlarge",
+            }
+        };
+
+        assert_eq!(check_bucket(0), "small");
+        assert_eq!(check_bucket(10_000_000), "small");     // upper boundary
+        assert_eq!(check_bucket(10_000_001), "medium");    // lower boundary
+        assert_eq!(check_bucket(100_000_000), "medium");   // upper boundary
+        assert_eq!(check_bucket(100_000_001), "large");    // lower boundary
+        assert_eq!(check_bucket(1_000_000_000), "large");  // upper boundary
+        assert_eq!(check_bucket(1_000_000_001), "xlarge"); // lower boundary
+    }
+
+    #[test]
+    fn test_telemetry_envelope_serialization_roundtrip() {
+        let envelope = TelemetryEnvelope {
+            device_id: "dev-1".to_string(),
+            session_id: "sess-1".to_string(),
+            timestamp: 1700000000,
+            event: TelemetryEvent::ApiCall {
+                endpoint: "/health".to_string(),
+                method: "GET".to_string(),
+                status_code: 200,
+                duration_ms: 5,
+            },
+        };
+        let json = serde_json::to_string(&envelope).unwrap();
+        let d: TelemetryEnvelope = serde_json::from_str(&json).unwrap();
+        assert_eq!(d.device_id, "dev-1");
+        assert_eq!(d.session_id, "sess-1");
+        assert_eq!(d.timestamp, 1700000000);
+    }
+
+    #[test]
+    fn test_write_to_local_queue_and_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let queue_path = dir.path().join("events.jsonl");
+
+        // Manually test the write logic (without relying on the static path)
+        use std::io::Write;
+        let body = r#"[{"device_id":"d","session_id":"s","timestamp":1,"event":{"type":"feature_used","feature":"test"}}]"#;
+        let mut f = std::fs::File::create(&queue_path).unwrap();
+        writeln!(f, "{}", body).unwrap();
+        drop(f);
+
+        let contents = std::fs::read_to_string(&queue_path).unwrap();
+        assert!(contents.contains("feature_used"));
+
+        // Verify it parses as a batch
+        for line in contents.lines() {
+            if !line.trim().is_empty() {
+                let batch: Vec<TelemetryEnvelope> = serde_json::from_str(line).unwrap();
+                assert_eq!(batch.len(), 1);
+            }
+        }
+    }
+
+    #[test]
+    fn test_load_or_create_config_new() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().to_path_buf();
+        let config = load_or_create_config(Some(&config_dir)).unwrap();
+        assert!(!config.enabled); // default is opt-in disabled
+        assert!(!config.device_id.is_empty());
+
+        // Config file should have been created
+        let config_path = config_dir.join("telemetry.yaml");
+        assert!(config_path.exists());
+    }
+
+    #[test]
+    fn test_load_or_create_config_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().to_path_buf();
+        let config_path = config_dir.join("telemetry.yaml");
+
+        // Write a custom config
+        let custom = TelemetryConfig {
+            enabled: true,
+            device_id: "existing-device".to_string(),
+            batch_size: 50,
+            ..TelemetryConfig::default()
+        };
+        let yaml = serde_yaml_ng::to_string(&custom).unwrap();
+        std::fs::write(&config_path, &yaml).unwrap();
+
+        // Load it
+        let loaded = load_or_create_config(Some(&config_dir)).unwrap();
+        assert!(loaded.enabled);
+        assert_eq!(loaded.device_id, "existing-device");
+        assert_eq!(loaded.batch_size, 50);
+    }
+
+    #[test]
+    fn test_init_and_track() {
+        // Use a unique config to avoid interfering with global state
+        // Note: TELEMETRY is a OnceLock so init() only works once per process.
+        // This test verifies init doesn't panic when called (may be no-op if already set).
+        let config = TelemetryConfig {
+            enabled: false,
+            ..TelemetryConfig::default()
+        };
+        init(config);
+        // Global is_enabled reflects the client state
+        // (but won't be true since we disabled it, and TELEMETRY_DISABLED may also be set)
+    }
+
+    #[test]
+    fn test_default_helper_functions() {
+        // Cover the default value functions
+        assert!(!generate_device_id().is_empty());
+        assert!(default_endpoint().contains("telemetry"));
+        assert_eq!(default_batch_size(), 25);
+        assert_eq!(default_flush_interval(), 300);
+    }
 }

@@ -1387,4 +1387,304 @@ mod tests {
         let d: ModelManifestEntry = serde_json::from_str(&json).unwrap();
         assert_eq!(d.name, "llm");
     }
+
+    #[tokio::test]
+    async fn test_federation_manager_save_and_reload_state() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let node_id = config.node_id.clone();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        // Modify internal state via generate_manifest (increments clock indirectly)
+        // Then save state by accessing internals
+        {
+            let mut state = mgr.state.write().await;
+            state.clock.increment(&node_id);
+            state.models.insert(
+                "saved-model".to_string(),
+                ModelSyncState {
+                    name: "saved-model".to_string(),
+                    clock: VectorClock::new(),
+                    last_sync: HashMap::new(),
+                    known_versions: HashSet::new(),
+                    pending_upload: HashSet::new(),
+                    pending_download: HashSet::new(),
+                },
+            );
+            mgr.save_state(&state).unwrap();
+        }
+
+        // Reload from same directory
+        let config2 = FederationConfig::default();
+        let mgr2 = FederationManager::new(config2, dir.path().to_path_buf()).unwrap();
+        let status2 = mgr2.status().await;
+        assert_eq!(status2.model_count, 1);
+        assert_eq!(status2.clock.timestamps.get(&node_id), Some(&1));
+    }
+
+    #[test]
+    fn test_compute_delta_mixed_versions() {
+        // Both nodes have the model but with different extra versions
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let shared = VersionManifestEntry {
+            version: 1,
+            checkpoint_id: "cp-shared".to_string(),
+            created_at: Utc::now(),
+            checksum: "sha".to_string(),
+            size_bytes: 100,
+            parent_id: None,
+            origin_node: "a".to_string(),
+        };
+        let local_only = VersionManifestEntry {
+            version: 2,
+            checkpoint_id: "cp-local-v2".to_string(),
+            created_at: Utc::now(),
+            checksum: "sha2".to_string(),
+            size_bytes: 200,
+            parent_id: Some("cp-shared".to_string()),
+            origin_node: "a".to_string(),
+        };
+        let remote_only = VersionManifestEntry {
+            version: 3,
+            checkpoint_id: "cp-remote-v3".to_string(),
+            created_at: Utc::now(),
+            checksum: "sha3".to_string(),
+            size_bytes: 300,
+            parent_id: Some("cp-shared".to_string()),
+            origin_node: "b".to_string(),
+        };
+
+        let local = SyncManifest {
+            source_node: "a".to_string(),
+            timestamp: Utc::now(),
+            models: vec![ModelManifestEntry {
+                name: "m".to_string(),
+                versions: vec![shared.clone(), local_only],
+                clock: VectorClock::new(),
+            }],
+            clock: VectorClock::new(),
+        };
+        let remote = SyncManifest {
+            source_node: "b".to_string(),
+            timestamp: Utc::now(),
+            models: vec![ModelManifestEntry {
+                name: "m".to_string(),
+                versions: vec![shared, remote_only],
+                clock: VectorClock::new(),
+            }],
+            clock: VectorClock::new(),
+        };
+
+        let delta = mgr.compute_delta(&local, &remote);
+        assert_eq!(delta.to_upload.len(), 1);
+        assert_eq!(delta.to_upload[0].checkpoint_id, "cp-local-v2");
+        assert_eq!(delta.to_download.len(), 1);
+        assert_eq!(delta.to_download[0].checkpoint_id, "cp-remote-v3");
+        assert!(delta.conflicts.is_empty()); // Different version numbers, no conflict
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_generate_manifest_multi_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let versions = vec![
+            crate::version::ModelVersion {
+                version: 1,
+                checkpoint_id: "cp-1".to_string(),
+                timestamp: Utc::now(),
+                checksum_sha256: "abc".to_string(),
+                size_bytes: 512,
+                compressed_size_bytes: 400,
+                parent_version: None,
+                format: "safetensors".to_string(),
+                metadata: HashMap::new(),
+                file_path: "models/cp-1.enc".to_string(),
+            },
+            crate::version::ModelVersion {
+                version: 2,
+                checkpoint_id: "cp-2".to_string(),
+                timestamp: Utc::now(),
+                checksum_sha256: "def".to_string(),
+                size_bytes: 1024,
+                compressed_size_bytes: 900,
+                parent_version: Some(1),
+                format: "gguf".to_string(),
+                metadata: HashMap::new(),
+                file_path: "models/cp-2.enc".to_string(),
+            },
+        ];
+
+        let manifest = mgr
+            .generate_manifest(vec![("multi-v".to_string(), versions)])
+            .await;
+        assert_eq!(manifest.models.len(), 1);
+        assert_eq!(manifest.models[0].versions.len(), 2);
+        assert_eq!(manifest.models[0].versions[0].version, 1);
+        assert_eq!(manifest.models[0].versions[1].version, 2);
+        assert_eq!(
+            manifest.models[0].versions[1].parent_id.as_deref(),
+            Some("1")
+        );
+    }
+
+    #[test]
+    fn test_saved_federation_state_roundtrip() {
+        let mut clock = VectorClock::new();
+        clock.increment("n1");
+        clock.increment("n2");
+
+        let saved = SavedFederationState {
+            models: {
+                let mut m = HashMap::new();
+                m.insert(
+                    "model-a".to_string(),
+                    ModelSyncState {
+                        name: "model-a".to_string(),
+                        clock: clock.clone(),
+                        last_sync: HashMap::new(),
+                        known_versions: {
+                            let mut s = HashSet::new();
+                            s.insert("cp-1".to_string());
+                            s
+                        },
+                        pending_upload: HashSet::new(),
+                        pending_download: HashSet::new(),
+                    },
+                );
+                m
+            },
+            clock,
+            history: vec![SyncResult {
+                peer_id: "p1".to_string(),
+                timestamp: Utc::now(),
+                duration_ms: 500,
+                models_synced: 1,
+                versions_uploaded: 0,
+                versions_downloaded: 1,
+                conflicts: vec![],
+                errors: vec![],
+            }],
+        };
+
+        let json = serde_json::to_string(&saved).unwrap();
+        let loaded: SavedFederationState = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded.models.len(), 1);
+        assert!(loaded.models.contains_key("model-a"));
+        assert_eq!(loaded.history.len(), 1);
+        assert_eq!(loaded.clock.timestamps.get("n1"), Some(&1));
+    }
+
+    #[test]
+    fn test_sync_delta_debug() {
+        let delta = SyncDelta {
+            to_upload: vec![],
+            to_download: vec![],
+            conflicts: vec![],
+        };
+        let dbg = format!("{:?}", delta);
+        assert!(dbg.contains("SyncDelta"));
+    }
+
+    #[test]
+    fn test_model_sync_state_with_pending() {
+        let mut state = ModelSyncState {
+            name: "pending-model".to_string(),
+            clock: VectorClock::new(),
+            last_sync: HashMap::new(),
+            known_versions: HashSet::new(),
+            pending_upload: HashSet::new(),
+            pending_download: HashSet::new(),
+        };
+        state.pending_upload.insert("cp-up-1".to_string());
+        state
+            .pending_download
+            .insert(("node-b".to_string(), "cp-down-1".to_string()));
+        state.known_versions.insert("cp-1".to_string());
+        state.last_sync.insert("node-b".to_string(), Utc::now());
+
+        let json = serde_json::to_string(&state).unwrap();
+        let d: ModelSyncState = serde_json::from_str(&json).unwrap();
+        assert_eq!(d.pending_upload.len(), 1);
+        assert_eq!(d.pending_download.len(), 1);
+        assert_eq!(d.known_versions.len(), 1);
+        assert_eq!(d.last_sync.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_federation_manager_history_with_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let state_file = dir.path().join("federation_state.json");
+
+        // Pre-populate with history
+        let history: Vec<SyncResult> = (0..5)
+            .map(|i| SyncResult {
+                peer_id: format!("peer-{}", i),
+                timestamp: Utc::now(),
+                duration_ms: 100 * (i as u64 + 1),
+                models_synced: 1,
+                versions_uploaded: 0,
+                versions_downloaded: 1,
+                conflicts: vec![],
+                errors: vec![],
+            })
+            .collect();
+
+        let saved = SavedFederationState {
+            models: HashMap::new(),
+            clock: VectorClock::new(),
+            history,
+        };
+        std::fs::write(&state_file, serde_json::to_string(&saved).unwrap()).unwrap();
+
+        let config = FederationConfig::default();
+        let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
+
+        let all = mgr.get_history(None).await;
+        assert_eq!(all.len(), 5);
+
+        let limited = mgr.get_history(Some(3)).await;
+        assert_eq!(limited.len(), 3);
+        // get_history returns reversed (most recent first)
+        assert_eq!(limited[0].peer_id, "peer-4");
+    }
+
+    #[test]
+    fn test_conflict_resolution_branch_serialization() {
+        let res = ConflictResolution::Branch {
+            local_name: "main-v2".to_string(),
+            remote_name: "fork-v2".to_string(),
+        };
+        let json = serde_json::to_string(&res).unwrap();
+        let d: ConflictResolution = serde_json::from_str(&json).unwrap();
+        match d {
+            ConflictResolution::Branch {
+                local_name,
+                remote_name,
+            } => {
+                assert_eq!(local_name, "main-v2");
+                assert_eq!(remote_name, "fork-v2");
+            }
+            _ => panic!("Expected Branch variant"),
+        }
+    }
+
+    #[test]
+    fn test_federation_status_without_last_sync() {
+        let status = FederationStatus {
+            node_id: "n1".to_string(),
+            node_name: "node1".to_string(),
+            peer_count: 0,
+            model_count: 0,
+            last_sync: None,
+            clock: VectorClock::new(),
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        let d: FederationStatus = serde_json::from_str(&json).unwrap();
+        assert!(d.last_sync.is_none());
+    }
 }

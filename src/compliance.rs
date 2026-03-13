@@ -424,4 +424,77 @@ mod tests {
         let checker = ComplianceChecker::new();
         assert_eq!(checker.check_cmmc(), 2);
     }
+
+    #[test]
+    fn test_check_cve_enabled() {
+        // check_cve runs cargo-audit; whether or not it's installed,
+        // the function returns (true, ...) — either audit passes or
+        // cargo-audit is not available (both are treated as non-failures).
+        let checker = ComplianceChecker::new();
+        let (passed, _cves) = checker.check_cve();
+        assert!(passed);
+    }
+
+    #[test]
+    fn test_run_all_checks_full() {
+        let checker = ComplianceChecker::new();
+        let status = checker.run_all_checks().unwrap();
+        // All checks enabled and all return passing in our build
+        assert!(status.fips_140_3);
+        assert!(status.mitre_attack_aligned);
+        assert_eq!(status.cmmc_level, 2);
+        // No crypto violations
+        assert!(
+            status
+                .violations
+                .iter()
+                .all(|v| v.standard != "FIPS 140-3")
+        );
+    }
+
+    #[test]
+    fn test_run_all_checks_no_violations_when_all_pass() {
+        let mut checker = ComplianceChecker::new();
+        // Disable CVE check to avoid dependency on cargo-audit
+        checker.set_check_enabled("cve", false);
+        let status = checker.run_all_checks().unwrap();
+        assert!(status.violations.is_empty());
+    }
+
+    #[test]
+    fn test_compliance_status_clone() {
+        let status = ComplianceStatus {
+            fips_140_3: true,
+            cve_scan_passed: false,
+            mitre_attack_aligned: true,
+            cmmc_level: 2,
+            violations: vec![ComplianceViolation {
+                standard: "CVE".to_string(),
+                control: "VM".to_string(),
+                severity: ViolationSeverity::High,
+                description: "CVE-2024-9999".to_string(),
+                remediation: Some("upgrade".to_string()),
+            }],
+        };
+        let cloned = status.clone();
+        assert_eq!(cloned.violations.len(), 1);
+        assert!(!cloned.cve_scan_passed);
+    }
+
+    #[test]
+    fn test_checker_enable_disable_multiple() {
+        let mut checker = ComplianceChecker::new();
+        // Disable all
+        checker.set_check_enabled("fips_140_3", false);
+        checker.set_check_enabled("cve", false);
+        checker.set_check_enabled("mitre_attack", false);
+        checker.set_check_enabled("cmmc", false);
+
+        let status = checker.run_all_checks().unwrap();
+        assert!(status.fips_140_3);    // returns true when disabled
+        assert!(status.cve_scan_passed);
+        assert!(status.mitre_attack_aligned);
+        assert_eq!(status.cmmc_level, 0); // returns 0 when disabled
+        assert!(status.violations.is_empty());
+    }
 }

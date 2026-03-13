@@ -84,3 +84,29 @@ fn restrict_acl(path: &Path) -> std::io::Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_restrict_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("test_file.txt");
+        std::fs::write(&file_path, b"secret").unwrap();
+        restrict_file(&file_path).unwrap();
+    }
+
+    #[test]
+    fn test_restrict_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        restrict_dir(dir.path()).unwrap();
+    }
+
+    #[test]
+    fn test_set_create_mode() {
+        let mut opts = std::fs::OpenOptions::new();
+        set_create_mode(&mut opts);
+        // Should be a no-op on non-Unix, mode setter on Unix — no panic either way
+    }
+}

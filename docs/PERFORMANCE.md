@@ -85,52 +85,69 @@ All benchmarks run on the default (non-GPU) code path.
 | `from_json()`   | ~4.5 µs       |
 | `from_yaml()`   | ~59 µs        |
 
+## REST API Endpoints (`benches/api_bench.rs`)
+
+| Endpoint          | Method | Time (median) |
+| ----------------- | ------ | ------------- |
+| `/api/v1/health`  | GET    | ~90 ms        |
+| `/api/v1/auth/token` | POST | ~311 ms    |
+| `/api/v1/models`  | GET    | ~195 ms       |
+| `/api/v1/compliance` | GET | ~1.55 s      |
+
+> API benchmarks include per-request vault setup (tempdir + init). The `/api/v1/compliance`
+> endpoint runs `cargo audit` (external process), which dominates its latency.
+
 ## Code Coverage
 
-| Metric    | Value                    |
-| --------- | ------------------------ |
-| Tool      | cargo-llvm-cov           |
-| Features  | full, graphql            |
-| Lines     | 12,094 / 13,029          |
-| Coverage  | **92.82%**               |
-| Functions | 1,160 / 1,328 (87.35%)   |
-| Regions   | 20,916 / 22,384 (93.44%) |
+| Metric    | Value                      |
+| --------- | -------------------------- |
+| Tool      | cargo-llvm-cov             |
+| Features  | full, graphql              |
+| Lines     | 13,883 / 16,988            |
+| Coverage  | **81.72%**                 |
+| Functions | 1,299 / 1,650 (78.73%)     |
+| Regions   | 23,285 / 28,254 (82.41%)   |
 
-### Per-Module Coverage
+> Note: Line counts are higher than prior reports because cargo-llvm-cov now instrumenting
+> all code compiled with `--features "full,graphql"` including CLI handlers. Library-only
+> coverage (via `--lib`) remains above 92%.
 
-| Module               | Lines (Covered/Total) | %     | Functions |
-| -------------------- | --------------------- | ----- | --------- |
-| `vault.rs`           | 1,420 / 1,446         | 98.2% | 90 / 92   |
-| `blockchain.rs`      | 917 / 935             | 98.1% | 57 / 60   |
-| `traits.rs`          | 900 / 920             | 97.8% | 85 / 91   |
-| `version.rs`         | 434 / 435             | 99.8% | 42 / 42   |
-| `utils.rs`           | 548 / 550             | 99.6% | 65 / 66   |
-| `model_card.rs`      | 505 / 513             | 98.4% | 26 / 30   |
-| `conversion.rs`      | 1,469 / 1,683         | 87.3% | 149 / 173 |
-| `formats.rs`         | 296 / 296             | 100%  | 33 / 33   |
-| `crypto/mod.rs`      | 254 / 262             | 97.0% | 33 / 38   |
-| `crypto/streaming`   | 238 / 242             | 98.4% | 18 / 18   |
-| `crypto/compression` | 122 / 126             | 96.8% | 17 / 21   |
-| `storage.rs`         | 370 / 375             | 98.7% | 32 / 33   |
-| `storage/local.rs`   | 95 / 97               | 97.9% | 21 / 21   |
-| `rag/database.rs`    | 661 / 704             | 93.9% | 66 / 95   |
-| `rag/mcp.rs`         | 429 / 441             | 97.3% | 58 / 62   |
-| `rag/rules.rs`       | 286 / 286             | 100%  | 31 / 31   |
-| `rag/cache.rs`       | 153 / 153             | 100%  | 19 / 19   |
-| `rag/knowledge.rs`   | 131 / 131             | 100%  | 12 / 12   |
-| `rag/documents.rs`   | 114 / 114             | 100%  | 20 / 20   |
-| `rag/vector.rs`      | 137 / 137             | 100%  | 23 / 23   |
-| `rag/mod.rs`         | 180 / 183             | 98.4% | 15 / 16   |
-| `config.rs`          | 223 / 230             | 97.0% | 23 / 24   |
-| `version_sqlite.rs`  | 558 / 674             | 82.8% | 43 / 75   |
-| `compliance.rs`      | 226 / 274             | 82.5% | 29 / 33   |
-| `federation.rs`      | 720 / 908             | 79.3% | 68 / 86   |
-| `telemetry.rs`       | 357 / 538             | 66.4% | 47 / 75   |
-| `error.rs`           | 145 / 150             | 96.7% | 16 / 16   |
-| `audit.rs`           | 185 / 196             | 94.4% | 18 / 18   |
-| `permissions.rs`     | 21 / 30               | 70.0% | 4 / 5     |
+### Per-Module Coverage (library)
 
-> Remaining low-coverage areas: `telemetry.rs` (opt-in, requires runtime init), `federation.rs` (requires multi-peer setup), `version_sqlite.rs` (partial SQLite backend paths).
+| Module               | Lines (Covered/Total) | %     |
+| -------------------- | --------------------- | ----- |
+| `vault.rs`           | 1,420 / 1,446         | 98.2% |
+| `blockchain.rs`      | 917 / 935             | 98.1% |
+| `traits.rs`          | 900 / 920             | 97.8% |
+| `version.rs`         | 434 / 435             | 99.8% |
+| `utils.rs`           | 548 / 550             | 99.6% |
+| `model_card.rs`      | 505 / 513             | 98.4% |
+| `conversion.rs`      | 1,469 / 1,683         | 87.3% |
+| `formats.rs`         | 296 / 296             | 100%  |
+| `crypto/mod.rs`      | 254 / 262             | 97.0% |
+| `crypto/streaming`   | 238 / 242             | 98.4% |
+| `crypto/compression` | 122 / 126             | 96.8% |
+| `storage.rs`         | 370 / 375             | 98.7% |
+| `storage/local.rs`   | 95 / 97               | 97.9% |
+| `rag/database.rs`    | 661 / 704             | 93.9% |
+| `rag/mcp.rs`         | 429 / 441             | 97.3% |
+| `rag/rules.rs`       | 286 / 286             | 100%  |
+| `rag/cache.rs`       | 153 / 153             | 100%  |
+| `rag/knowledge.rs`   | 131 / 131             | 100%  |
+| `rag/documents.rs`   | 114 / 114             | 100%  |
+| `rag/vector.rs`      | 137 / 137             | 100%  |
+| `rag/mod.rs`         | 180 / 183             | 98.4% |
+| `config.rs`          | 223 / 230             | 97.0% |
+| `version_sqlite.rs`  | 558 / 674             | 82.8% |
+| `telemetry.rs`       | 672 / 744             | 90.3% |
+| `federation.rs`      | 994 / 1,165           | 85.3% |
+| `compliance.rs`      | 280 / 329             | 85.1% |
+| `permissions.rs`     | 35 / 44               | 79.5% |
+| `error.rs`           | 145 / 150             | 96.7% |
+| `audit.rs`           | 185 / 196             | 94.4% |
+| `permissions.rs`     | 35 / 44               | 79.5% |
+
+> Remaining low-coverage areas: `cli/handlers/` (0%, requires integration tests with stdin/stdout), `version_sqlite.rs` (partial SQLite backend paths).
 
 ## Running Benchmarks
 

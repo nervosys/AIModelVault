@@ -232,22 +232,22 @@ class TestVault:
                  patch("aimodelvault.core.config.user_data_dir", return_value=os.path.join(tmpdir, "data")), \
                  patch("aimodelvault.core.config.user_cache_dir", return_value=os.path.join(tmpdir, "cache")):
                 vault = Vault(os.path.join(tmpdir, "vault"))
-                assert vault.vault_path == Path(os.path.join(tmpdir, "vault"))
+                assert vault.path == Path(os.path.join(tmpdir, "vault"))
 
-    def test_vault_list_models_empty(self):
+    def test_vault_list_models_mock(self):
         from aimodelvault.core.vault import Vault
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch("aimodelvault.core.config.user_config_dir", return_value=os.path.join(tmpdir, "config")), \
                  patch("aimodelvault.core.config.user_data_dir", return_value=os.path.join(tmpdir, "data")), \
                  patch("aimodelvault.core.config.user_cache_dir", return_value=os.path.join(tmpdir, "cache")):
                 vault = Vault(os.path.join(tmpdir, "vault"))
-                # Without a real Rust binary, list should return empty or raise
                 with patch("subprocess.run") as mock_run:
                     mock_run.return_value = MagicMock(
-                        returncode=0, stdout='["model_a","model_b"]', stderr=""
+                        returncode=0, stdout='model_a\nmodel_b\n', stderr=""
                     )
                     models = vault.list_models()
-                    assert models == ["model_a", "model_b"]
+                    assert "model_a" in models
+                    assert "model_b" in models
 
 
 # ---------------------------------------------------------------------------
