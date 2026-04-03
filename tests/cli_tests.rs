@@ -748,3 +748,177 @@ fn test_cli_sqlite_versions_with_compliance() {
         .assert()
         .success();
 }
+
+// ──────────────────────────────────────────────────────────────
+// Telemetry Flags
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_no_telemetry_flag_with_init() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["--no-telemetry", "init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_do_not_track_env() {
+    aim()
+        .args(["compliance"])
+        .env("DO_NOT_TRACK", "1")
+        .assert()
+        .success();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Convert Error Cases
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_convert_missing_args() {
+    aim()
+        .args(["convert"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+// ──────────────────────────────────────────────────────────────
+// Cloud Error Cases
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_cloud_push_missing_args() {
+    aim()
+        .args(["cloud", "push"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_cloud_pull_missing_args() {
+    aim()
+        .args(["cloud", "pull"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_cloud_list_missing_args() {
+    aim()
+        .args(["cloud", "list"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+// ──────────────────────────────────────────────────────────────
+// Archive / Extract Error Cases
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_extract_nonexistent_archive() {
+    aim()
+        .args(["extract", "nonexistent.tar"])
+        .assert()
+        .failure();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Database Error Cases
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_database_search_no_results() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("empty.db");
+
+    aim()
+        .args(["database", "init", "--path", db_path.to_str().unwrap(), "--db-type", "sqlite"])
+        .assert()
+        .success();
+
+    aim()
+        .args(["database", "search", "--path", db_path.to_str().unwrap(), "nonexistent query"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_database_store_nonexistent_file() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+
+    aim()
+        .args(["database", "init", "--path", db_path.to_str().unwrap(), "--db-type", "sqlite"])
+        .assert()
+        .success();
+
+    aim()
+        .args(["database", "store", "--path", db_path.to_str().unwrap(), "--input", "nonexistent_file.txt"])
+        .assert()
+        .failure();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Card Error Cases
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_card_validate_nonexistent_file() {
+    aim()
+        .args(["card", "validate", "no-such-card.json"])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn test_cli_card_show_nonexistent_file() {
+    aim()
+        .args(["card", "show", "no-such-card.json"])
+        .assert()
+        .failure();
+}
+
+// ──────────────────────────────────────────────────────────────
+// SQLite Backend — Extended
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_sqlite_versions_with_cache() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["--sqlite-versions", "init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["--sqlite-versions", "cache"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_init_twice_same_dir() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}

@@ -583,7 +583,7 @@ pub enum CloudCommands {
         bucket: String,
 
         /// Prefix/folder path (optional)
-        #[arg(short = 'p', long)]
+        #[arg(short = 'x', long)]
         prefix: Option<String>,
     },
 

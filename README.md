@@ -14,13 +14,13 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 
 ## Quick Links
 
-| | | |
-|---|---|---|
-| [Top 10 Features](#-top-10-features-users-love) | [Quick Start](#-quick-start) | [CLI Reference](docs/CLI.md) |
-| [Feature Comparison](#-quick-feature-comparison) | [Documentation](#-documentation) | [Cloud Storage](docs/CLOUD_STORAGE.md) |
-| [Supported Formats](#-supported-model-formats) | [Security & Compliance](#-security--compliance) | [RAG & MCP Tools](docs/RAG.md) |
-| [Architecture](#architecture) | [Testing & Quality](#-testing--quality) | [Performance](#-performance-benchmarks) |
-| [Model Cards](docs/MODEL_CARDS.md) | [Version Control](docs/VERSION_CONTROL.md) | [Contributing](#-contributing) |
+|                                                  |                                                 |                                         |
+| ------------------------------------------------ | ----------------------------------------------- | --------------------------------------- |
+| [Top 10 Features](#-top-10-features-users-love)  | [Quick Start](#-quick-start)                    | [CLI Reference](docs/CLI.md)            |
+| [Feature Comparison](#-quick-feature-comparison) | [Documentation](#-documentation)                | [Cloud Storage](docs/CLOUD_STORAGE.md)  |
+| [Supported Formats](#-supported-model-formats)   | [Security & Compliance](#-security--compliance) | [RAG & MCP Tools](docs/RAG.md)          |
+| [Architecture](#architecture)                    | [Testing & Quality](#-testing--quality)         | [Performance](#-performance-benchmarks) |
+| [Model Cards](docs/MODEL_CARDS.md)               | [Version Control](docs/VERSION_CONTROL.md)      | [Contributing](#-contributing)          |
 
 ## ✨ Top 10 Features Users Love
 
@@ -907,20 +907,20 @@ User Passphrase
 
 Key benchmarks from [docs/PERFORMANCE.md](docs/PERFORMANCE.md) (Criterion 0.5, Windows x86_64, `--release`):
 
-| Operation | Size/Endpoint | Median | Notes |
-|-----------|--------------|--------|-------|
-| AES-256-GCM encrypt | 1 KB | ~1 µs | ~1 GB/s throughput |
-| AES-256-GCM encrypt | 1 MB | ~3.5 ms | ~300 MB/s throughput |
-| Argon2id key derivation | — | ~353 ms | Intentionally slow (64 MB, 3 iter) |
-| SHA-256 hash | 1 MB | ~571 µs | |
-| Vault store (E2E) | 1 KB | ~46 ms | Dominated by Argon2id |
-| Vault retrieve (E2E) | 1 KB | ~25 ms | Dominated by Argon2id |
-| Format detection | — | ~462 ns | `from_extension()` |
-| Model card → JSON | — | ~4.4 µs | `to_json()` |
-| Model card → Markdown | — | ~1.5 µs | `to_markdown()` |
-| REST `/health` | GET | ~90 ms | Includes per-request vault setup |
-| REST `/auth/token` | POST | ~311 ms | JWT generation |
-| REST `/models` | GET | ~195 ms | List models |
+| Operation               | Size/Endpoint | Median  | Notes                              |
+| ----------------------- | ------------- | ------- | ---------------------------------- |
+| AES-256-GCM encrypt     | 1 KB          | ~1 µs   | ~1 GB/s throughput                 |
+| AES-256-GCM encrypt     | 1 MB          | ~3.5 ms | ~300 MB/s throughput               |
+| Argon2id key derivation | —             | ~353 ms | Intentionally slow (64 MB, 3 iter) |
+| SHA-256 hash            | 1 MB          | ~571 µs |                                    |
+| Vault store (E2E)       | 1 KB          | ~46 ms  | Dominated by Argon2id              |
+| Vault retrieve (E2E)    | 1 KB          | ~25 ms  | Dominated by Argon2id              |
+| Format detection        | —             | ~462 ns | `from_extension()`                 |
+| Model card → JSON       | —             | ~4.4 µs | `to_json()`                        |
+| Model card → Markdown   | —             | ~1.5 µs | `to_markdown()`                    |
+| REST `/health`          | GET           | ~90 ms  | Includes per-request vault setup   |
+| REST `/auth/token`      | POST          | ~311 ms | JWT generation                     |
+| REST `/models`          | GET           | ~195 ms | List models                        |
 
 ```bash
 cargo bench                                    # All benchmarks
