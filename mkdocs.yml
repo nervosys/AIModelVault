@@ -9,7 +9,7 @@ site_author: NERVOSYS AI Team
 site_url: https://aimodelvault.nervosys.ai/mkdocs/
 repo_url: https://github.com/nervosys/AIModelVault
 repo_name: nervosys/AIModelVault
-copyright: "&copy; 2026 NERVOSYS. Licensed under AGPL-3.0-or-later."
+copyright: "&copy; 2025-2026 NERVOSYS. Licensed under AGPL-3.0-or-later."
 
 docs_dir: docs
 site_dir: website/public/mkdocs

@@ -241,7 +241,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="text-sm text-[var(--color-text-secondary)] font-mono uppercase tracking-wider">
-              &copy; 2026 NERVOSYS &middot; AGPL-3.0-or-later
+              &copy; 2025-2026 NERVOSYS &middot; AGPL-3.0-or-later
             </div>
             <div className="flex gap-6 text-sm font-mono uppercase tracking-wider">
               <a href="https://github.com/nervosys/AIModelVault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">GitHub</a>

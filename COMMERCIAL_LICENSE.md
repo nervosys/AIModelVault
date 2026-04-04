@@ -31,4 +31,4 @@ For commercial licensing inquiries:
 
 ---
 
-Copyright (c) 2024–2026 NERVOSYS AI. All rights reserved.
+Copyright (c) 2025–2026 NERVOSYS AI. All rights reserved.
