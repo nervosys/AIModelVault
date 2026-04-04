@@ -383,7 +383,8 @@ mod tests {
             chunk_size: 1024,
             total_chunks: 1,
             original_size: 100,
-        }.to_bytes();
+        }
+        .to_bytes();
         header_bytes[4] = 99; // invalid version
         let result = StreamHeader::from_bytes(&header_bytes);
         assert!(result.is_err());

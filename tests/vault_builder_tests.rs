@@ -451,9 +451,7 @@ fn test_events_emitted_on_delete() {
 
     let data = vec![3u8; 16];
     let metadata = ModelMetadata::new("ev-del".to_string(), ModelFormat::ONNX);
-    vault
-        .store_model("ev-del", data, metadata, None)
-        .unwrap();
+    vault.store_model("ev-del", data, metadata, None).unwrap();
     vault.delete_version("ev-del", 1).unwrap();
 
     let recorded = events.lock().unwrap();

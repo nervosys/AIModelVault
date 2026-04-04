@@ -5,11 +5,11 @@
 
 site_name: AI Model Vault
 site_description: Universal cross-platform secure vault for AI model storage, versioning, and management
-site_author: NervoSys AI Team
+site_author: NERVOSYS AI Team
 site_url: https://aimodelvault.nervosys.ai/mkdocs/
 repo_url: https://github.com/nervosys/AIModelVault
 repo_name: nervosys/AIModelVault
-copyright: "&copy; 2026 NervoSys. Licensed under AGPL-3.0-or-later."
+copyright: "&copy; 2026 NERVOSYS. Licensed under AGPL-3.0-or-later."
 
 docs_dir: docs
 site_dir: website/public/mkdocs

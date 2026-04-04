@@ -66,11 +66,11 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed top-[var(--header-height)] left-0 bottom-0 w-[var(--sidebar-width)] overflow-y-auto border-r border-[var(--color-border)] bg-[var(--color-sidebar-bg)] hidden lg:block">
+    <aside className="fixed top-[var(--header-height)] left-0 bottom-0 w-[var(--sidebar-width)] overflow-y-auto border-r border-[var(--color-border)] bg-[var(--color-sidebar-bg)] hidden lg:block theme-transition">
       <nav className="p-4 pb-20">
         {navigation.map((section) => (
           <div key={section.title} className="mb-6">
-            <h3 className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+            <h3 className="px-3 mb-1.5 text-xs font-mono font-bold uppercase tracking-[0.2em] text-[var(--color-primary)] opacity-60">
               {section.title}
             </h3>
             <ul className="space-y-0.5">
@@ -80,9 +80,9 @@ export default function Sidebar() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`block px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      className={`block px-3 py-1.5 rounded text-sm font-mono transition-all ${
                         isActive
-                          ? "bg-[var(--color-sidebar-active)] text-[var(--color-primary)] font-medium"
+                          ? "bg-[var(--color-sidebar-active)] text-[var(--color-primary)] font-medium border-l-2 border-[var(--color-primary)]"
                           : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-sidebar-hover)]"
                       }`}
                     >

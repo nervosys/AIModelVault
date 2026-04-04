@@ -899,7 +899,10 @@ mod tests {
     fn test_estimate_parameters_custom_format() {
         // Covers L411 — wildcard match arm in estimate_parameters for Custom format
         let data = vec![0u8; 1024]; // 1KB
-        let meta = ModelMetadata::new("custom_fmt".to_string(), ModelFormat::Custom("myformat".to_string()));
+        let meta = ModelMetadata::new(
+            "custom_fmt".to_string(),
+            ModelFormat::Custom("myformat".to_string()),
+        );
         let analysis = ModelAnalyzer::analyze(&data, &meta);
         // Custom format should hit the wildcard `_ => Some(base_estimate)` at L411
         assert!(analysis.estimated_parameters.is_some());

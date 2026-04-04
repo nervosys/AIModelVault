@@ -921,7 +921,7 @@ Parse error message includes raw error detail that could leak vault state inform
 
 - **Build:** `cargo check --features full` — ✅ Clean
 - **Clippy:** `cargo clippy --features full -- -D warnings` — ✅ Zero warnings
-- **Tests:** `cargo test --features full` — ✅ 1,818 passed, 0 failed
+- **Tests:** `cargo test --features full` — ✅ 1,831 passed, 0 failed
 
 ---
 

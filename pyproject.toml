@@ -9,7 +9,7 @@ description = "Universal cross-platform XDG-compliant secure vault for AI model 
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "AGPL-3.0-or-later" }
-authors = [{ name = "NervoSys AI Team" }]
+authors = [{ name = "NERVOSYS AI Team" }]
 keywords = ["ai", "ml", "vault", "security", "model-conversion", "encryption"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

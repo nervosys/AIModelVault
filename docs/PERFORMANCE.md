@@ -106,7 +106,7 @@ All benchmarks run on the default (non-GPU) code path.
 | Lines     | 15,187 / 17,786           |
 | Coverage  | **85.4%**                 |
 | Lib tests | 623                       |
-| Total     | 1,818 (lib + integration) |
+| Total     | 1,831 (lib + integration) |
 
 > Note: Line counts include CLI handlers (binary code at 0% library-only coverage).
 > Library-only coverage remains above 92%.

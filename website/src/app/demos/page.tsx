@@ -63,12 +63,12 @@ export default function DemosPage() {
   return (
     <div className="min-h-[calc(100vh-var(--header-height))]">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#0d1117] via-[#161b22] to-[#0d1117] text-white">
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 text-center">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
             CLI Demos
           </h1>
-          <p className="text-lg text-blue-200 max-w-2xl mx-auto">
+          <p className="text-xl text-blue-200 max-w-2xl mx-auto">
             Animated walkthroughs of real AI Model Vault workflows.
             Click any video to play.
           </p>
@@ -83,7 +83,7 @@ export default function DemosPage() {
               key={demo.src}
               className={`flex flex-col ${
                 i % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"
-              } gap-8 items-center`}
+              } gap-8 items-start`}
             >
               <div className="lg:w-3/5">
                 <VideoCard
@@ -94,18 +94,18 @@ export default function DemosPage() {
                 />
               </div>
               <div className="lg:w-2/5 space-y-4">
-                <h2 className="text-2xl font-bold">{demo.title}</h2>
+                <h2 className="text-3xl font-bold">{demo.title}</h2>
                 <p className="text-[var(--color-text-secondary)]">
                   {demo.description}
                 </p>
                 <div className="space-y-1.5">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                  <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
                     Commands shown
                   </h4>
                   {demo.commands.map((cmd) => (
                     <div
                       key={cmd}
-                      className="font-mono text-sm bg-[var(--color-bg-code)] text-green-400 px-3 py-1.5 rounded border border-[var(--color-border)]"
+                      className="font-mono text-base bg-[var(--color-bg-code)] text-emerald-400 px-3 py-1.5 rounded border border-[var(--color-border)]"
                     >
                       <span className="text-gray-500">$ </span>
                       {cmd}
@@ -121,20 +121,20 @@ export default function DemosPage() {
       {/* CTA */}
       <section className="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <h2 className="text-2xl font-bold mb-4">Ready to try it?</h2>
-          <p className="text-[var(--color-text-secondary)] mb-6 max-w-xl mx-auto">
+          <h2 className="text-3xl font-bold mb-4">Ready to try it?</h2>
+          <p className="text-lg text-[var(--color-text-secondary)] mb-6 max-w-xl mx-auto">
             Install AI Model Vault and start managing your models in minutes.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/docs/quickstart"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-[var(--color-primary)] text-white font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 rounded bg-[var(--color-primary)] text-white font-semibold hover:bg-[var(--color-primary-dark)] transition-colors"
             >
               Get Started
             </Link>
             <Link
               href="/"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-[var(--color-border)] font-semibold hover:border-[var(--color-primary)]/50 transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 rounded border border-[var(--color-border)] font-semibold hover:border-[var(--color-primary)]/50 transition-colors"
             >
               Back to Home
             </Link>

@@ -11,7 +11,7 @@
 All **v1.2.1 planned features are COMPLETE**. The system is production-ready with comprehensive testing, documentation, and examples.
 
 **Stats**:
-- ✅ **1,818 tests passing** (100%)
+- ✅ **1,831 tests passing** (100%)
 - ✅ **20 REST API endpoints** with JWT auth + RBAC (Admin/Operator/Viewer)
 - ✅ **GraphQL API** — queries, mutations, and playground at `/graphql`
 - ✅ **Domain-specific error types** — `CryptoError`, `StorageError`, `ConversionError`

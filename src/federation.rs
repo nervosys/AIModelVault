@@ -1147,7 +1147,9 @@ mod tests {
             file_path: "models/cp-1.enc".to_string(),
         }];
 
-        let manifest = mgr.generate_manifest(vec![("my-model".to_string(), versions)]).await;
+        let manifest = mgr
+            .generate_manifest(vec![("my-model".to_string(), versions)])
+            .await;
         assert_eq!(manifest.models.len(), 1);
         assert_eq!(manifest.models[0].name, "my-model");
         assert_eq!(manifest.models[0].versions.len(), 1);

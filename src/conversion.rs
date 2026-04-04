@@ -2756,32 +2756,86 @@ mod tests {
 
     #[test]
     fn test_safetensors_dtype_to_pytorch_all_types() {
-        assert_eq!(safetensors_dtype_to_pytorch("F64"), Some(("DoubleStorage", 8)));
-        assert_eq!(safetensors_dtype_to_pytorch("F32"), Some(("FloatStorage", 4)));
-        assert_eq!(safetensors_dtype_to_pytorch("F16"), Some(("HalfStorage", 2)));
-        assert_eq!(safetensors_dtype_to_pytorch("BF16"), Some(("BFloat16Storage", 2)));
-        assert_eq!(safetensors_dtype_to_pytorch("I64"), Some(("LongStorage", 8)));
+        assert_eq!(
+            safetensors_dtype_to_pytorch("F64"),
+            Some(("DoubleStorage", 8))
+        );
+        assert_eq!(
+            safetensors_dtype_to_pytorch("F32"),
+            Some(("FloatStorage", 4))
+        );
+        assert_eq!(
+            safetensors_dtype_to_pytorch("F16"),
+            Some(("HalfStorage", 2))
+        );
+        assert_eq!(
+            safetensors_dtype_to_pytorch("BF16"),
+            Some(("BFloat16Storage", 2))
+        );
+        assert_eq!(
+            safetensors_dtype_to_pytorch("I64"),
+            Some(("LongStorage", 8))
+        );
         assert_eq!(safetensors_dtype_to_pytorch("I32"), Some(("IntStorage", 4)));
-        assert_eq!(safetensors_dtype_to_pytorch("I16"), Some(("ShortStorage", 2)));
+        assert_eq!(
+            safetensors_dtype_to_pytorch("I16"),
+            Some(("ShortStorage", 2))
+        );
         assert_eq!(safetensors_dtype_to_pytorch("I8"), Some(("CharStorage", 1)));
         assert_eq!(safetensors_dtype_to_pytorch("U8"), Some(("ByteStorage", 1)));
-        assert_eq!(safetensors_dtype_to_pytorch("BOOL"), Some(("BoolStorage", 1)));
+        assert_eq!(
+            safetensors_dtype_to_pytorch("BOOL"),
+            Some(("BoolStorage", 1))
+        );
         assert_eq!(safetensors_dtype_to_pytorch("UNKNOWN"), None);
     }
 
     #[test]
     fn test_pytorch_storage_to_safetensors_dtype_all_types() {
-        assert_eq!(pytorch_storage_to_safetensors_dtype("DoubleStorage"), Some(("F64", 8)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("FloatStorage"), Some(("F32", 4)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("HalfStorage"), Some(("F16", 2)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("BFloat16Storage"), Some(("BF16", 2)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("LongStorage"), Some(("I64", 8)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("IntStorage"), Some(("I32", 4)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("ShortStorage"), Some(("I16", 2)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("CharStorage"), Some(("I8", 1)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("ByteStorage"), Some(("U8", 1)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("UntypedStorage"), Some(("U8", 1)));
-        assert_eq!(pytorch_storage_to_safetensors_dtype("BoolStorage"), Some(("BOOL", 1)));
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("DoubleStorage"),
+            Some(("F64", 8))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("FloatStorage"),
+            Some(("F32", 4))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("HalfStorage"),
+            Some(("F16", 2))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("BFloat16Storage"),
+            Some(("BF16", 2))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("LongStorage"),
+            Some(("I64", 8))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("IntStorage"),
+            Some(("I32", 4))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("ShortStorage"),
+            Some(("I16", 2))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("CharStorage"),
+            Some(("I8", 1))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("ByteStorage"),
+            Some(("U8", 1))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("UntypedStorage"),
+            Some(("U8", 1))
+        );
+        assert_eq!(
+            pytorch_storage_to_safetensors_dtype("BoolStorage"),
+            Some(("BOOL", 1))
+        );
         assert_eq!(pytorch_storage_to_safetensors_dtype("UnknownStorage"), None);
     }
 

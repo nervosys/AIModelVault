@@ -196,7 +196,8 @@ mod tests {
     fn test_gzip_compress_level_none() {
         // Covers CompressionLevel::None -> FlateCompression::none() conversion
         let data = b"test data for level none compression".to_vec();
-        let compressed = compress(&data, CompressionAlgorithm::Gzip, CompressionLevel::None).unwrap();
+        let compressed =
+            compress(&data, CompressionAlgorithm::Gzip, CompressionLevel::None).unwrap();
         let decompressed = decompress(&compressed, CompressionAlgorithm::Gzip).unwrap();
         assert_eq!(decompressed, data);
     }

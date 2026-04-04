@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { navigation } from "./Sidebar";
 import { usePathname } from "next/navigation";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -11,11 +12,11 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 h-[var(--header-height)] bg-[var(--color-bg)]/95 backdrop-blur border-b border-[var(--color-border)] z-50">
+      <header className="fixed top-0 left-0 right-0 h-[var(--header-height)] bg-[var(--color-bg)]/95 backdrop-blur-md border-b border-[var(--color-border)] z-50 theme-transition">
         <div className="h-full flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
-              className="lg:hidden p-2 rounded-md hover:bg-[var(--color-bg-secondary)]"
+              className="lg:hidden p-2 rounded hover:bg-[var(--color-bg-secondary)] transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
             >
@@ -27,51 +28,55 @@ export default function Header() {
                 )}
               </svg>
             </button>
-            <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
+            <Link href="/" className="flex items-center gap-2.5 font-semibold text-lg group">
+              {/* Vault lock icon */}
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="group-hover:drop-shadow-[0_0_8px_var(--color-glow)] transition-all">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
+                <circle cx="12" cy="16" r="1" />
               </svg>
-              <span>AI Model Vault</span>
+              <span className="tracking-tight font-mono font-bold text-lg">AIM</span>
             </Link>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <Link href="/docs" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
-              Docs
-            </Link>
-            <a href="/mkdocs/" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
-              Full Docs
-            </a>
-            <Link href="/demos" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
-              Demos
-            </Link>
-            <Link href="/docs/api" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
-              API
-            </Link>
-            <Link href="/docs/quickstart" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors">
-              Quick Start
-            </Link>
-            <a
-              href="https://github.com/nervosys/AIModelVault"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
-            >
-              GitHub
-            </a>
+          <nav className="hidden lg:flex items-center gap-1 text-sm font-mono">
+            {[
+              { href: "/docs", label: "Docs", internal: true },
+              { href: "/demos", label: "Demos", internal: true },
+              { href: "/docs/api", label: "API", internal: true },
+              { href: "/docs/quickstart", label: "Quick Start", internal: true },
+              { href: "https://github.com/nervosys/AIModelVault", label: "GitHub", internal: false, external: true },
+            ].map((link) => {
+              const isActive = pathname === link.href;
+              const cls = `px-3 py-1.5 rounded transition-colors text-sm uppercase tracking-wider ${
+                isActive
+                  ? "text-[var(--color-primary)] bg-[var(--color-glow)]"
+                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]"
+              }`;
+              if (link.external) {
+                return (
+                  <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className={cls}>
+                    {link.label}
+                  </a>
+                );
+              }
+              if (!link.internal) {
+                return <a key={link.href} href={link.href} className={cls}>{link.label}</a>;
+              }
+              return <Link key={link.href} href={link.href} className={cls}>{link.label}</Link>;
+            })}
           </nav>
 
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            <ThemeToggle />
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-sm font-mono font-bold uppercase tracking-wider border border-[var(--color-primary)]/25 text-[var(--color-primary)] bg-[var(--color-glow)]">
               v1.2.1
             </span>
             <a
               href="https://crates.io/crates/ai-model-vault"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline-flex px-3 py-1.5 rounded-md text-sm font-medium bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-colors"
+              className="hidden sm:inline-flex px-3 py-1.5 rounded text-sm font-mono font-bold uppercase tracking-wider bg-[var(--color-primary)] text-black hover:opacity-90 transition-all"
             >
               Install
             </a>
@@ -83,14 +88,14 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
-            className="fixed inset-0 bg-black/30"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="fixed top-[var(--header-height)] left-0 bottom-0 w-72 bg-[var(--color-sidebar-bg)] border-r border-[var(--color-border)] overflow-y-auto z-50">
             <nav className="p-4 pb-20">
               {navigation.map((section) => (
                 <div key={section.title} className="mb-6">
-                  <h3 className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                  <h3 className="px-3 mb-1 text-xs font-mono font-bold uppercase tracking-[0.2em] text-[var(--color-primary)] opacity-60">
                     {section.title}
                   </h3>
                   <ul className="space-y-0.5">
@@ -101,10 +106,10 @@ export default function Header() {
                           <Link
                             href={item.href}
                             onClick={() => setMobileMenuOpen(false)}
-                            className={`block px-3 py-1.5 rounded-md text-sm transition-colors ${
+                            className={`block px-3 py-1.5 rounded text-sm font-mono transition-colors ${
                               isActive
                                 ? "bg-[var(--color-sidebar-active)] text-[var(--color-primary)] font-medium"
-                                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+                                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-sidebar-hover)]"
                             }`}
                           >
                             {item.label}

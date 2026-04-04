@@ -63,14 +63,14 @@ fn demo_llm_model_card() -> Result<()> {
         citation: Some(
             r#"@misc{nervosyschat7b2024,
   title={NervosysChat-7B: Enterprise Conversational AI},
-  author={NervoSys AI Team},
+  author={NERVOSYS AI Team},
   year={2024},
   url={https://github.com/nervosys/nervosyschat}
 }"#
             .to_string(),
         ),
         developers: vec![
-            "NervoSys AI Team".to_string(),
+            "NERVOSYS AI Team".to_string(),
             "Research Lab Contributors".to_string(),
         ],
         contact: Some("ai-team@nervosys.ai".to_string()),

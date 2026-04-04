@@ -31,9 +31,10 @@
     {
       "type": "cli",
       "binary": "aim",
-      "description": "Command-line interface with 30+ subcommands for vault, model, cloud, database, and utility operations.",
+      "description": "Command-line interface with 30+ subcommands for vault, model, cloud, database, and utility operations. Use `aim introspect` for machine-readable CLI schema discovery.",
       "install": "cargo install ai-model-vault",
       "help": "aim --help",
+      "introspect": "aim introspect --format json",
       "exit_codes": {
         "0": "Success",
         "1": "General error",
@@ -154,6 +155,13 @@
     "gpu_acceleration": {
       "description": "GPU-accelerated encryption using OpenCL",
       "feature_flag": "gpu"
+    },
+    "agent_discovery": {
+      "description": "Machine-readable CLI schema introspection for AI agent bootstrapping",
+      "commands": ["aim introspect"],
+      "output_formats": ["json", "yaml", "jsonld"],
+      "flags": ["--compact"],
+      "usage": "aim introspect --format json | jq '.commands[]'"
     }
   },
 

@@ -48,9 +48,7 @@ impl SqliteVersionRepo {
 
         // Enable WAL mode for better concurrent read performance
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
-            .map_err(|e| {
-                VaultError::StorageError(format!("Failed to set PRAGMA: {}", e))
-            })?;
+            .map_err(|e| VaultError::StorageError(format!("Failed to set PRAGMA: {}", e)))?;
 
         // Create tables
         conn.execute_batch(
@@ -78,9 +76,7 @@ impl SqliteVersionRepo {
             CREATE INDEX IF NOT EXISTS idx_versions_model ON versions(model_name);
             CREATE INDEX IF NOT EXISTS idx_versions_model_ver ON versions(model_name, version);",
         )
-        .map_err(|e| {
-            VaultError::StorageError(format!("Failed to create version tables: {}", e))
-        })?;
+        .map_err(|e| VaultError::StorageError(format!("Failed to create version tables: {}", e)))?;
 
         let mut repo = Self {
             conn: std::sync::Arc::new(std::sync::Mutex::new(conn)),
@@ -126,9 +122,7 @@ impl SqliteVersionRepo {
                 PRIMARY KEY(model_name, version, key)
             );",
         )
-        .map_err(|e| {
-            VaultError::StorageError(format!("Failed to create tables: {}", e))
-        })?;
+        .map_err(|e| VaultError::StorageError(format!("Failed to create tables: {}", e)))?;
 
         Ok(Self {
             conn: std::sync::Arc::new(std::sync::Mutex::new(conn)),
@@ -147,13 +141,14 @@ impl SqliteVersionRepo {
         let contents = std::fs::read_to_string(&json_path)?;
         let versions: HashMap<String, Vec<ModelVersion>> = serde_json::from_str(&contents)?;
 
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
-        let tx = conn.unchecked_transaction().map_err(|e| {
-            VaultError::StorageError(format!("Transaction failed: {}", e))
-        })?;
+        let tx = conn
+            .unchecked_transaction()
+            .map_err(|e| VaultError::StorageError(format!("Transaction failed: {}", e)))?;
 
         for (model_name, model_versions) in &versions {
             for mv in model_versions {
@@ -197,9 +192,8 @@ impl SqliteVersionRepo {
             }
         }
 
-        tx.commit().map_err(|e| {
-            VaultError::StorageError(format!("Migration commit failed: {}", e))
-        })?;
+        tx.commit()
+            .map_err(|e| VaultError::StorageError(format!("Migration commit failed: {}", e)))?;
 
         // Rename the old file to mark migration as complete
         let migrated_path = self.vault_path.join("versions.json.migrated");
@@ -210,9 +204,10 @@ impl SqliteVersionRepo {
 
     /// Reload the in-memory cache from the database.
     fn reload_cache(&mut self) -> Result<()> {
-        let conn = self.conn.lock().map_err(|e| {
-            VaultError::StorageError(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
         let mut cache: HashMap<String, Vec<ModelVersion>> = HashMap::new();
 
@@ -252,9 +247,8 @@ impl SqliteVersionRepo {
             .map_err(|e| VaultError::StorageError(format!("Query failed: {}", e)))?;
 
         for row in rows {
-            let (model_name, mv) = row.map_err(|e| {
-                VaultError::StorageError(format!("Row read failed: {}", e))
-            })?;
+            let (model_name, mv) =
+                row.map_err(|e| VaultError::StorageError(format!("Row read failed: {}", e)))?;
             cache.entry(model_name).or_default().push(mv);
         }
 
@@ -275,9 +269,8 @@ impl SqliteVersionRepo {
             .map_err(|e| VaultError::StorageError(format!("Meta query failed: {}", e)))?;
 
         for row in meta_rows {
-            let (model_name, version, key, value) = row.map_err(|e| {
-                VaultError::StorageError(format!("Meta row read failed: {}", e))
-            })?;
+            let (model_name, version, key, value) =
+                row.map_err(|e| VaultError::StorageError(format!("Meta row read failed: {}", e)))?;
 
             if let Some(versions) = cache.get_mut(&model_name) {
                 if let Some(mv) = versions.iter_mut().find(|v| v.version == version) {
@@ -323,9 +316,10 @@ impl crate::traits::VersionRepo for SqliteVersionRepo {
     ) -> Result<ModelVersion> {
         // Determine next version number
         let version = {
-            let conn = self.conn.lock().map_err(|e| {
-                VaultError::StorageError(format!("Lock poisoned: {}", e))
-            })?;
+            let conn = self
+                .conn
+                .lock()
+                .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
             let max_ver: Option<u32> = conn
                 .query_row(
                     "SELECT MAX(version) FROM versions WHERE model_name = ?1",
@@ -341,13 +335,14 @@ impl crate::traits::VersionRepo for SqliteVersionRepo {
         let meta = metadata.unwrap_or_default();
 
         {
-            let conn = self.conn.lock().map_err(|e| {
-                VaultError::StorageError(format!("Lock poisoned: {}", e))
-            })?;
+            let conn = self
+                .conn
+                .lock()
+                .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
-            let tx = conn.unchecked_transaction().map_err(|e| {
-                VaultError::StorageError(format!("Transaction failed: {}", e))
-            })?;
+            let tx = conn
+                .unchecked_transaction()
+                .map_err(|e| VaultError::StorageError(format!("Transaction failed: {}", e)))?;
 
             tx.execute(
                 "INSERT INTO versions
@@ -367,9 +362,7 @@ impl crate::traits::VersionRepo for SqliteVersionRepo {
                     file_path,
                 ],
             )
-            .map_err(|e| {
-                VaultError::StorageError(format!("Insert version failed: {}", e))
-            })?;
+            .map_err(|e| VaultError::StorageError(format!("Insert version failed: {}", e)))?;
 
             for (key, value) in &meta {
                 tx.execute(
@@ -377,14 +370,11 @@ impl crate::traits::VersionRepo for SqliteVersionRepo {
                      VALUES (?1, ?2, ?3, ?4)",
                     rusqlite::params![model, version, key, value],
                 )
-                .map_err(|e| {
-                    VaultError::StorageError(format!("Insert metadata failed: {}", e))
-                })?;
+                .map_err(|e| VaultError::StorageError(format!("Insert metadata failed: {}", e)))?;
             }
 
-            tx.commit().map_err(|e| {
-                VaultError::StorageError(format!("Commit failed: {}", e))
-            })?;
+            tx.commit()
+                .map_err(|e| VaultError::StorageError(format!("Commit failed: {}", e)))?;
         }
 
         let mv = ModelVersion {
@@ -450,26 +440,23 @@ impl crate::traits::VersionRepo for SqliteVersionRepo {
 
     fn delete_version(&mut self, model: &str, version: u32) -> Result<bool> {
         let deleted = {
-            let conn = self.conn.lock().map_err(|e| {
-                VaultError::StorageError(format!("Lock poisoned: {}", e))
-            })?;
+            let conn = self
+                .conn
+                .lock()
+                .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
             let count = conn
                 .execute(
                     "DELETE FROM versions WHERE model_name = ?1 AND version = ?2",
                     rusqlite::params![model, version],
                 )
-                .map_err(|e| {
-                    VaultError::StorageError(format!("Delete failed: {}", e))
-                })?;
+                .map_err(|e| VaultError::StorageError(format!("Delete failed: {}", e)))?;
 
             conn.execute(
                 "DELETE FROM version_metadata WHERE model_name = ?1 AND version = ?2",
                 rusqlite::params![model, version],
             )
-            .map_err(|e| {
-                VaultError::StorageError(format!("Delete metadata failed: {}", e))
-            })?;
+            .map_err(|e| VaultError::StorageError(format!("Delete metadata failed: {}", e)))?;
 
             count > 0
         };
@@ -484,9 +471,10 @@ impl crate::traits::VersionRepo for SqliteVersionRepo {
 
     fn cleanup_old_versions(&mut self, model: &str, keep_count: usize) -> Result<Vec<u32>> {
         let to_delete: Vec<u32> = {
-            let conn = self.conn.lock().map_err(|e| {
-                VaultError::StorageError(format!("Lock poisoned: {}", e))
-            })?;
+            let conn = self
+                .conn
+                .lock()
+                .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
             // Get versions to delete (all except the N most recent)
             let mut stmt = conn
@@ -532,18 +520,17 @@ impl crate::traits::VersionRepo for SqliteVersionRepo {
         value: String,
     ) -> Result<()> {
         {
-            let conn = self.conn.lock().map_err(|e| {
-                VaultError::StorageError(format!("Lock poisoned: {}", e))
-            })?;
+            let conn = self
+                .conn
+                .lock()
+                .map_err(|e| VaultError::StorageError(format!("Lock poisoned: {}", e)))?;
 
             conn.execute(
                 "INSERT OR REPLACE INTO version_metadata (model_name, version, key, value)
                  VALUES (?1, ?2, ?3, ?4)",
                 rusqlite::params![model, version, key, value],
             )
-            .map_err(|e| {
-                VaultError::StorageError(format!("Upsert metadata failed: {}", e))
-            })?;
+            .map_err(|e| VaultError::StorageError(format!("Upsert metadata failed: {}", e)))?;
         }
 
         // Update cache
@@ -825,9 +812,12 @@ mod tests {
     #[test]
     fn test_sqlite_lineage_chain() {
         let mut repo = SqliteVersionRepo::in_memory().unwrap();
-        repo.add_version("m", "f1.enc", "pt", 100, 50, "c1", None, None).unwrap();
-        repo.add_version("m", "f2.enc", "pt", 100, 50, "c2", None, Some(1)).unwrap();
-        repo.add_version("m", "f3.enc", "pt", 100, 50, "c3", None, Some(2)).unwrap();
+        repo.add_version("m", "f1.enc", "pt", 100, 50, "c1", None, None)
+            .unwrap();
+        repo.add_version("m", "f2.enc", "pt", 100, 50, "c2", None, Some(1))
+            .unwrap();
+        repo.add_version("m", "f3.enc", "pt", 100, 50, "c3", None, Some(2))
+            .unwrap();
 
         let lineage = repo.get_lineage("m", 3);
         assert_eq!(lineage.len(), 3);
@@ -838,7 +828,8 @@ mod tests {
     #[test]
     fn test_sqlite_cleanup_noop() {
         let mut repo = SqliteVersionRepo::in_memory().unwrap();
-        repo.add_version("m", "f.enc", "pt", 100, 50, "c1", None, None).unwrap();
+        repo.add_version("m", "f.enc", "pt", 100, 50, "c1", None, None)
+            .unwrap();
         let deleted = repo.cleanup_old_versions("m", 10).unwrap();
         assert!(deleted.is_empty());
     }
@@ -900,9 +891,12 @@ mod tests {
     fn test_sqlite_lineage_broken_chain() {
         // Lineage with a missing parent version
         let mut repo = SqliteVersionRepo::in_memory().unwrap();
-        repo.add_version("m", "f1.enc", "pt", 100, 50, "c1", None, None).unwrap();
-        repo.add_version("m", "f2.enc", "pt", 100, 50, "c2", None, Some(1)).unwrap();
-        repo.add_version("m", "f3.enc", "pt", 100, 50, "c3", None, Some(2)).unwrap();
+        repo.add_version("m", "f1.enc", "pt", 100, 50, "c1", None, None)
+            .unwrap();
+        repo.add_version("m", "f2.enc", "pt", 100, 50, "c2", None, Some(1))
+            .unwrap();
+        repo.add_version("m", "f3.enc", "pt", 100, 50, "c3", None, Some(2))
+            .unwrap();
         // Delete version 1, breaking the chain
         repo.delete_version("m", 1).unwrap();
         // Lineage from v3 should stop at v2 (parent v1 missing)
@@ -915,9 +909,12 @@ mod tests {
     #[test]
     fn test_sqlite_get_version_specific_and_latest() {
         let mut repo = SqliteVersionRepo::in_memory().unwrap();
-        repo.add_version("m", "f1.enc", "pt", 100, 50, "c1", None, None).unwrap();
-        repo.add_version("m", "f2.enc", "onnx", 200, 100, "c2", None, Some(1)).unwrap();
-        repo.add_version("m", "f3.enc", "st", 300, 150, "c3", None, Some(2)).unwrap();
+        repo.add_version("m", "f1.enc", "pt", 100, 50, "c1", None, None)
+            .unwrap();
+        repo.add_version("m", "f2.enc", "onnx", 200, 100, "c2", None, Some(1))
+            .unwrap();
+        repo.add_version("m", "f3.enc", "st", 300, 150, "c3", None, Some(2))
+            .unwrap();
 
         // Get specific versions
         assert_eq!(repo.get_version("m", Some(1)).unwrap().format, "pt");
@@ -945,9 +942,12 @@ mod tests {
     #[test]
     fn test_sqlite_multiple_models_independent() {
         let mut repo = SqliteVersionRepo::in_memory().unwrap();
-        repo.add_version("alpha", "a.enc", "pt", 100, 50, "ca", None, None).unwrap();
-        repo.add_version("beta", "b.enc", "onnx", 200, 100, "cb", None, None).unwrap();
-        repo.add_version("alpha", "a2.enc", "st", 300, 150, "ca2", None, Some(1)).unwrap();
+        repo.add_version("alpha", "a.enc", "pt", 100, 50, "ca", None, None)
+            .unwrap();
+        repo.add_version("beta", "b.enc", "onnx", 200, 100, "cb", None, None)
+            .unwrap();
+        repo.add_version("alpha", "a2.enc", "st", 300, 150, "ca2", None, Some(1))
+            .unwrap();
 
         // Alpha has 2 versions, beta has 1
         assert_eq!(repo.list_versions("alpha").len(), 2);
@@ -966,9 +966,15 @@ mod tests {
     #[test]
     fn test_sqlite_add_version_auto_increment() {
         let mut repo = SqliteVersionRepo::in_memory().unwrap();
-        let v1 = repo.add_version("m", "f.enc", "pt", 100, 50, "c1", None, None).unwrap();
-        let v2 = repo.add_version("m", "f2.enc", "pt", 100, 50, "c2", None, None).unwrap();
-        let v3 = repo.add_version("m", "f3.enc", "pt", 100, 50, "c3", None, None).unwrap();
+        let v1 = repo
+            .add_version("m", "f.enc", "pt", 100, 50, "c1", None, None)
+            .unwrap();
+        let v2 = repo
+            .add_version("m", "f2.enc", "pt", 100, 50, "c2", None, None)
+            .unwrap();
+        let v3 = repo
+            .add_version("m", "f3.enc", "pt", 100, 50, "c3", None, None)
+            .unwrap();
         assert_eq!(v1.version, 1);
         assert_eq!(v2.version, 2);
         assert_eq!(v3.version, 3);
@@ -977,11 +983,15 @@ mod tests {
     #[test]
     fn test_sqlite_update_metadata_multiple_keys() {
         let mut repo = SqliteVersionRepo::in_memory().unwrap();
-        repo.add_version("m", "f.enc", "pt", 100, 50, "c1", None, None).unwrap();
+        repo.add_version("m", "f.enc", "pt", 100, 50, "c1", None, None)
+            .unwrap();
 
-        repo.update_metadata("m", 1, "key1", "val1".to_string()).unwrap();
-        repo.update_metadata("m", 1, "key2", "val2".to_string()).unwrap();
-        repo.update_metadata("m", 1, "key3", "val3".to_string()).unwrap();
+        repo.update_metadata("m", 1, "key1", "val1".to_string())
+            .unwrap();
+        repo.update_metadata("m", 1, "key2", "val2".to_string())
+            .unwrap();
+        repo.update_metadata("m", 1, "key3", "val3".to_string())
+            .unwrap();
 
         assert_eq!(repo.get_metadata("m", 1, "key1"), Some("val1".to_string()));
         assert_eq!(repo.get_metadata("m", 1, "key2"), Some("val2".to_string()));
@@ -993,9 +1003,16 @@ mod tests {
         let mut repo = SqliteVersionRepo::in_memory().unwrap();
         for i in 0..10 {
             repo.add_version(
-                "m", &format!("f{}.enc", i), "pt", 100, 50, &format!("c{}", i),
-                None, if i > 0 { Some(i as u32) } else { None },
-            ).unwrap();
+                "m",
+                &format!("f{}.enc", i),
+                "pt",
+                100,
+                50,
+                &format!("c{}", i),
+                None,
+                if i > 0 { Some(i as u32) } else { None },
+            )
+            .unwrap();
         }
 
         let deleted = repo.cleanup_old_versions("m", 3).unwrap();
@@ -1027,8 +1044,9 @@ mod tests {
         meta.insert("author".to_string(), "migrator".to_string());
         meta.insert("task".to_string(), "classification".to_string());
 
-        versions.insert("migrated_model".to_string(), vec![
-            ModelVersion {
+        versions.insert(
+            "migrated_model".to_string(),
+            vec![ModelVersion {
                 version: 1,
                 checkpoint_id: "mig-v1".to_string(),
                 timestamp: Utc::now(),
@@ -1039,13 +1057,14 @@ mod tests {
                 checksum_sha256: "mig_chk".to_string(),
                 metadata: meta,
                 file_path: "migrated.enc".to_string(),
-            },
-        ]);
+            }],
+        );
 
         std::fs::write(
             vault_path.join("versions.json"),
             serde_json::to_string(&versions).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let repo = SqliteVersionRepo::new(vault_path).unwrap();
         let v = repo.get_version("migrated_model", Some(1)).unwrap();
@@ -1062,8 +1081,10 @@ mod tests {
             let mut repo = SqliteVersionRepo::new(dir.path()).unwrap();
             let mut meta = HashMap::new();
             meta.insert("framework".to_string(), "pytorch".to_string());
-            repo.add_version("persist", "f.enc", "pt", 100, 50, "c1", Some(meta), None).unwrap();
-            repo.update_metadata("persist", 1, "extra", "value".to_string()).unwrap();
+            repo.add_version("persist", "f.enc", "pt", 100, 50, "c1", Some(meta), None)
+                .unwrap();
+            repo.update_metadata("persist", 1, "extra", "value".to_string())
+                .unwrap();
         }
         // Reopen
         let repo2 = SqliteVersionRepo::new(dir.path()).unwrap();

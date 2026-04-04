@@ -459,7 +459,10 @@ mod tests {
         let hash = FipsCrypto::hash_sha256(b"hello");
         assert_eq!(hash.len(), 32);
         let hex = hex::encode(&hash);
-        assert_eq!(hex, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+        assert_eq!(
+            hex,
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        );
     }
 
     #[test]
@@ -467,7 +470,10 @@ mod tests {
         // Covers L228-229 — hash_sha256_hex
         let hex = FipsCrypto::hash_sha256_hex(b"hello");
         assert_eq!(hex.len(), 64);
-        assert_eq!(hex, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+        assert_eq!(
+            hex,
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        );
     }
 
     #[test]

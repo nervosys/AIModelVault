@@ -94,7 +94,6 @@ impl From<VaultError> for ApiError {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

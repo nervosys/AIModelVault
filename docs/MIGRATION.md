@@ -23,7 +23,7 @@ This document covers upgrading from any v0.x release of AI Model Vault to v1.0.0
 
 v1.0.0 is the first production-stable release of AI Model Vault. It encompasses
 all features from v0.1.0 through v0.5.0 with hardened security, comprehensive
-testing (1,667+ tests), and deployment-ready packaging.
+testing (1,831+ tests), and deployment-ready packaging.
 
 | Version    | Highlights                                                   |
 | ---------- | ------------------------------------------------------------ |

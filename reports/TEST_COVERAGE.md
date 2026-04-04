@@ -4,7 +4,7 @@
 Comprehensive test suite for AI Model Vault covering all major functionality areas.
 
 ## Test Statistics
-- **Total Tests**: 1,818
+- **Total Tests**: 1,831
   - Unit Tests (lib.rs): 623
   - CLI Tests: 17
   - Config/Error Tests: 22

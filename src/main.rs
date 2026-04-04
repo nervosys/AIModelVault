@@ -13,7 +13,8 @@ mod cli;
 use clap::Parser;
 use cli::args::{Cli, Commands};
 use cli::handlers::{
-    analyze, archive, card, cloud, convert, database, telemetry as telemetry_handler, vault,
+    analyze, archive, card, cloud, convert, database, introspect, telemetry as telemetry_handler,
+    vault,
 };
 
 use ai_model_vault::{telemetry, Result, VaultConfig};
@@ -149,6 +150,7 @@ fn main() -> Result<()> {
         Commands::Card { command } => card::handle_card(command, config, use_sqlite),
         Commands::Database { command } => database::handle_database(command),
         Commands::Telemetry { command } => telemetry_handler::handle_telemetry(command, config),
+        Commands::Introspect { format, compact } => introspect::handle_introspect(format, compact),
     };
 
     // Flush telemetry before exit

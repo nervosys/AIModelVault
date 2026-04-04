@@ -21,12 +21,12 @@ export default function CloudPage() {
           <tbody className="text-[var(--color-text-secondary)]">
             <tr className="border-b border-[var(--color-border)]">
               <td className="p-3 font-medium text-[var(--color-text)]">AWS S3</td>
-              <td className="p-3"><span className="text-green-600">Available</span></td>
+              <td className="p-3"><span className="text-emerald-600">Available</span></td>
               <td className="p-3">Full support via aws-sdk-s3</td>
             </tr>
             <tr className="border-b border-[var(--color-border)]">
               <td className="p-3 font-medium text-[var(--color-text)]">Azure Blob Storage</td>
-              <td className="p-3"><span className="text-green-600">Available</span></td>
+              <td className="p-3"><span className="text-emerald-600">Available</span></td>
               <td className="p-3">Full support via azure_storage_blobs</td>
             </tr>
             <tr className="border-b border-[var(--color-border)]">

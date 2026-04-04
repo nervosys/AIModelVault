@@ -67,7 +67,7 @@ AIM_HOST=0.0.0.0 AIM_PORT=8080 AIM_JWT_SECRET=my-secret aim serve`}</CodeBlock>
               <tr key={i} className="border-b border-[var(--color-border)]">
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                    method === "GET" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
+                    method === "GET" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" :
                     method === "POST" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
                     "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                   }`}>{method}</span>

@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           { href: "/docs/security", label: "Security", desc: "Encryption and compliance" },
           { href: "/docs/api", label: "REST API", desc: "14 REST endpoints" },
         ].map((item) => (
-          <a key={item.href} href={item.href} className="block p-4 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 transition-colors">
+          <a key={item.href} href={item.href} className="block p-4 rounded border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 transition-colors">
             <div className="font-semibold">{item.label}</div>
             <div className="text-sm text-[var(--color-text-secondary)]">{item.desc}</div>
           </a>

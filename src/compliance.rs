@@ -444,12 +444,7 @@ mod tests {
         assert!(status.mitre_attack_aligned);
         assert_eq!(status.cmmc_level, 2);
         // No crypto violations
-        assert!(
-            status
-                .violations
-                .iter()
-                .all(|v| v.standard != "FIPS 140-3")
-        );
+        assert!(status.violations.iter().all(|v| v.standard != "FIPS 140-3"));
     }
 
     #[test]
@@ -491,7 +486,7 @@ mod tests {
         checker.set_check_enabled("cmmc", false);
 
         let status = checker.run_all_checks().unwrap();
-        assert!(status.fips_140_3);    // returns true when disabled
+        assert!(status.fips_140_3); // returns true when disabled
         assert!(status.cve_scan_passed);
         assert!(status.mitre_attack_aligned);
         assert_eq!(status.cmmc_level, 0); // returns 0 when disabled

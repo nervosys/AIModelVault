@@ -204,7 +204,6 @@ pub async fn serve(vault_config: VaultConfig, api_config: ApiConfig) -> Result<(
     Ok(())
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

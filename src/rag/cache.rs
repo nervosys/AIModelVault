@@ -213,19 +213,22 @@ mod tests {
             id: "doc1".to_string(),
             content: "aaaa".to_string(), // 4 bytes
             metadata: HashMap::new(),
-            embedding: None, chunk_info: None,
+            embedding: None,
+            chunk_info: None,
         };
         let doc2 = Document {
             id: "doc2".to_string(),
             content: "bbbb".to_string(), // 4 bytes
             metadata: HashMap::new(),
-            embedding: None, chunk_info: None,
+            embedding: None,
+            chunk_info: None,
         };
         let doc3 = Document {
             id: "doc3".to_string(),
             content: "cccc".to_string(), // 4 bytes
             metadata: HashMap::new(),
-            embedding: None, chunk_info: None,
+            embedding: None,
+            chunk_info: None,
         };
 
         // Set results — first entry gets older timestamp
@@ -239,7 +242,10 @@ mod tests {
         let _ = cache.cache_results("query3", vec![doc3]);
 
         // query1 (oldest timestamp) should have been evicted
-        assert!(cache.get_cached("query1").is_none(), "Oldest entry should be evicted");
+        assert!(
+            cache.get_cached("query1").is_none(),
+            "Oldest entry should be evicted"
+        );
         // query2 and query3 should still be present
         assert!(cache.get_cached("query3").is_some());
     }

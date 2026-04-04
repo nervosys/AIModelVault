@@ -1015,10 +1015,28 @@ mod tests {
         track_app_start();
         track_command("test", Some("sub"), Duration::from_millis(10), true);
         track_command("test", None, Duration::from_millis(5), false);
-        track_model_op("store", "safetensors", 1_000, Duration::from_millis(50), true);
+        track_model_op(
+            "store",
+            "safetensors",
+            1_000,
+            Duration::from_millis(50),
+            true,
+        );
         track_model_op("get", "gguf", 500_000_000, Duration::from_millis(100), true);
-        track_model_op("store", "onnx", 50_000_000, Duration::from_millis(75), false);
-        track_model_op("store", "pytorch", 2_000_000_000, Duration::from_millis(200), true);
+        track_model_op(
+            "store",
+            "onnx",
+            50_000_000,
+            Duration::from_millis(75),
+            false,
+        );
+        track_model_op(
+            "store",
+            "pytorch",
+            2_000_000_000,
+            Duration::from_millis(200),
+            true,
+        );
         track_conversion("pytorch", "onnx", Duration::from_secs(5), true);
         track_api_call("/models", "GET", 200, Duration::from_millis(30));
         track_error("TestError", Some("test context"));
@@ -1040,11 +1058,11 @@ mod tests {
         };
 
         assert_eq!(check_bucket(0), "small");
-        assert_eq!(check_bucket(10_000_000), "small");     // upper boundary
-        assert_eq!(check_bucket(10_000_001), "medium");    // lower boundary
-        assert_eq!(check_bucket(100_000_000), "medium");   // upper boundary
-        assert_eq!(check_bucket(100_000_001), "large");    // lower boundary
-        assert_eq!(check_bucket(1_000_000_000), "large");  // upper boundary
+        assert_eq!(check_bucket(10_000_000), "small"); // upper boundary
+        assert_eq!(check_bucket(10_000_001), "medium"); // lower boundary
+        assert_eq!(check_bucket(100_000_000), "medium"); // upper boundary
+        assert_eq!(check_bucket(100_000_001), "large"); // lower boundary
+        assert_eq!(check_bucket(1_000_000_000), "large"); // upper boundary
         assert_eq!(check_bucket(1_000_000_001), "xlarge"); // lower boundary
     }
 

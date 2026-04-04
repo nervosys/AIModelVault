@@ -76,6 +76,9 @@ aim export <NAME> <OUTPUT>
 
 # API server (requires --features api)
 aim serve [--port 8080] [--jwt-secret SECRET]
+
+# Agent discovery (machine-readable CLI schema)
+aim introspect [--format json|yaml|jsonld] [--compact]
 ```
 
 ## Supported Model Formats (23+)
@@ -189,6 +192,18 @@ src/
 | MITRE ATT&CK     | Mitigated (T1552, T1486, T1078, T1005)     |
 
 ## Agent Interaction Patterns
+
+### Bootstrap (agent-first discovery)
+```bash
+# 1. Get the full CLI schema as JSON (pipe to jq, parse, etc.)
+aim introspect --format json
+
+# 2. Compact mode omits descriptions and examples for smaller payloads
+aim introspect --format json --compact
+
+# 3. JSON-LD output links to the ontology for semantic interop
+aim introspect --format jsonld
+```
 
 ### Store a model
 ```bash

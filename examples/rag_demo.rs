@@ -458,10 +458,12 @@ fn demo_complete_rag_pipeline() -> Result<(), Box<dyn std::error::Error>> {
 
     // Add knowledge
     println!("\n1. Populating knowledge base...");
-    let knowledge_items = ["RAG systems combine retrieval with generation for better AI responses",
+    let knowledge_items = [
+        "RAG systems combine retrieval with generation for better AI responses",
         "Vector databases store embeddings for efficient semantic search",
         "Fine-tuning adapts pre-trained models to specific tasks",
-        "Prompt engineering improves model outputs through better instructions"];
+        "Prompt engineering improves model outputs through better instructions",
+    ];
 
     for (i, content) in knowledge_items.iter().enumerate() {
         let doc = Document {

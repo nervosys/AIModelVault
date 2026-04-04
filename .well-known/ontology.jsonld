@@ -16,7 +16,7 @@
   "@type": "owl:Ontology",
   "name": "AI Model Vault Agent Ontology",
   "description": "Comprehensive machine-readable ontology for AI Model Vault — designed for autonomous agent observability. Describes entities, states, transitions, events, affordances, constraints, metrics, and causal models so that agents can reason about the system without reading source code.",
-  "dcterms:creator": "NervoSys AI Team",
+  "dcterms:creator": "NERVOSYS AI Team",
   "dcterms:license": "AGPL-3.0-or-later",
   "dcterms:created": "2026-02-13",
   "dcterms:modified": "2026-02-22",
@@ -71,7 +71,7 @@
     "codeRepository": "https://github.com/nervosys/AIModelVault",
     "author": {
       "@type": "Organization",
-      "name": "NervoSys",
+      "name": "NERVOSYS",
       "url": "https://nervosys.com"
     },
     "featureList": [
@@ -1174,6 +1174,671 @@
         "preferred_for": ["ML pipelines", "Jupyter notebooks", "Python toolchains"]
       }
     ]
+  },
+
+  "aimv:cliSchema": {
+    "@comment": "Layer 9: Complete CLI command schema — machine-readable specification of every command, argument, type, default, constraint, and example. Agents use this to construct exact CLI invocations.",
+    "binary": "aim",
+    "version": "1.2.1",
+    "install": "cargo install ai-model-vault",
+    "globalFlags": [
+      {"name": "--vault", "short": "-v", "type": "string", "required": false, "description": "Vault name (uses default if not specified)"},
+      {"name": "--config", "short": "-c", "type": "path", "required": false, "description": "Config file path"},
+      {"name": "--sqlite-versions", "type": "bool", "required": false, "env": "AIM_SQLITE_VERSIONS", "featureGate": "sqlite", "description": "Use SQLite for version storage (ACID, indexed, concurrent)"},
+      {"name": "--no-telemetry", "type": "bool", "required": false, "env": "AIM_TELEMETRY_DISABLED", "description": "Disable telemetry for this session"}
+    ],
+    "commands": [
+      {
+        "name": "init",
+        "description": "Initialize a new encrypted vault",
+        "category": "vault",
+        "args": [
+          {"name": "--name", "short": "-n", "type": "string", "required": false, "default": "default", "description": "Vault name"}
+        ],
+        "examples": ["aim init", "aim init --name production"],
+        "exitCodes": {"0": "Vault created successfully", "1": "Vault already exists or I/O error"},
+        "requiresPassphrase": true,
+        "requiresUnlock": false,
+        "sideEffects": ["Creates vault directory structure", "Emits VaultCreated event"]
+      },
+      {
+        "name": "store",
+        "description": "Store a model in the vault with encryption and automatic format detection",
+        "category": "vault",
+        "args": [
+          {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name"},
+          {"name": "path", "type": "path", "required": true, "positional": true, "description": "Path to model file"},
+          {"name": "--format", "short": "-f", "type": "string", "required": false, "enum": ["safetensors", "gguf", "pytorch", "onnx", "tensorrt", "mlx", "coreml", "torchscript", "tflite", "tensorflow", "keras", "openvino", "tvm", "ncnn", "mnn", "rknn", "caffe", "mxnet", "darknet", "hdf5", "pickle", "numpy"], "description": "Model format (auto-detected from extension if not specified)"},
+          {"name": "--description", "short": "-d", "type": "string", "required": false, "description": "Human-readable description"},
+          {"name": "--framework", "type": "string", "required": false, "examples": ["pytorch", "tensorflow", "jax"], "description": "Framework that produced the model"},
+          {"name": "--task", "type": "string", "required": false, "examples": ["text-generation", "image-classification", "embeddings"], "description": "ML task"}
+        ],
+        "examples": [
+          "aim store my-llm ./model.safetensors",
+          "aim store my-llm ./model.pt -f pytorch -d 'Fine-tuned LLaMA 3' --framework pytorch --task text-generation"
+        ],
+        "exitCodes": {"0": "Model stored successfully", "1": "File not found or encryption error"},
+        "requiresPassphrase": true,
+        "requiresUnlock": true,
+        "sideEffects": ["Encrypts and persists model", "Increments version counter", "Emits ModelStored event"],
+        "output": "Version number and storage statistics"
+      },
+      {
+        "name": "get",
+        "description": "Retrieve and decrypt a model from the vault",
+        "category": "vault",
+        "args": [
+          {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name"},
+          {"name": "output", "type": "path", "required": true, "positional": true, "description": "Output file path"},
+          {"name": "--version", "short": "-v", "type": "u32", "required": false, "description": "Version number (latest if not specified)"}
+        ],
+        "examples": ["aim get my-llm ./output.safetensors", "aim get my-llm ./output.safetensors -v 3"],
+        "exitCodes": {"0": "Model retrieved and checksum verified", "3": "Model or version not found", "6": "Integrity check failed"},
+        "requiresPassphrase": true,
+        "requiresUnlock": true,
+        "sideEffects": ["Writes decrypted model to output path", "Emits ModelRetrieved event"]
+      },
+      {
+        "name": "list",
+        "description": "List all models in the vault with metadata",
+        "category": "vault",
+        "args": [],
+        "examples": ["aim list"],
+        "exitCodes": {"0": "Success"},
+        "requiresPassphrase": true,
+        "requiresUnlock": false,
+        "output": "Table of models with name, format, versions, size"
+      },
+      {
+        "name": "versions",
+        "description": "Show all versions of a specific model",
+        "category": "vault",
+        "args": [
+          {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name"}
+        ],
+        "examples": ["aim versions my-llm"],
+        "exitCodes": {"0": "Success", "3": "Model not found"},
+        "requiresPassphrase": true,
+        "requiresUnlock": false,
+        "output": "Table of versions with number, timestamp, size, format, parent"
+      },
+      {
+        "name": "lineage",
+        "description": "Show version ancestry tree for a model version",
+        "category": "vault",
+        "args": [
+          {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name"},
+          {"name": "version", "type": "u32", "required": true, "positional": true, "description": "Version number"}
+        ],
+        "examples": ["aim lineage my-llm 5"],
+        "exitCodes": {"0": "Success", "3": "Model or version not found"},
+        "requiresPassphrase": true,
+        "requiresUnlock": false,
+        "output": "Tree visualization of version lineage"
+      },
+      {
+        "name": "delete",
+        "description": "Delete a specific model version (irreversible)",
+        "category": "vault",
+        "args": [
+          {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name"},
+          {"name": "version", "type": "u32", "required": true, "positional": true, "description": "Version number"},
+          {"name": "--force", "short": "-f", "type": "bool", "required": false, "description": "Skip confirmation prompt"}
+        ],
+        "examples": ["aim delete my-llm 2", "aim delete my-llm 2 --force"],
+        "exitCodes": {"0": "Version deleted", "3": "Not found"},
+        "requiresPassphrase": true,
+        "requiresUnlock": true,
+        "sideEffects": ["Removes encrypted file", "Tombstones version metadata", "Emits ModelDeleted event"],
+        "destructive": true
+      },
+      {
+        "name": "stats",
+        "description": "Show vault storage statistics",
+        "category": "vault",
+        "args": [],
+        "examples": ["aim stats"],
+        "exitCodes": {"0": "Success"},
+        "requiresPassphrase": true,
+        "requiresUnlock": false,
+        "output": "Model count, total size, format distribution, compression ratios"
+      },
+      {
+        "name": "compliance",
+        "description": "Run FIPS 140-3, CMMC 2.0, and MITRE ATT&CK compliance checks",
+        "category": "security",
+        "args": [],
+        "examples": ["aim compliance"],
+        "exitCodes": {"0": "All checks passed", "5": "One or more checks failed"},
+        "requiresPassphrase": false,
+        "requiresUnlock": false,
+        "sideEffects": ["Emits ComplianceChecked event"],
+        "output": "Pass/fail status for each compliance standard"
+      },
+      {
+        "name": "change-passphrase",
+        "description": "Change vault encryption passphrase (re-encrypts all models)",
+        "category": "security",
+        "args": [],
+        "examples": ["aim change-passphrase"],
+        "exitCodes": {"0": "Passphrase changed", "8": "Authentication failed"},
+        "requiresPassphrase": true,
+        "requiresUnlock": true,
+        "sideEffects": ["Re-encrypts all models with new key", "Zeroes old key", "Emits PassphraseChanged event"],
+        "destructive": false,
+        "longRunning": true
+      },
+      {
+        "name": "archive",
+        "description": "Archive one or more models to TAR or ZIP",
+        "category": "utility",
+        "args": [
+          {"name": "models", "type": "string[]", "required": true, "positional": true, "description": "Model names to archive"},
+          {"name": "output", "type": "path", "required": true, "positional": true, "description": "Output archive path"},
+          {"name": "--format", "short": "-f", "type": "string", "required": false, "default": "tar", "enum": ["tar", "zip"], "description": "Archive format"},
+          {"name": "--versions", "short": "-v", "type": "u32[]", "required": false, "description": "Version numbers (latest for each if not specified)"}
+        ],
+        "examples": [
+          "aim archive my-llm my-cnn ./models.tar",
+          "aim archive my-llm ./backup.zip -f zip -v 1 -v 3"
+        ],
+        "exitCodes": {"0": "Archive created", "3": "Model not found"},
+        "requiresPassphrase": true,
+        "requiresUnlock": true
+      },
+      {
+        "name": "extract",
+        "description": "Extract models from a TAR or ZIP archive",
+        "category": "utility",
+        "args": [
+          {"name": "archive", "type": "path", "required": true, "positional": true, "description": "Archive file path"},
+          {"name": "--output", "short": "-o", "type": "path", "required": false, "default": ".", "description": "Output directory"}
+        ],
+        "examples": ["aim extract ./models.tar", "aim extract ./backup.zip -o ./restored"],
+        "exitCodes": {"0": "Extracted successfully", "1": "Invalid archive"}
+      },
+      {
+        "name": "analyze",
+        "description": "Analyze model compression efficiency and metadata",
+        "category": "utility",
+        "args": [
+          {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name"},
+          {"name": "--version", "short": "-v", "type": "u32", "required": false, "description": "Version number (latest if not specified)"}
+        ],
+        "examples": ["aim analyze my-llm", "aim analyze my-llm -v 2"],
+        "exitCodes": {"0": "Success", "3": "Not found"},
+        "requiresPassphrase": true,
+        "requiresUnlock": false,
+        "output": "Size, compression ratio, format details, parameter estimates"
+      },
+      {
+        "name": "deduplicate",
+        "description": "Find duplicate models in vault using SHA-256 comparison",
+        "category": "utility",
+        "args": [
+          {"name": "--detailed", "short": "-d", "type": "bool", "required": false, "description": "Show detailed similarity scores"}
+        ],
+        "examples": ["aim deduplicate", "aim deduplicate --detailed"],
+        "exitCodes": {"0": "Success"},
+        "requiresPassphrase": true,
+        "requiresUnlock": false,
+        "output": "List of duplicate model groups"
+      },
+      {
+        "name": "export",
+        "description": "Export model with full metadata to a directory",
+        "category": "utility",
+        "args": [
+          {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name"},
+          {"name": "output", "type": "path", "required": true, "positional": true, "description": "Output directory"},
+          {"name": "--version", "short": "-v", "type": "u32", "required": false, "description": "Version number (latest if not specified)"}
+        ],
+        "examples": ["aim export my-llm ./exported/"],
+        "exitCodes": {"0": "Exported successfully", "3": "Not found"},
+        "requiresPassphrase": true,
+        "requiresUnlock": true
+      },
+      {
+        "name": "cache",
+        "description": "Show cache statistics (if caching is enabled)",
+        "category": "utility",
+        "args": [],
+        "examples": ["aim cache"],
+        "exitCodes": {"0": "Success"},
+        "requiresPassphrase": false,
+        "requiresUnlock": false,
+        "output": "Cache hit/miss rates, size, entries"
+      },
+      {
+        "name": "convert",
+        "description": "Convert a model between formats with optional quantization",
+        "category": "conversion",
+        "args": [
+          {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name in vault"},
+          {"name": "--to-format", "short": "-t", "type": "string", "required": true, "enum": ["safetensors", "onnx", "gguf", "tflite", "coreml", "mlx", "torchscript", "tensorrt", "openvino"], "description": "Target format"},
+          {"name": "--output", "short": "-o", "type": "path", "required": false, "description": "Output file path (defaults to model_name.{extension})"},
+          {"name": "--version", "short": "-v", "type": "u32", "required": false, "description": "Source version to convert (latest if not specified)"},
+          {"name": "--quantization", "short": "-q", "type": "string", "required": false, "enum": ["q4_0", "q4_k_m", "q5_k_m", "q8_0"], "description": "Quantization level for GGUF conversion"},
+          {"name": "--opset", "type": "u32", "required": false, "default": 17, "description": "ONNX opset version"},
+          {"name": "--validate", "type": "bool", "required": false, "description": "Validate conversion output"},
+          {"name": "--plan-only", "type": "bool", "required": false, "description": "Show conversion plan without executing"}
+        ],
+        "examples": [
+          "aim convert my-llm --to-format gguf --quantization q4_k_m --validate",
+          "aim convert my-llm -t onnx --opset 17",
+          "aim convert my-llm -t safetensors --plan-only"
+        ],
+        "exitCodes": {"0": "Conversion successful", "4": "No conversion path or format error"},
+        "requiresPassphrase": true,
+        "requiresUnlock": true,
+        "sideEffects": ["Creates new version in target format", "Emits ModelConverted event"],
+        "longRunning": true
+      },
+      {
+        "name": "list-conversions",
+        "description": "List all supported format conversion paths",
+        "category": "conversion",
+        "args": [],
+        "examples": ["aim list-conversions"],
+        "exitCodes": {"0": "Success"},
+        "requiresPassphrase": false,
+        "requiresUnlock": false,
+        "output": "Table of from→to conversion paths with quantization support"
+      },
+      {
+        "name": "serve",
+        "description": "Start the REST/GraphQL API server",
+        "category": "api",
+        "featureGate": "api",
+        "args": [
+          {"name": "--host", "type": "string", "required": false, "default": "127.0.0.1", "env": "AIM_HOST", "description": "Host address to bind to"},
+          {"name": "--port", "short": "-p", "type": "u16", "required": false, "default": 8080, "env": "AIM_PORT", "description": "Port to listen on"},
+          {"name": "--jwt-secret", "type": "string", "required": true, "env": "AIM_JWT_SECRET", "description": "JWT secret for token signing"},
+          {"name": "--token-expiry", "type": "u64", "required": false, "default": 3600, "description": "Token expiry in seconds"},
+          {"name": "--cors-permissive", "type": "bool", "required": false, "description": "Allow CORS from any origin"},
+          {"name": "--no-dashboard", "type": "bool", "required": false, "description": "Disable the embedded web dashboard"}
+        ],
+        "examples": [
+          "aim serve --jwt-secret mysecret",
+          "aim serve --port 9090 --jwt-secret $AIM_JWT_SECRET --cors-permissive"
+        ],
+        "exitCodes": {"0": "Server stopped gracefully", "1": "Bind error"},
+        "longRunning": true,
+        "sideEffects": ["Starts HTTP server on specified port"]
+      },
+      {
+        "name": "cloud",
+        "description": "Cloud storage operations (push, pull, list, config)",
+        "category": "cloud",
+        "subcommands": [
+          {
+            "name": "push",
+            "description": "Push encrypted model to cloud storage",
+            "args": [
+              {"name": "model", "type": "string", "required": true, "positional": true, "description": "Model name"},
+              {"name": "--version", "short": "-v", "type": "u32", "required": false, "description": "Version number (latest if not specified)"},
+              {"name": "--provider", "short": "-p", "type": "string", "required": true, "enum": ["s3", "azure", "gcs"], "description": "Cloud provider"},
+              {"name": "--bucket", "short": "-b", "type": "string", "required": true, "description": "Bucket/container name"}
+            ],
+            "examples": ["aim cloud push my-llm --provider s3 --bucket my-models"],
+            "exitCodes": {"0": "Pushed successfully", "1": "Cloud error or auth failure"},
+            "requiresPassphrase": true,
+            "requiresUnlock": true,
+            "sideEffects": ["Uploads encrypted blob to cloud", "Emits CloudSynced event"]
+          },
+          {
+            "name": "pull",
+            "description": "Pull model from cloud storage into local vault",
+            "args": [
+              {"name": "model", "type": "string", "required": true, "positional": true, "description": "Local model name"},
+              {"name": "--provider", "short": "-p", "type": "string", "required": true, "enum": ["s3", "azure", "gcs"], "description": "Cloud provider"},
+              {"name": "--bucket", "short": "-b", "type": "string", "required": true, "description": "Bucket/container name"},
+              {"name": "--remote-path", "short": "-k", "type": "string", "required": true, "description": "Remote path/key"}
+            ],
+            "examples": ["aim cloud pull my-llm --provider s3 --bucket my-models --remote-path models/my-llm.vault"],
+            "exitCodes": {"0": "Pulled successfully", "1": "Cloud error"},
+            "requiresPassphrase": true,
+            "requiresUnlock": true,
+            "sideEffects": ["Downloads and stores model locally", "Emits CloudSynced event"]
+          },
+          {
+            "name": "list",
+            "description": "List models in cloud storage bucket",
+            "args": [
+              {"name": "--provider", "short": "-p", "type": "string", "required": true, "enum": ["s3", "azure", "gcs"], "description": "Cloud provider"},
+              {"name": "--bucket", "short": "-b", "type": "string", "required": true, "description": "Bucket/container name"},
+              {"name": "--prefix", "short": "-x", "type": "string", "required": false, "description": "Path prefix filter"}
+            ],
+            "examples": ["aim cloud list --provider s3 --bucket my-models"],
+            "exitCodes": {"0": "Success", "1": "Auth or network error"}
+          },
+          {
+            "name": "config",
+            "description": "Configure or show cloud provider credentials",
+            "args": [
+              {"name": "--provider", "short": "-p", "type": "string", "required": true, "enum": ["s3", "azure", "gcs"], "description": "Cloud provider"},
+              {"name": "--show", "short": "-s", "type": "bool", "required": false, "description": "Show current configuration"}
+            ],
+            "examples": ["aim cloud config --provider s3 --show"]
+          }
+        ]
+      },
+      {
+        "name": "card",
+        "description": "Model card operations (create, show, validate, convert, template, attach, extract, generate)",
+        "category": "documentation",
+        "subcommands": [
+          {
+            "name": "create",
+            "description": "Create a new model card",
+            "args": [
+              {"name": "name", "type": "string", "required": true, "positional": true, "description": "Model name"},
+              {"name": "--version", "short": "-v", "type": "string", "required": true, "description": "Model version"},
+              {"name": "--description", "short": "-d", "type": "string", "required": true, "description": "Model description"},
+              {"name": "--model-type", "short": "-t", "type": "string", "required": true, "description": "Model type (e.g., 'Large Language Model')"},
+              {"name": "--architecture", "short": "-a", "type": "string", "required": true, "description": "Architecture (e.g., 'Transformer')"},
+              {"name": "--output", "short": "-o", "type": "path", "required": true, "description": "Output file (JSON, YAML, or Markdown by extension)"},
+              {"name": "--interactive", "short": "-i", "type": "bool", "required": false, "description": "Open interactive wizard"}
+            ],
+            "examples": ["aim card create my-llm -v 1.0 -d 'Fine-tuned model' -t 'LLM' -a 'Transformer' -o card.json"]
+          },
+          {
+            "name": "show",
+            "description": "Display a model card",
+            "args": [
+              {"name": "path", "type": "path", "required": true, "positional": true, "description": "Path to model card file"},
+              {"name": "--format", "short": "-f", "type": "string", "required": false, "default": "markdown", "enum": ["json", "yaml", "markdown"], "description": "Output format"}
+            ],
+            "examples": ["aim card show card.json", "aim card show card.yaml --format markdown"]
+          },
+          {
+            "name": "validate",
+            "description": "Validate a model card for completeness",
+            "args": [
+              {"name": "path", "type": "path", "required": true, "positional": true, "description": "Path to model card file"},
+              {"name": "--strict", "short": "-s", "type": "bool", "required": false, "description": "Check for all required fields"}
+            ],
+            "examples": ["aim card validate card.json --strict"]
+          },
+          {
+            "name": "convert",
+            "description": "Convert model card between formats",
+            "args": [
+              {"name": "input", "type": "path", "required": true, "positional": true, "description": "Input model card file"},
+              {"name": "output", "type": "path", "required": true, "positional": true, "description": "Output file (format by extension)"}
+            ],
+            "examples": ["aim card convert card.json card.md"]
+          },
+          {
+            "name": "template",
+            "description": "Generate a template model card",
+            "args": [
+              {"name": "--template-type", "short": "-t", "type": "string", "required": false, "default": "basic", "enum": ["basic", "llm", "classifier", "medical", "hiring"], "description": "Template type"},
+              {"name": "--output", "short": "-o", "type": "path", "required": true, "description": "Output file"}
+            ],
+            "examples": ["aim card template -t llm -o llm-card.json"]
+          },
+          {
+            "name": "attach",
+            "description": "Attach a model card to a vault model",
+            "args": [
+              {"name": "model", "type": "string", "required": true, "positional": true, "description": "Model name in vault"},
+              {"name": "--version", "short": "-v", "type": "u32", "required": false, "description": "Version number (latest if not specified)"},
+              {"name": "card", "type": "path", "required": true, "positional": true, "description": "Path to model card file"}
+            ],
+            "examples": ["aim card attach my-llm card.json", "aim card attach my-llm -v 2 card.yaml"]
+          },
+          {
+            "name": "extract",
+            "description": "Extract model card from a vault model",
+            "args": [
+              {"name": "model", "type": "string", "required": true, "positional": true, "description": "Model name in vault"},
+              {"name": "--version", "short": "-v", "type": "u32", "required": false, "description": "Version number (latest if not specified)"},
+              {"name": "--output", "short": "-o", "type": "path", "required": true, "description": "Output file"}
+            ],
+            "examples": ["aim card extract my-llm -o card.json"]
+          },
+          {
+            "name": "generate",
+            "description": "Auto-generate model card from vault model metadata",
+            "args": [
+              {"name": "model", "type": "string", "required": true, "positional": true, "description": "Model name in vault"},
+              {"name": "--version", "short": "-v", "type": "u32", "required": false, "description": "Version number (latest if not specified)"},
+              {"name": "--output", "short": "-o", "type": "path", "required": true, "description": "Output file"},
+              {"name": "--include-training", "type": "bool", "required": false, "description": "Include training data section"},
+              {"name": "--include-evaluation", "type": "bool", "required": false, "description": "Include evaluation section"}
+            ],
+            "examples": ["aim card generate my-llm -o card.md --include-training --include-evaluation"]
+          }
+        ]
+      },
+      {
+        "name": "database",
+        "description": "RAG knowledge base operations (init, store, get, search, list, delete, export, import, stats, build-index, vector-search)",
+        "category": "rag",
+        "subcommands": [
+          {
+            "name": "init",
+            "description": "Initialize a new RAG database",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"},
+              {"name": "--db-type", "short": "-t", "type": "string", "required": false, "default": "sqlite", "enum": ["sqlite", "sled"], "description": "Database backend type"}
+            ],
+            "examples": ["aim database init --path ./kb --db-type sqlite"]
+          },
+          {
+            "name": "store",
+            "description": "Store a document in the database",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"},
+              {"name": "--input", "short": "-i", "type": "path", "required": true, "description": "Document file to ingest"},
+              {"name": "--id", "short": "-I", "type": "string", "required": false, "description": "Document ID (generated if not provided)"},
+              {"name": "--metadata", "short": "-m", "type": "string[]", "required": false, "description": "Metadata key=value pairs"}
+            ],
+            "examples": ["aim database store --path ./kb --input paper.pdf", "aim database store --path ./kb --input notes.md --id my-notes --metadata source=manual"]
+          },
+          {
+            "name": "get",
+            "description": "Retrieve a document by ID",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"},
+              {"name": "id", "type": "string", "required": true, "positional": true, "description": "Document ID"}
+            ],
+            "examples": ["aim database get --path ./kb my-doc-id"]
+          },
+          {
+            "name": "search",
+            "description": "Full-text and semantic search across documents",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"},
+              {"name": "query", "type": "string", "required": true, "positional": true, "description": "Search query"},
+              {"name": "--limit", "short": "-n", "type": "usize", "required": false, "default": 10, "description": "Maximum results"}
+            ],
+            "examples": ["aim database search --path ./kb 'transformer attention mechanism'"]
+          },
+          {
+            "name": "list",
+            "description": "List all documents in the database",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"}
+            ],
+            "examples": ["aim database list --path ./kb"]
+          },
+          {
+            "name": "delete",
+            "description": "Delete a document by ID",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"},
+              {"name": "id", "type": "string", "required": true, "positional": true, "description": "Document ID"}
+            ],
+            "examples": ["aim database delete --path ./kb my-doc-id"],
+            "destructive": true
+          },
+          {
+            "name": "export",
+            "description": "Export database contents to JSON",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"},
+              {"name": "--output", "short": "-o", "type": "path", "required": true, "description": "Output JSON file"}
+            ],
+            "examples": ["aim database export --path ./kb -o backup.json"]
+          },
+          {
+            "name": "import",
+            "description": "Import documents from JSON",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"},
+              {"name": "--input", "short": "-i", "type": "path", "required": true, "description": "Input JSON file"}
+            ],
+            "examples": ["aim database import --path ./kb -i backup.json"]
+          },
+          {
+            "name": "stats",
+            "description": "Show database statistics",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"}
+            ],
+            "examples": ["aim database stats --path ./kb"]
+          },
+          {
+            "name": "build-index",
+            "description": "Build vector index for similarity search",
+            "args": [
+              {"name": "--path", "short": "-p", "type": "path", "required": true, "description": "Database path"},
+              {"name": "--output", "short": "-o", "type": "path", "required": true, "description": "Output index path"}
+            ],
+            "examples": ["aim database build-index --path ./kb -o ./kb-index"]
+          },
+          {
+            "name": "vector-search",
+            "description": "Search by vector similarity using prebuilt index",
+            "args": [
+              {"name": "--index", "short": "-i", "type": "path", "required": true, "description": "Index path"},
+              {"name": "--query", "short": "-q", "type": "path", "required": true, "description": "Query text or embedding file"},
+              {"name": "--limit", "short": "-n", "type": "usize", "required": false, "default": 5, "description": "Number of results"}
+            ],
+            "examples": ["aim database vector-search --index ./kb-index --query ./query.txt"]
+          }
+        ]
+      },
+      {
+        "name": "telemetry",
+        "description": "Telemetry and analytics settings",
+        "category": "system",
+        "subcommands": [
+          {
+            "name": "status",
+            "description": "Show current telemetry status",
+            "args": [],
+            "examples": ["aim telemetry status"]
+          },
+          {
+            "name": "enable",
+            "description": "Enable anonymous telemetry",
+            "args": [],
+            "examples": ["aim telemetry enable"]
+          },
+          {
+            "name": "disable",
+            "description": "Disable telemetry (opt out)",
+            "args": [],
+            "examples": ["aim telemetry disable"]
+          },
+          {
+            "name": "reset",
+            "description": "Reset device ID (generates new anonymous ID)",
+            "args": [],
+            "examples": ["aim telemetry reset"]
+          }
+        ]
+      },
+      {
+        "name": "introspect",
+        "description": "Output complete CLI schema as machine-readable JSON for agent discovery",
+        "category": "system",
+        "args": [
+          {"name": "--format", "short": "-f", "type": "string", "required": false, "default": "json", "enum": ["json", "yaml", "jsonld"], "description": "Output format"},
+          {"name": "--compact", "type": "bool", "required": false, "description": "Minimize output (no descriptions or examples)"}
+        ],
+        "examples": ["aim introspect", "aim introspect --format yaml", "aim introspect --compact"],
+        "exitCodes": {"0": "Success"},
+        "requiresPassphrase": false,
+        "requiresUnlock": false,
+        "output": "Complete CLI command schema with all arguments, types, defaults, constraints, and examples"
+      }
+    ],
+
+    "compositionPatterns": {
+      "@comment": "Common multi-command workflows that agents should know about",
+      "patterns": [
+        {
+          "name": "store-and-convert",
+          "description": "Store a model then convert it for edge deployment",
+          "steps": [
+            "aim init",
+            "aim store my-llm ./model.safetensors -d 'Base model'",
+            "aim convert my-llm --to-format gguf --quantization q4_k_m --validate"
+          ]
+        },
+        {
+          "name": "store-and-push",
+          "description": "Store a model locally then push to cloud",
+          "steps": [
+            "aim store my-llm ./model.safetensors",
+            "aim cloud push my-llm --provider s3 --bucket my-models"
+          ]
+        },
+        {
+          "name": "pull-and-convert",
+          "description": "Pull a model from cloud and convert for local inference",
+          "steps": [
+            "aim cloud pull my-llm --provider s3 --bucket my-models --remote-path models/llm.vault",
+            "aim convert my-llm --to-format gguf --quantization q4_k_m"
+          ]
+        },
+        {
+          "name": "full-audit",
+          "description": "Run a complete vault audit",
+          "steps": [
+            "aim compliance",
+            "aim stats",
+            "aim deduplicate --detailed"
+          ]
+        },
+        {
+          "name": "rag-pipeline",
+          "description": "Set up a RAG knowledge base and search it",
+          "steps": [
+            "aim database init --path ./kb --db-type sqlite",
+            "aim database store --path ./kb --input paper.pdf",
+            "aim database build-index --path ./kb -o ./kb-index",
+            "aim database search --path ./kb 'attention mechanism'"
+          ]
+        },
+        {
+          "name": "model-documentation",
+          "description": "Create and attach model documentation",
+          "steps": [
+            "aim card generate my-llm -o card.json --include-training --include-evaluation",
+            "aim card validate card.json --strict",
+            "aim card attach my-llm card.json"
+          ]
+        }
+      ]
+    },
+
+    "outputParsing": {
+      "@comment": "How agents should parse CLI output for programmatic use",
+      "conventions": [
+        "Exit code 0 always means success",
+        "Non-zero exit codes map to error categories (see aimv:errors)",
+        "Structured output is available via --format json where supported",
+        "aim introspect outputs machine-readable schema in JSON/YAML/JSON-LD",
+        "Error messages are written to stderr, data to stdout",
+        "Progress indicators are written to stderr"
+      ],
+      "jsonOutput": "Most commands support --format json for structured output parsing. Use aim introspect for the complete machine-readable CLI schema."
+    }
   },
 
   "aimv:relationships": [

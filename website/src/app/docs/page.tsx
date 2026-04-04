@@ -39,11 +39,11 @@ export default function DocsIndex() {
       <h3 className="text-xl font-semibold mt-8 mb-3">Get Help</h3>
       <div className="flex gap-4 flex-wrap">
         <a href="https://github.com/nervosys/AIModelVault/issues" target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center px-4 py-2 rounded-lg border border-[var(--color-border)] text-sm hover:border-[var(--color-primary)] transition-colors">
+          className="inline-flex items-center px-4 py-2 rounded border border-[var(--color-border)] text-sm hover:border-[var(--color-primary)] transition-colors">
           Report an Issue
         </a>
         <a href="https://github.com/nervosys/AIModelVault/discussions" target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center px-4 py-2 rounded-lg border border-[var(--color-border)] text-sm hover:border-[var(--color-primary)] transition-colors">
+          className="inline-flex items-center px-4 py-2 rounded border border-[var(--color-border)] text-sm hover:border-[var(--color-primary)] transition-colors">
           Discussions
         </a>
       </div>

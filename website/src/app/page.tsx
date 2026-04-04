@@ -5,56 +5,86 @@ import VideoCard from "@/components/VideoCard";
 export default function HomePage() {
   return (
     <div className="min-h-[calc(100vh-var(--header-height))]">
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDE4YzMuMzE0IDAgNi0yLjY4NiA2LTZzLTIuNjg2LTYtNi02LTYgMi42ODYtNiA2IDIuNjg2IDYgNiA2em0wIDM2YzMuMzE0IDAgNi0yLjY4NiA2LTZzLTIuNjg2LTYtNi02LTYgMi42ODYtNiA2IDIuNjg2IDYgNiA2eiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
+      {/* Hero — Vault Entry */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#0d1117] via-[#161b22] to-[#0d1117] text-white">
+        {/* Tactical grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(74,222,128,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(74,222,128,0.015)_1px,transparent_1px)] bg-[size:48px_48px]" />
+        {/* Radial vault glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_600px_400px_at_center,rgba(74,222,128,0.04)_0%,transparent_100%)]" />
+        {/* Scanlines */}
+        <div className="absolute inset-0 scanline" />
+        {/* Top classified stripe */}
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-red-600/60 to-transparent" />
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-28 sm:py-36">
           <div className="text-center">
-            <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30 mb-6">
-              v1.2.1 — Production Release
+            {/* Classification badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-mono font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              v1.2.1 — Operational
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+
+            {/* Vault door icon */}
+            <div className="flex justify-center mb-8">
+              <div className="relative w-20 h-20 rounded-full border-2 border-emerald-500/30 flex items-center justify-center">
+                <div className="absolute inset-2 rounded-full border border-emerald-500/15" />
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(74,222,128,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                  <circle cx="12" cy="16" r="1" />
+                </svg>
+                <div className="absolute inset-0 rounded-full bg-emerald-500/5 animate-ping opacity-20" />
+              </div>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight mb-6 vault-text">
               AI Model Vault
             </h1>
-            <p className="text-lg sm:text-xl text-blue-200 max-w-3xl mx-auto mb-8">
-              Universal cross-platform secure vault for AI model storage, versioning,
-              and management with military-grade encryption and 23+ format support.
+            <p className="text-xl sm:text-2xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed">
+              Encrypted storage, versioning, and lifecycle management for AI models.
+              FIPS 140-3 compliant. 23+ formats. Zero-trust architecture.
             </p>
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/docs/quickstart"
-                className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-white text-slate-900 font-semibold hover:bg-blue-50 transition-colors"
+                className="inline-flex items-center justify-center px-7 py-3.5 rounded bg-emerald-500 text-black font-bold uppercase tracking-wide text-base hover:bg-emerald-400 transition-all shadow-[0_0_20px_-4px_rgba(52,211,153,0.3)] hover:shadow-[0_0_30px_-4px_rgba(52,211,153,0.5)]"
               >
-                Get Started
+                Enter Vault
                 <svg className="ml-2 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               </Link>
               <Link
                 href="/docs"
-                className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-white/20 text-white font-semibold hover:bg-white/10 transition-colors"
+                className="inline-flex items-center justify-center px-7 py-3.5 rounded border border-gray-600 text-gray-300 font-semibold text-base uppercase tracking-wide hover:border-emerald-500/40 hover:text-white hover:bg-white/5 transition-all"
               >
                 Documentation
               </Link>
             </div>
           </div>
 
-          {/* Install snippet */}
-          <div className="mt-12 max-w-xl mx-auto">
-            <div className="bg-black/40 backdrop-blur rounded-lg border border-white/10 p-4 font-mono text-sm text-center">
-              <span className="text-gray-400">$</span>{" "}
-              <span className="text-green-400">cargo install</span>{" "}
-              <span className="text-blue-300">ai-model-vault</span>
+          {/* Install command — terminal style */}
+          <div className="mt-14 max-w-xl mx-auto">
+            <div className="relative bg-[#0d1117]/90 backdrop-blur-sm rounded border border-[#21262d] p-4 font-mono text-base text-center corner-brackets">
+              <span className="text-[#8b949e]">$</span>{" "}
+              <span className="text-emerald-400">cargo install</span>{" "}
+              <span className="text-[#c9d1d9]">ai-model-vault</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features grid */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <h2 className="text-3xl font-bold text-center mb-4">Everything you need for AI models</h2>
-        <p className="text-center text-[var(--color-text-secondary)] mb-12 max-w-2xl mx-auto">
-          From encryption to deployment, AI Model Vault provides a complete toolkit
-          for managing models across their entire lifecycle.
-        </p>
+      <section className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="text-center mb-14">
+          <span className="inline-block text-xs font-mono font-bold uppercase tracking-[0.25em] text-[var(--color-primary)] opacity-70 mb-3">
+            Capabilities
+          </span>
+          <h2 className="text-4xl font-bold vault-text">Secure Model Lifecycle</h2>
+          <p className="text-lg text-[var(--color-text-secondary)] mt-4 max-w-2xl mx-auto">
+            From encryption to deployment — a complete toolkit for managing AI models
+            across their entire lifecycle with military-grade security.
+          </p>
+        </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <FeatureCard
             icon="🔐"
@@ -114,14 +144,20 @@ export default function HomePage() {
       </section>
 
       {/* CLI Demo Videos */}
-      <section className="bg-[var(--color-bg-secondary)] border-y border-[var(--color-border)]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <h2 className="text-3xl font-bold text-center mb-4">See It in Action</h2>
-          <p className="text-center text-[var(--color-text-secondary)] mb-12 max-w-2xl mx-auto">
-            Watch quick CLI demos showing real workflows — from vault initialization
-            to security compliance audits.
-          </p>
-          <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-8">
+      <section className="relative bg-[var(--color-bg-secondary)] border-y border-[var(--color-border)] theme-transition">
+        <div className="absolute inset-0 tactical-grid opacity-40" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center mb-14">
+            <span className="inline-block text-xs font-mono font-bold uppercase tracking-[0.25em] text-[var(--color-primary)] opacity-70 mb-3">
+              Operations
+            </span>
+            <h2 className="text-4xl font-bold vault-text">See It in Action</h2>
+            <p className="text-lg text-[var(--color-text-secondary)] mt-4 max-w-2xl mx-auto">
+              Watch quick CLI demos showing real workflows — from vault initialization
+              to security compliance audits.
+            </p>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-8">
             <VideoCard
               src="/videos/CLIInit.mp4"
               title="Initialize a Vault"
@@ -146,17 +182,21 @@ export default function HomePage() {
               description="Convert models between formats with quantization — GGUF, ONNX, and more."
               duration="0:13"
             />
-            <VideoCard
-              src="/videos/CLICompliance.mp4"
-              title="Security Compliance"
-              description="Run a full security audit with 12 checks and review the audit log."
-              duration="0:11"
-            />
+            <div className="lg:col-span-2 flex justify-center">
+              <div className="w-full lg:w-1/2">
+                <VideoCard
+                  src="/videos/CLICompliance.mp4"
+                  title="Security Compliance"
+                  description="Run a full security audit with 12 checks and review the audit log."
+                  duration="0:11"
+                />
+              </div>
+            </div>
           </div>
-          <div className="text-center mt-8">
+          <div className="text-center mt-10">
             <Link
               href="/demos"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[var(--color-border)] text-sm font-medium hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)] transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded border border-[var(--color-border)] text-base font-mono font-medium uppercase tracking-wider hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)] hover:shadow-[0_0_15px_-4px_var(--color-glow)] transition-all"
             >
               View All Demos
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
@@ -165,38 +205,48 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Quick comparison */}
-      <section className="bg-[var(--color-bg-secondary)] border-y border-[var(--color-border)]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <h2 className="text-3xl font-bold text-center mb-12">At a Glance</h2>
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-[var(--color-primary)] mb-2">1,667</div>
-              <div className="text-[var(--color-text-secondary)]">Tests Passing</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-[var(--color-primary)] mb-2">23+</div>
-              <div className="text-[var(--color-text-secondary)]">Model Formats</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-[var(--color-primary)] mb-2">14</div>
-              <div className="text-[var(--color-text-secondary)]">REST API Endpoints</div>
-            </div>
+      {/* At a Glance — Stats */}
+      <section className="relative bg-[var(--color-bg)] border-y border-[var(--color-border)] theme-transition">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center mb-14">
+            <span className="inline-block text-xs font-mono font-bold uppercase tracking-[0.25em] text-[var(--color-primary)] opacity-70 mb-3">
+              Status Report
+            </span>
+            <h2 className="text-4xl font-bold vault-text">At a Glance</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 text-center">
+            {[
+              { value: "1,831", label: "Tests Passing", status: "●" },
+              { value: "23+", label: "Model Formats", status: "●" },
+              { value: "14", label: "API Endpoints", status: "●" },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="relative p-8 rounded border border-[var(--color-border)] bg-[var(--color-surface)] glow-border corner-brackets"
+              >
+                <div className="text-5xl font-bold font-mono text-[var(--color-primary)] mb-3 vault-text">
+                  {stat.value}
+                </div>
+                <div className="text-xs uppercase tracking-[0.2em] text-[var(--color-text-secondary)] font-mono font-medium">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--color-border)]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <footer className="border-t border-[var(--color-border)] bg-[var(--color-bg)] theme-transition">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-sm text-[var(--color-text-secondary)]">
-              &copy; 2026 NervoSys. Licensed under AGPL-3.0-or-later.
+            <div className="text-sm text-[var(--color-text-secondary)] font-mono uppercase tracking-wider">
+              &copy; 2026 NERVOSYS &middot; AGPL-3.0-or-later
             </div>
-            <div className="flex gap-6 text-sm">
-              <a href="https://github.com/nervosys/AIModelVault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">GitHub</a>
-              <a href="https://crates.io/crates/ai-model-vault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">crates.io</a>
-              <a href="https://pypi.org/project/aimodelvault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-text)]">PyPI</a>
+            <div className="flex gap-6 text-sm font-mono uppercase tracking-wider">
+              <a href="https://github.com/nervosys/AIModelVault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">GitHub</a>
+              <a href="https://crates.io/crates/ai-model-vault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">Crates.io</a>
+              <a href="https://pypi.org/project/aimodelvault" className="text-[var(--color-text-secondary)] hover:text-[var(--color-primary)] transition-colors">PyPI</a>
             </div>
           </div>
         </div>

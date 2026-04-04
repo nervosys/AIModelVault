@@ -62,5 +62,5 @@ aim get my-model ./output.safetensors
 | [Security Audit](SECURITY_AUDIT.md)   | Complete security review      |
 | [Architecture](ARCHITECTURE.md)       | System design deep-dive       |
 
-!!! info "1,667 tests passing"
+!!! info "1,831 tests passing"
     AI Model Vault has comprehensive test coverage across encryption, format detection, version control, model cards, RAG, API, and CLI — all verified on every commit.

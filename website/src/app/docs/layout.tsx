@@ -9,7 +9,7 @@ export default function DocsLayout({
     <div className="flex">
       <Sidebar />
       <main className="flex-1 lg:ml-[var(--sidebar-width)] min-h-[calc(100vh-var(--header-height))]">
-        <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20">
+        <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-24">
           {children}
         </article>
       </main>

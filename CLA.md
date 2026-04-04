@@ -3,7 +3,7 @@
 ## AI Model Vault — Individual Contributor License Agreement
 
 Thank you for your interest in contributing to AI Model Vault ("the Project"),
-maintained by NervoSys AI ("the Maintainer"). This Contributor License Agreement
+maintained by NERVOSYS AI ("the Maintainer"). This Contributor License Agreement
 ("Agreement") documents the rights granted by contributors to the Maintainer.
 
 ### 1. Definitions
@@ -76,4 +76,4 @@ submitting a pull request with that change.
 
 ---
 
-Copyright (c) 2024–2025 NervoSys AI. All rights reserved.
+Copyright (c) 2024–2026 NERVOSYS AI. All rights reserved.

@@ -266,6 +266,17 @@ pub enum Commands {
         #[command(subcommand)]
         command: TelemetryCommands,
     },
+
+    /// Output complete CLI schema as machine-readable JSON for agent discovery
+    Introspect {
+        /// Output format (json, yaml, jsonld)
+        #[arg(short, long, default_value = "json")]
+        format: String,
+
+        /// Minimize output (no descriptions or examples)
+        #[arg(long)]
+        compact: bool,
+    },
 }
 
 #[derive(Subcommand)]

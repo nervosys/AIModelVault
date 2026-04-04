@@ -839,12 +839,25 @@ fn test_cli_database_search_no_results() {
     let db_path = dir.path().join("empty.db");
 
     aim()
-        .args(["database", "init", "--path", db_path.to_str().unwrap(), "--db-type", "sqlite"])
+        .args([
+            "database",
+            "init",
+            "--path",
+            db_path.to_str().unwrap(),
+            "--db-type",
+            "sqlite",
+        ])
         .assert()
         .success();
 
     aim()
-        .args(["database", "search", "--path", db_path.to_str().unwrap(), "nonexistent query"])
+        .args([
+            "database",
+            "search",
+            "--path",
+            db_path.to_str().unwrap(),
+            "nonexistent query",
+        ])
         .assert()
         .success();
 }
@@ -855,12 +868,26 @@ fn test_cli_database_store_nonexistent_file() {
     let db_path = dir.path().join("test.db");
 
     aim()
-        .args(["database", "init", "--path", db_path.to_str().unwrap(), "--db-type", "sqlite"])
+        .args([
+            "database",
+            "init",
+            "--path",
+            db_path.to_str().unwrap(),
+            "--db-type",
+            "sqlite",
+        ])
         .assert()
         .success();
 
     aim()
-        .args(["database", "store", "--path", db_path.to_str().unwrap(), "--input", "nonexistent_file.txt"])
+        .args([
+            "database",
+            "store",
+            "--path",
+            db_path.to_str().unwrap(),
+            "--input",
+            "nonexistent_file.txt",
+        ])
         .assert()
         .failure();
 }

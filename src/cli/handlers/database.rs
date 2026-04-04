@@ -446,8 +446,7 @@ pub fn handle_database(command: DatabaseCommands) -> Result<()> {
 
                     let total_docs = all_docs.len();
                     let total_chars: usize = all_docs.iter().map(|d| d.content.len()).sum();
-                    let with_embeddings =
-                        all_docs.iter().filter(|d| d.embedding.is_some()).count();
+                    let with_embeddings = all_docs.iter().filter(|d| d.embedding.is_some()).count();
 
                     println!("\n   Documents: {}", total_docs);
                     println!("   Total characters: {}", total_chars);
@@ -552,11 +551,7 @@ pub fn handle_database(command: DatabaseCommands) -> Result<()> {
             Ok(())
         }
 
-        fn handle_db_vector_search(
-            index: PathBuf,
-            query: PathBuf,
-            limit: usize,
-        ) -> Result<()> {
+        fn handle_db_vector_search(index: PathBuf, query: PathBuf, limit: usize) -> Result<()> {
             println!("🔍 Vector similarity search");
             println!("   Index: {}", index.display());
             println!("   Query: {}", query.display());
@@ -564,8 +559,7 @@ pub fn handle_database(command: DatabaseCommands) -> Result<()> {
             use ai_model_vault::rag::{SimpleVectorStore, VectorStore};
 
             let index_data = std::fs::read_to_string(&index)?;
-            let documents: Vec<ai_model_vault::rag::Document> =
-                serde_json::from_str(&index_data)?;
+            let documents: Vec<ai_model_vault::rag::Document> = serde_json::from_str(&index_data)?;
 
             let mut store = SimpleVectorStore::new();
             for doc in &documents {

@@ -26,8 +26,8 @@ export default function VideoCard({ src, title, description, duration }: VideoCa
   };
 
   return (
-    <div className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] overflow-hidden hover:border-[var(--color-primary)]/50 hover:shadow-xl transition-all">
-      <div className="relative aspect-video bg-slate-950 cursor-pointer" onClick={togglePlay}>
+    <div className="group rounded border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden glow-border glow-border-hover transition-all theme-transition">
+      <div className="relative aspect-video bg-[#0d1117] cursor-pointer" onClick={togglePlay}>
         <video
           ref={videoRef}
           src={src}
@@ -41,24 +41,24 @@ export default function VideoCard({ src, title, description, duration }: VideoCa
         />
         {/* Play overlay */}
         {!isPlaying && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 transition-opacity group-hover:bg-black/20">
-            <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <svg className="w-7 h-7 text-slate-900 ml-1" fill="currentColor" viewBox="0 0 24 24">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity group-hover:bg-black/25">
+            <div className="w-14 h-14 rounded-full border-2 border-[var(--color-primary)]/60 bg-black/50 flex items-center justify-center group-hover:scale-110 group-hover:border-[var(--color-primary)] transition-all">
+              <svg className="w-6 h-6 text-[var(--color-primary)] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
           </div>
         )}
         {/* Duration badge */}
-        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-white text-xs font-mono">
+        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-emerald-400 text-xs font-mono font-bold border border-emerald-500/20">
           {duration}
         </div>
       </div>
       <div className="p-4">
-        <h3 className="text-lg font-semibold mb-1 group-hover:text-[var(--color-primary)] transition-colors">
+        <h3 className="text-lg font-mono font-bold mb-1 group-hover:text-[var(--color-primary)] transition-colors">
           {title}
         </h3>
-        <p className="text-sm text-[var(--color-text-secondary)]">{description}</p>
+        <p className="text-base text-[var(--color-text-secondary)]">{description}</p>
       </div>
     </div>
   );
