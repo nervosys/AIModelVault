@@ -5,12 +5,12 @@
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-1%2C831%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-1%2C809%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
 [![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
 
-A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, compression, and advanced model utilities.
+A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, model signing, safety scanning, and comprehensive utilities.
 
 ## Quick Links
 
@@ -78,7 +78,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ### 6. 💻 CLI + Library API (Dual Interface)
 
 **Why it matters**: Use it your way - command line or code
-- **15+ CLI Commands**: `aim store`, `aim get`, `aim archive`, etc.
+- **25+ CLI Commands**: `aim store`, `aim get`, `aim pull`, `aim sign`, `aim scan`, `aim diff`, etc.
 - **Full Rust API**: Complete programmatic control
 - **Scriptable**: Automate workflows with bash/PowerShell
 - **Interactive**: Quick operations from terminal
@@ -114,7 +114,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ### 10. 🔄 Production-Ready Reliability
 
 **Why it matters**: Trust it with your most important models
-- 1,831 comprehensive tests (100% passing)
+- 1,809 comprehensive tests (100% passing)
 - Type-safe Rust implementation (no memory bugs)
 - Comprehensive error handling
 - Detailed logging and debugging support
@@ -142,6 +142,13 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 | Federated Vault Sync      | ✅ Complete | —             | ✅           |
 | GPU Encryption (OpenCL)   | ✅ Complete | ✅ Auto        | ✅           |
 | Python Bindings (PyO3)    | ✅ Complete | —             | ✅           |
+| Model Download            | ✅ Complete | ✅ `aim pull`  | ✅           |
+| Model Signing             | ✅ Complete | ✅ `aim sign`  | ✅           |
+| Pickle Scanning           | ✅ Complete | ✅ `aim scan`  | ✅           |
+| Model Diffing             | ✅ Complete | ✅ `aim diff`  | ✅           |
+| Engine Interop            | ✅ Complete | ✅ `aim register` | ✅        |
+| Benchmark Metadata        | ✅ Complete | ✅ `aim benchmark` | ✅       |
+| License Scanning          | ✅ Complete | ✅ `aim license-scan` | ✅    |
 | Cross-Platform            | ✅ Complete | ✅             | ✅           |
 | LRU Caching               | ✅ Complete | ⚠️ Info only   | ✅           |
 | Compression               | ✅ Complete | ✅             | ✅           |
@@ -373,6 +380,31 @@ Demonstrates:
 - **MITRE ATT&CK**: Defense against T1552, T1486, T1078, T1005
 - **Audit Logging**: Complete security event tracking
 
+### Model Download & Provenance
+
+- **Multi-source download**: Pull models from HuggingFace Hub, Ollama registry, or arbitrary URLs
+- **SHA-256 verification**: Streaming hash verification during download
+- **HMAC-SHA256 signing**: Generate detached `.sig` files for model provenance
+- **Signature verification**: Verify model integrity and signer identity
+
+### Safety & Compliance Scanning
+
+- **Pickle scanning**: Detect dangerous opcodes (`REDUCE`, `GLOBAL`, `INST`, etc.) and patterns (`os.system`, `subprocess`, `eval`)
+- **License scanning**: Detect licenses from model cards, `config.json`, GGUF metadata, and LICENSE files
+- **SPDX normalization**: Standard license identifiers with compatibility warnings
+
+### Model Diffing & Benchmarks
+
+- **Tensor-level diffing**: Compare SafeTensors and GGUF models at the tensor level
+- **Generic fallback**: Binary diff for any model format
+- **Benchmark metadata**: Store and query benchmark results (MMLU, HellaSwag, etc.) per model version
+
+### Engine Interop
+
+- **Ollama integration**: Generate Modelfiles and register models with `ollama create`
+- **LM Studio integration**: Copy models to LM Studio's models directory
+- **Cross-platform**: Auto-detects default paths on Windows, Linux, macOS
+
 ### Architecture v2 (Advanced)
 
 - **Trait-based DI**: `CryptoProvider`, `BlobStore`, `VersionRepo`, `AuditSink` traits for swappable backends
@@ -440,8 +472,15 @@ AI Model Vault/
 │   ├── telemetry.rs       # Anonymous usage telemetry (opt-in)
 │   ├── config.rs          # XDG-compliant configuration
 │   ├── utils.rs           # Model utilities (8 tools)
+│   ├── download.rs        # Model download (HuggingFace, Ollama, URLs)
+│   ├── signing.rs         # HMAC-SHA256 model signing & verification
+│   ├── scanning.rs        # Pickle safety scanning
+│   ├── diff.rs            # Model diffing (tensor-level comparison)
+│   ├── interop.rs         # Ollama & LM Studio registration
+│   ├── benchmark.rs       # Benchmark metadata storage
+│   ├── license_scan.rs    # License detection & SPDX normalization
 │   └── python.rs          # Python bindings (PyO3)
-├── tests/                 # 1,831 comprehensive tests
+├── tests/                 # 1,809 comprehensive tests
 ├── docs/                  # Documentation
 ├── website/               # Next.js documentation site
 ├── deploy/                # Dockerfile & Helm chart
@@ -687,6 +726,34 @@ aim stats
 
 # Check compliance status
 aim compliance
+
+# Download models from HuggingFace, Ollama, or URLs
+aim pull hf:mistralai/Mistral-7B-v0.1 -o ./models
+aim pull ollama:llama3 -o ./models
+aim pull https://example.com/model.gguf -o ./models --sha256 <HASH>
+
+# Sign and verify models
+aim sign my-model --identity "trainer@company.com"
+aim verify my-model --signature my-model.sig
+
+# Scan pickle files for safety
+aim scan my-model
+aim scan --file ./suspicious-model.pkl
+
+# Compare model versions
+aim diff my-model@1 my-model@2
+aim diff ./model-a.safetensors ./model-b.safetensors
+
+# Register with inference engines
+aim register my-model --engine ollama --alias my-llm
+aim register my-model --engine lm-studio
+
+# Store and query benchmark metadata
+aim benchmark add my-model --version 1 --benchmark mmlu --score 72.5 --unit percent
+aim benchmark show my-model
+
+# Scan for licenses
+aim license-scan ./models/my-model/
 ```
 
 ### Rust Library
@@ -843,7 +910,7 @@ let result = server.execute_tool(
 | [Development Guide](DEVELOPMENT.md)              | For contributors and developers        |
 | [Security Policy](SECURITY.md)                   | Security standards and reporting       |
 | [Roadmap](ROADMAP.md)                            | Full development roadmap               |
-| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,831 tests) |
+| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,809 tests) |
 | [Python Bindings](docs/PYTHON_BINDINGS.md)       | PyO3 native bindings & pure-Python API |
 | [Changelog](CHANGELOG.md)                        | Version history and changes            |
 | [Documentation Website](website/)                | Next.js documentation site             |
@@ -932,7 +999,7 @@ cargo bench --bench api_bench --features api   # API endpoints (9 benchmarks)
 ## 🧪 Testing & Quality
 
 ```bash
-# Run all tests (1,831 tests)
+# Run all tests (1,809 tests)
 cargo test
 
 # Run specific test suites
@@ -957,20 +1024,19 @@ cargo bench --bench vault_bench               # Store/retrieve/list operations
 cargo bench --bench api_bench --features api  # REST API endpoint latency
 ```
 
-**Test Coverage**: 1,831 tests, all passing ✅
+**Test Coverage**: 1,809 tests, all passing ✅
 - Library unit tests: 623
 - Coverage & edge case tests: 873
 - Conversion tests: 31
 - Crypto tests: 14
 - Format tests: 15
 - Integration tests: 8
-- CLI tests: 17
+- CLI tests: 63
 - VaultBuilder tests: 30
 - Config/error tests: 22
 - Model card tests: 52 (48 + 4 integration)
 - RAG tests: 38 (includes 23 MCP tests)
 - Utilities tests: 38
-- API integration tests: 22
 - Doc tests: 2
 
 ## 🤝 Contributing
