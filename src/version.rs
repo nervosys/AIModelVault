@@ -274,6 +274,22 @@ impl VersionControl {
             .and_then(|v| v.metadata.get(key).cloned())
     }
 
+    /// Return an owned list of model names (useful when the caller needs
+    /// ownership, e.g. for export/import operations).
+    pub fn list_models_owned(&self) -> Vec<String> {
+        self.versions.keys().cloned().collect()
+    }
+
+    /// Import a pre-built `ModelVersion` for a model — used during vault
+    /// bundle import to transplant versions from another vault.
+    pub fn import_version(&mut self, model_name: &str, version: ModelVersion) -> Result<()> {
+        self.versions
+            .entry(model_name.to_string())
+            .or_default()
+            .push(version);
+        self.save_versions()
+    }
+
     /// Generate unique checkpoint identifier
     fn generate_checkpoint_id(
         model_name: &str,

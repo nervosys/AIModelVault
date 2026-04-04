@@ -1,18 +1,29 @@
 //! CLI command handlers.
 
+pub mod acl;
 pub mod analyze;
 pub mod archive;
 pub mod benchmark;
+pub mod browse;
 pub mod card;
 pub mod cloud;
 pub mod convert;
 pub mod database;
 pub mod diff;
+pub mod gc;
 pub mod introspect;
 pub mod license_scan;
+pub mod lineage_graph;
+pub mod plugins;
+pub mod policies;
+pub mod profiles;
 pub mod pull;
 pub mod register;
 pub mod scan;
 pub mod sign;
+pub mod tags;
 pub mod telemetry;
+pub mod validation;
 pub mod vault;
+pub mod vault_bundle;
+pub mod webhooks;

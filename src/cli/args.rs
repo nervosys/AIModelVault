@@ -416,6 +416,99 @@ pub enum Commands {
         #[arg(short, long, default_value = "text")]
         format: String,
     },
+
+    /// Manage model tags
+    Tag {
+        #[command(subcommand)]
+        command: TagCommands,
+    },
+
+    /// Search models by name or tags
+    Search {
+        /// Search query text
+        #[arg(default_value = "")]
+        query: String,
+
+        /// Filter by tags
+        #[arg(short, long)]
+        tag: Vec<String>,
+
+        /// Output format (text, json)
+        #[arg(short, long)]
+        format: Option<String>,
+    },
+
+    /// Export vault as portable archive
+    VaultExport {
+        /// Output archive path (.tar.gz)
+        output: PathBuf,
+    },
+
+    /// Import vault from portable archive
+    VaultImport {
+        /// Archive path
+        archive: PathBuf,
+
+        /// Target directory (defaults to current vault)
+        #[arg(short, long)]
+        target: Option<PathBuf>,
+    },
+
+    /// Garbage-collect orphaned blobs and temp files
+    Gc {
+        /// Show what would be cleaned without deleting
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Browse vault models in a formatted table
+    Browse,
+
+    /// Manage webhook targets
+    Webhook {
+        #[command(subcommand)]
+        command: WebhookCommands,
+    },
+
+    /// Manage access control lists
+    Acl {
+        #[command(subcommand)]
+        command: AclCommands,
+    },
+
+    /// Validate a stored model's integrity
+    Validate {
+        /// Model name
+        name: String,
+
+        /// Version (latest if not specified)
+        #[arg(short, long)]
+        version: Option<u32>,
+    },
+
+    /// Manage retention policies
+    Policy {
+        #[command(subcommand)]
+        command: PolicyCommands,
+    },
+
+    /// Cross-model lineage graph
+    LineageGraph {
+        #[command(subcommand)]
+        command: LineageGraphCommands,
+    },
+
+    /// Manage plugins
+    Plugin {
+        #[command(subcommand)]
+        command: PluginCommands,
+    },
+
+    /// Manage configuration profiles
+    Profile {
+        #[command(subcommand)]
+        command: ProfileCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -797,5 +890,212 @@ pub enum BenchmarkCommands {
         /// Output format (text, json)
         #[arg(short, long, default_value = "text")]
         format: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum TagCommands {
+    /// Add tags to a model
+    Add {
+        /// Model name
+        model: String,
+
+        /// Tags to add
+        #[arg(required = true)]
+        tags: Vec<String>,
+    },
+
+    /// Remove tags from a model
+    Remove {
+        /// Model name
+        model: String,
+
+        /// Tags to remove
+        #[arg(required = true)]
+        tags: Vec<String>,
+    },
+
+    /// List tags for a model
+    List {
+        /// Model name
+        model: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum WebhookCommands {
+    /// Register a webhook target
+    Add {
+        /// Webhook ID
+        id: String,
+
+        /// Target URL
+        url: String,
+
+        /// Shared secret for HMAC signing
+        #[arg(short, long)]
+        secret: Option<String>,
+
+        /// Events to subscribe to (empty = all)
+        #[arg(short, long)]
+        events: Vec<String>,
+    },
+
+    /// Remove a webhook
+    Remove {
+        /// Webhook ID
+        id: String,
+    },
+
+    /// List all webhooks
+    List,
+}
+
+#[derive(Subcommand)]
+pub enum AclCommands {
+    /// Grant a role to an identity
+    Grant {
+        /// Identity (e.g. username or email)
+        identity: String,
+
+        /// Role (reader, writer, admin)
+        role: String,
+    },
+
+    /// Revoke access for an identity
+    Revoke {
+        /// Identity
+        identity: String,
+    },
+
+    /// List all ACL entries
+    List,
+}
+
+#[derive(Subcommand)]
+pub enum PolicyCommands {
+    /// Set a retention policy for a model
+    Set {
+        /// Model name
+        model: String,
+
+        /// Maximum number of versions to keep
+        #[arg(long)]
+        max_versions: Option<usize>,
+
+        /// Maximum age in days
+        #[arg(long)]
+        max_age_days: Option<u64>,
+
+        /// Minimum versions to always keep
+        #[arg(long)]
+        keep_minimum: Option<usize>,
+    },
+
+    /// Remove a retention policy
+    Remove {
+        /// Model name
+        model: String,
+    },
+
+    /// Show the policy for a model
+    Show {
+        /// Model name
+        model: String,
+    },
+
+    /// Apply retention policies (delete old versions)
+    Apply {
+        /// Apply only for a specific model (applies all if omitted)
+        #[arg(short, long)]
+        model: Option<String>,
+
+        /// Show what would be deleted without deleting
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum LineageGraphCommands {
+    /// Add a derivation edge
+    Add {
+        /// Parent model (name or name@version)
+        parent: String,
+
+        /// Child model (name or name@version)
+        child: String,
+
+        /// Derivation kind (finetune, quantize, merge, distill, convert)
+        #[arg(short, long, default_value = "finetune")]
+        kind: String,
+    },
+
+    /// Show lineage for a model
+    Show {
+        /// Model name
+        model: String,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PluginCommands {
+    /// List installed plugins
+    List,
+
+    /// Install a plugin from a directory
+    Install {
+        /// Plugin directory path
+        path: PathBuf,
+    },
+
+    /// Uninstall a plugin by ID
+    Uninstall {
+        /// Plugin ID
+        id: String,
+    },
+
+    /// Discover plugins in the plugin directory
+    Discover,
+}
+
+#[derive(Subcommand)]
+pub enum ProfileCommands {
+    /// Create a new profile
+    Create {
+        /// Profile name
+        name: String,
+
+        /// Key=value overrides
+        #[arg(short, long)]
+        set: Vec<String>,
+    },
+
+    /// Activate a profile
+    Activate {
+        /// Profile name
+        name: String,
+    },
+
+    /// Deactivate the current profile
+    Deactivate,
+
+    /// List all profiles
+    List,
+
+    /// Show a profile's details
+    Show {
+        /// Profile name
+        name: String,
+    },
+
+    /// Delete a profile
+    Delete {
+        /// Profile name
+        name: String,
     },
 }

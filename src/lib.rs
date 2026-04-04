@@ -8,6 +8,7 @@
 //! - Version control with complete checkpoint history
 //! - Format conversion capabilities
 
+pub mod access_control;
 #[cfg(feature = "api")]
 pub mod api;
 pub mod audit;
@@ -22,21 +23,32 @@ pub mod download;
 pub mod error;
 pub mod federation;
 pub mod formats;
+pub mod gc;
 pub mod interop;
+pub mod kms;
 pub mod license_scan;
+pub mod lineage_graph;
 pub mod model_card;
 pub mod permissions;
+pub mod plugins;
+pub mod policies;
+pub mod profiles;
 pub mod rag;
 pub mod scanning;
 pub mod signing;
 pub mod storage;
+pub mod tags;
 pub mod telemetry;
 pub mod traits;
+pub mod tui;
 pub mod utils;
+pub mod validation;
 pub mod vault;
+pub mod vault_bundle;
 pub mod version;
 #[cfg(feature = "sqlite")]
 pub mod version_sqlite;
+pub mod webhooks;
 
 #[cfg(feature = "python")]
 mod python;
@@ -87,8 +99,8 @@ pub use download::{ModelDownloader, ModelSource};
 
 // Interop exports
 pub use interop::{
-    InferenceEngine, LmStudioOptions, OllamaOptions, RegistrationResult,
-    register_lm_studio, register_ollama,
+    register_lm_studio, register_ollama, InferenceEngine, LmStudioOptions, OllamaOptions,
+    RegistrationResult,
 };
 
 // License scanning exports
@@ -113,6 +125,39 @@ pub use federation::{
     ConflictResolution, FederationConfig, FederationManager, FederationStatus, PeerConfig,
     SyncConflict, SyncManifest, SyncResult, VectorClock,
 };
+
+// Access control exports
+pub use access_control::{AclEntry, AclGuard, Role};
+
+// GC exports
+pub use gc::GcReport;
+
+// KMS exports
+pub use kms::{KmsBackend, KmsRequest};
+
+// Lineage graph exports
+pub use lineage_graph::{DerivationKind, LineageEdge, LineageGraph};
+
+// Plugin exports
+pub use plugins::{PluginInfo, PluginManifest, PluginRegistry};
+
+// Policy exports
+pub use policies::{PolicyReport, PolicyStore, RetentionPolicy};
+
+// Profile exports
+pub use profiles::{Profile, ProfileStore};
+
+// Tag exports
+pub use tags::{SearchQuery, SearchResult, TagStore};
+
+// Validation exports
+pub use validation::{ValidationProbe, ValidationResult, ValidationStore};
+
+// Vault bundle exports
+pub use vault_bundle::{BundleManifest, ExportReport, ImportReport};
+
+// Webhook exports
+pub use webhooks::{WebhookPayload, WebhookStore, WebhookTarget};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -13,10 +13,10 @@ mod cli;
 use clap::Parser;
 use cli::args::{Cli, Commands};
 use cli::handlers::{
-    analyze, archive, card, cloud, convert, database, introspect, telemetry as telemetry_handler,
-    vault,
-    benchmark as benchmark_handler, diff as diff_handler, license_scan as license_scan_handler,
-    pull, register, scan, sign,
+    acl, analyze, archive, benchmark as benchmark_handler, browse, card, cloud, convert, database,
+    diff as diff_handler, gc, introspect, license_scan as license_scan_handler, lineage_graph,
+    plugins, policies, profiles, pull, register, scan, sign, tags, telemetry as telemetry_handler,
+    validation, vault, vault_bundle as vault_bundle_handler, webhooks as webhooks_handler,
 };
 
 use ai_model_vault::{telemetry, Result, VaultConfig};
@@ -170,7 +170,9 @@ fn run() -> Result<()> {
             token,
             store,
             name,
-        } => pull::handle_pull(source, output, sha256, token, store, name, config, use_sqlite),
+        } => pull::handle_pull(
+            source, output, sha256, token, store, name, config, use_sqlite,
+        ),
         Commands::Sign {
             name,
             version,
@@ -202,9 +204,38 @@ fn run() -> Result<()> {
             version,
             alias,
             system_prompt,
-        } => register::handle_register(name, engine, version, alias, system_prompt, config, use_sqlite),
+        } => register::handle_register(
+            name,
+            engine,
+            version,
+            alias,
+            system_prompt,
+            config,
+            use_sqlite,
+        ),
         Commands::Benchmark { command } => benchmark_handler::handle_benchmark(command, config),
-        Commands::LicenseScan { path, format } => license_scan_handler::handle_license_scan(path, format),
+        Commands::LicenseScan { path, format } => {
+            license_scan_handler::handle_license_scan(path, format)
+        }
+        Commands::Tag { command } => tags::handle_tag(command, config),
+        Commands::Search { query, tag, format } => tags::handle_search(query, tag, format, config),
+        Commands::VaultExport { output } => {
+            vault_bundle_handler::handle_vault_export(output, config)
+        }
+        Commands::VaultImport { archive, target } => {
+            vault_bundle_handler::handle_vault_import(archive, target, config)
+        }
+        Commands::Gc { dry_run } => gc::handle_gc(dry_run, config),
+        Commands::Browse => browse::handle_browse(config),
+        Commands::Webhook { command } => webhooks_handler::handle_webhook(command, config),
+        Commands::Acl { command } => acl::handle_acl(command, config),
+        Commands::Validate { name, version } => {
+            validation::handle_validate(name, version, config, use_sqlite)
+        }
+        Commands::Policy { command } => policies::handle_policy(command, config, use_sqlite),
+        Commands::LineageGraph { command } => lineage_graph::handle_lineage_graph(command, config),
+        Commands::Plugin { command } => plugins::handle_plugin(command, config),
+        Commands::Profile { command } => profiles::handle_profile(command, config),
     };
 
     // Flush telemetry before exit
