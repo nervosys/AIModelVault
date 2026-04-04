@@ -10,7 +10,7 @@ pub fn openapi_spec() -> serde_json::Value {
         "info": {
             "title": "AI Model Vault API",
             "description": "RESTful API for secure AI model storage, versioning, and format conversion.",
-            "version": "1.2.1",
+            "version": "1.3.0",
             "license": {
                 "name": "AGPL-3.0-or-later",
                 "url": "https://www.gnu.org/licenses/agpl-3.0.html"

@@ -70,7 +70,7 @@ export default function Header() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-sm font-mono font-bold uppercase tracking-wider border border-[var(--color-primary)]/25 text-[var(--color-primary)] bg-[var(--color-glow)]">
-              v1.2.1
+              v1.3.0
             </span>
             <a
               href="https://crates.io/crates/ai-model-vault"

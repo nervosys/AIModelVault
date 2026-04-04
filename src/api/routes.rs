@@ -1060,14 +1060,14 @@ mod tests {
     fn test_health_response_serialization() {
         let resp = HealthResponse {
             status: "ok".to_string(),
-            version: "1.2.1".to_string(),
+            version: "1.3.0".to_string(),
             vault_state: Some("locked".to_string()),
             model_count: Some(5),
             uptime_seconds: None,
         };
         let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("ok"));
-        assert!(json.contains("1.2.1"));
+        assert!(json.contains("1.3.0"));
         assert!(json.contains("locked"));
         assert!(!json.contains("uptime_seconds")); // skipped
     }

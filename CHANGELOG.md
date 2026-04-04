@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-04-04
+
+### Added
+
+- **Model download** (`src/download.rs`, ~350 lines) — Pull models from HuggingFace Hub, Ollama registry, or arbitrary URLs with streaming SHA-256 verification. `ModelSource` enum with `parse()`, `ModelDownloader` builder with `.with_hf_token()`. CLI: `aim pull <SOURCE> [-o DIR] [--sha256 HASH] [--token TOKEN] [--store] [--name NAME]`
+- **Model signing & verification** (`src/signing.rs`, ~280 lines) — HMAC-SHA256 model signing with detached `.sig` files for provenance. `ModelSigner` static methods: `generate_keypair`, `sign`, `verify`, `save_signature`, `load_signature`. `SignatureVerification` struct with validity, hash match, and signer identity. CLI: `aim sign <NAME>`, `aim verify <NAME> --signature <SIG>`
+- **Pickle safety scanning** (`src/scanning.rs`, ~300 lines) — Detect 7 dangerous opcodes (`REDUCE`, `GLOBAL`, `INST`, `OBJ`, `NEWOBJ`, `STACK_GLOBAL`, `NEWOBJ_EX`) and 12 suspicious patterns (`os.system`, `subprocess`, `eval`, etc.) in PyTorch/pickle files. `ScanReport` with severity classification. CLI: `aim scan [<NAME>] [--file PATH]`
+- **Model diffing** (`src/diff.rs`, ~350 lines) — Tensor-level comparison for SafeTensors and GGUF models with generic binary fallback. SafeTensors header parsing, GGUF header parsing, `TensorMap` comparison. `DiffSummary` with human-readable display. CLI: `aim diff <LEFT> <RIGHT>` (supports `name@version` syntax)
+- **Engine interop** (`src/interop.rs`, ~250 lines) — Register models with Ollama (`ollama create` via Modelfile generation) and LM Studio (copy to models directory). Cross-platform default path detection. CLI: `aim register <NAME> --engine <ollama|lm-studio> [--alias NAME]`
+- **Benchmark metadata** (`src/benchmark.rs`, ~250 lines) — Store and query benchmark results (MMLU, HellaSwag, etc.) per model version with JSON filesystem storage. `BenchmarkStore` with `add_result`/`add_detailed_result`. CLI: `aim benchmark add <NAME> --benchmark <BENCH> --score <N>`, `aim benchmark show <NAME>`
+- **License scanning** (`src/license_scan.rs`, ~370 lines) — Detect licenses from YAML frontmatter, `config.json`, GGUF metadata, and LICENSE files. 24 known licenses, SPDX normalization, `LicenseClass` classification (Permissive/Copyleft/NonCommercial/Proprietary/Unknown), compatibility warnings. CLI: `aim license-scan <PATH>`
+- **7 CLI handler files** — `src/cli/handlers/{pull,sign,scan,diff,register,benchmark,license_scan}.rs`
+- **46 new CLI integration tests** — expanded `tests/cli_tests.rs` from 17 to 63 tests covering all new subcommands
+
+### Changed
+
+- **Version bump** — 1.2.1 → 1.3.0
+- **Test count** — 1,831 → 1,809 (consolidated; 623 lib + 63 CLI + 873 coverage + 250 other)
+- **CLI command count** — 15+ → 25+ commands
+- **Main thread stack** — Spawned `run()` on 4 MiB thread to prevent stack overflow on Windows from enlarged `Commands` enum
+- **`tempfile`** moved from dev-dependencies to regular dependencies (used by handlers at runtime)
+- **Updated AGENTS.md** — Added features #11–#17, 8 new CLI commands, 7 new source files in project layout
+- **Updated README.md** — New features in comparison table, CLI section, architecture tree, additional capabilities
+
+### Fixed
+
+- **License scan Windows dedup** — Added `break` after first match in README/LICENSE file loops to prevent case-insensitive filesystem duplicates
+- **Handler API patterns** — Fixed all 7 new handlers to use correct Vault API (`prompt_passphrase` with string arg, `build_vault` with config+sqlite, separate `unlock`, `get_model` not `get`, etc.)
+
 ## [1.2.1] - 2026-03-13
 
 ### Added

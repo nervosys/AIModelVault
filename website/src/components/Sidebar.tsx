@@ -26,6 +26,9 @@ const navigation: NavSection[] = [
       { label: "Version Control", href: "/docs/version-control" },
       { label: "Model Cards", href: "/docs/model-cards" },
       { label: "Format Conversion", href: "/docs/conversion" },
+      { label: "Model Download", href: "/docs/download" },
+      { label: "Model Diffing", href: "/docs/diffing" },
+      { label: "Benchmarks", href: "/docs/benchmarks" },
     ],
   },
   {
@@ -34,6 +37,9 @@ const navigation: NavSection[] = [
       { label: "Encryption", href: "/docs/security" },
       { label: "Security Hardening", href: "/docs/security-hardening" },
       { label: "Compliance", href: "/docs/compliance" },
+      { label: "Model Signing", href: "/docs/signing" },
+      { label: "Safety Scanning", href: "/docs/scanning" },
+      { label: "License Scanning", href: "/docs/license-scanning" },
     ],
   },
   {
@@ -43,6 +49,7 @@ const navigation: NavSection[] = [
       { label: "Python Bindings", href: "/docs/python" },
       { label: "RAG & MCP Tools", href: "/docs/rag" },
       { label: "Cloud Storage", href: "/docs/cloud" },
+      { label: "Engine Interop", href: "/docs/engine-interop" },
     ],
   },
   {

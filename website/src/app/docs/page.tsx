@@ -15,6 +15,10 @@ export default function DocsIndex() {
         <FeatureCard icon="💻" title="CLI Reference" description="Complete reference for all aim commands and options." href="/docs/cli" />
         <FeatureCard icon="🔐" title="Security" description="Encryption, key derivation, and FIPS 140-3 compliance details." href="/docs/security" />
         <FeatureCard icon="🌐" title="REST API" description="14 RESTful endpoints with JWT auth and OpenAPI specification." href="/docs/api" />
+        <FeatureCard icon="📥" title="Model Download" description="Pull models from HuggingFace Hub, Ollama, or URLs." href="/docs/download" />
+        <FeatureCard icon="✍️" title="Model Signing" description="HMAC-SHA256 signatures for tamper detection and provenance." href="/docs/signing" />
+        <FeatureCard icon="🛡️" title="Safety Scanning" description="Detect dangerous opcodes in PyTorch/pickle files." href="/docs/scanning" />
+        <FeatureCard icon="🔗" title="Engine Interop" description="Register models with Ollama and LM Studio." href="/docs/engine-interop" />
       </div>
 
       <h2 className="text-2xl font-bold mb-4">What is AI Model Vault?</h2>
@@ -34,6 +38,13 @@ export default function DocsIndex() {
         <li className="flex items-start gap-2"><span>•</span> <span><strong>Python Bindings</strong> — Native PyO3 bindings for seamless Python integration</span></li>
         <li className="flex items-start gap-2"><span>•</span> <span><strong>Cloud Storage</strong> — AWS S3 and Azure Blob Storage with end-to-end encryption</span></li>
         <li className="flex items-start gap-2"><span>•</span> <span><strong>Docker & K8s</strong> — Multi-stage Dockerfile and production Helm chart</span></li>
+        <li className="flex items-start gap-2"><span>•</span> <span><strong>Model Download</strong> — Pull from HuggingFace Hub, Ollama registry, or URLs with SHA-256 verification</span></li>
+        <li className="flex items-start gap-2"><span>•</span> <span><strong>Model Signing</strong> — HMAC-SHA256 signatures with detached .sig files for provenance</span></li>
+        <li className="flex items-start gap-2"><span>•</span> <span><strong>Safety Scanning</strong> — Detect dangerous pickle opcodes and malicious patterns in model files</span></li>
+        <li className="flex items-start gap-2"><span>•</span> <span><strong>Model Diffing</strong> — Compare model versions at the tensor level (shapes, dtypes, parameters)</span></li>
+        <li className="flex items-start gap-2"><span>•</span> <span><strong>Engine Interop</strong> — Register models with Ollama and LM Studio for local inference</span></li>
+        <li className="flex items-start gap-2"><span>•</span> <span><strong>Benchmarks</strong> — Attach and query benchmark scores per model version</span></li>
+        <li className="flex items-start gap-2"><span>•</span> <span><strong>License Scanning</strong> — Detect licenses with SPDX normalization and classification</span></li>
       </ul>
 
       <h3 className="text-xl font-semibold mt-8 mb-3">Get Help</h3>

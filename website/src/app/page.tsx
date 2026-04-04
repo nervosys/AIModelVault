@@ -21,7 +21,7 @@ export default function HomePage() {
             {/* Classification badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-mono font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              v1.2.1 — Operational
+              v1.3.0 — Operational
             </div>
 
             {/* Vault door icon */}
@@ -140,6 +140,48 @@ export default function HomePage() {
             description="Built-in document store, knowledge base, vector search, and Model Context Protocol agents."
             href="/docs/rag"
           />
+          <FeatureCard
+            icon="📥"
+            title="Model Download"
+            description="Pull models from HuggingFace Hub, Ollama, or URLs with SHA-256 integrity verification."
+            href="/docs/download"
+          />
+          <FeatureCard
+            icon="✍️"
+            title="Model Signing"
+            description="HMAC-SHA256 signatures with detached .sig files for tamper detection and provenance."
+            href="/docs/signing"
+          />
+          <FeatureCard
+            icon="🛡️"
+            title="Safety Scanning"
+            description="Detect dangerous pickle opcodes and malicious patterns in PyTorch model files."
+            href="/docs/scanning"
+          />
+          <FeatureCard
+            icon="🔍"
+            title="Model Diffing"
+            description="Compare model versions at the tensor level — shapes, dtypes, and parameter deltas."
+            href="/docs/diffing"
+          />
+          <FeatureCard
+            icon="🔗"
+            title="Engine Interop"
+            description="Register models with Ollama and LM Studio for local inference and experimentation."
+            href="/docs/engine-interop"
+          />
+          <FeatureCard
+            icon="📊"
+            title="Benchmarks"
+            description="Attach and query benchmark scores per model version with hardware context."
+            href="/docs/benchmarks"
+          />
+          <FeatureCard
+            icon="📜"
+            title="License Scanning"
+            description="Detect licenses from model cards, GGUF metadata, and config files with SPDX normalization."
+            href="/docs/license-scanning"
+          />
         </div>
       </section>
 
@@ -216,7 +258,7 @@ export default function HomePage() {
           </div>
           <div className="grid md:grid-cols-3 gap-6 text-center">
             {[
-              { value: "1,831", label: "Tests Passing", status: "●" },
+              { value: "1,809", label: "Tests Passing", status: "●" },
               { value: "23+", label: "Model Formats", status: "●" },
               { value: "14", label: "API Endpoints", status: "●" },
             ].map((stat) => (

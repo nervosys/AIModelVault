@@ -7,7 +7,7 @@ info:
     
     Requires the `api` cargo feature: `cargo build --features api`
     Start with: `aim serve --port 8080`
-  version: 1.2.1
+  version: 1.3.0
   license:
     name: AGPL-3.0-or-later
     url: https://www.gnu.org/licenses/agpl-3.0.html

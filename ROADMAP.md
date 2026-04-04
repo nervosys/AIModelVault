@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-03-13  
-> Current version: **1.2.1** (testing, CI/CD, coverage)  
-> Status: Production release — v1.2.1 shipped with expanded test suite, CI hardening, fuzz targets
+> Last updated: 2026-04-04  
+> Current version: **1.3.0** (model download, signing, scanning, diffing, interop, benchmarks, license scanning)  
+> Status: Production release — v1.3.0 shipped with 7 new features, 25+ CLI commands
 
 ---
 
@@ -29,7 +29,7 @@
 - [x] Audit logging for compliance
 - [x] Compliance checks: CVE scanning via `cargo audit`, FIPS/CMMC/MITRE assessment
 - [x] Python bindings: neuralvault package (Vault, VaultConfig, ModelFormat)
-- [x] 1,831 tests passing, zero warnings
+- [x] 1,809 tests passing, zero warnings
 - [x] Git repository initialized
 - [x] 10 example programs, 30+ documentation files
 
@@ -482,6 +482,17 @@ These are tracked but not planned for any specific release:
 
 - Google Cloud Storage (blocked by RUSTSEC-2025-0009/0010 in `cloud-storage` crate)
 - Model training integration
+
+## Completed in v1.3.0
+
+- [x] **Model download** — Pull models from HuggingFace Hub (`hf:`), Ollama registry (`ollama:`), or arbitrary URLs with streaming SHA-256 verification; `aim pull` CLI command
+- [x] **Model signing & verification** — HMAC-SHA256 model signing with detached `.sig` files for provenance; `aim sign` / `aim verify` CLI commands
+- [x] **Pickle safety scanning** — Detect 7 dangerous opcodes and 12 suspicious patterns in PyTorch/pickle files; `aim scan` CLI command
+- [x] **Model diffing** — Tensor-level comparison for SafeTensors/GGUF with generic binary fallback; `aim diff` CLI command with `name@version` syntax
+- [x] **Engine interop** — Register models with Ollama (`ollama create`) and LM Studio (copy to models dir); `aim register` CLI command
+- [x] **Benchmark metadata** — Store and query benchmark results per model version with JSON filesystem storage; `aim benchmark add/show` CLI commands
+- [x] **License scanning** — Detect licenses from model cards, config.json, GGUF metadata, LICENSE files; 24 known licenses with SPDX normalization; `aim license-scan` CLI command
+- [x] **CLI expansion** — 25+ commands (was 15+), 63 CLI integration tests (was 17)
 
 ## Completed in v1.2.1
 

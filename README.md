@@ -7,7 +7,7 @@
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
 [![Tests](https://img.shields.io/badge/tests-1%2C809%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
 
 A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, model signing, safety scanning, and comprehensive utilities.
@@ -124,34 +124,34 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 
 ## 🎯 Quick Feature Comparison
 
-| Feature                   | Status     | CLI           | Library API |
-| ------------------------- | ---------- | ------------- | ----------- |
-| Encryption (AES-256-GCM)  | ✅ Complete | ✅             | ✅           |
-| 23+ Format Support        | ✅ Complete | ✅             | ✅           |
-| Version Control           | ✅ Complete | ✅             | ✅           |
-| Model Cards               | ✅ Complete | ✅ 8 commands  | ✅           |
-| Model Utilities (8 tools) | ✅ Complete | ✅             | ✅           |
-| RAG & MCP Tools           | ✅ Complete | ⚠️ Partial     | ✅           |
-| Cloud Storage             | ✅ Complete | ✅ 4 commands  | ✅           |
-| Format Conversion         | ✅ Complete | ✅             | ✅           |
-| REST API (Axum + JWT)     | ✅ Complete | ✅ `aim serve` | ✅           |
-| GraphQL API               | ✅ Complete | —             | ✅           |
-| Streaming Encryption      | ✅ Complete | ✅ Auto        | ✅           |
-| SQLite Version Backend    | ✅ Complete | ✅ Flag        | ✅           |
-| Blockchain Audit Trail    | ✅ Complete | —             | ✅           |
-| Federated Vault Sync      | ✅ Complete | —             | ✅           |
-| GPU Encryption (OpenCL)   | ✅ Complete | ✅ Auto        | ✅           |
-| Python Bindings (PyO3)    | ✅ Complete | —             | ✅           |
-| Model Download            | ✅ Complete | ✅ `aim pull`  | ✅           |
-| Model Signing             | ✅ Complete | ✅ `aim sign`  | ✅           |
-| Pickle Scanning           | ✅ Complete | ✅ `aim scan`  | ✅           |
-| Model Diffing             | ✅ Complete | ✅ `aim diff`  | ✅           |
-| Engine Interop            | ✅ Complete | ✅ `aim register` | ✅        |
-| Benchmark Metadata        | ✅ Complete | ✅ `aim benchmark` | ✅       |
-| License Scanning          | ✅ Complete | ✅ `aim license-scan` | ✅    |
-| Cross-Platform            | ✅ Complete | ✅             | ✅           |
-| LRU Caching               | ✅ Complete | ⚠️ Info only   | ✅           |
-| Compression               | ✅ Complete | ✅             | ✅           |
+| Feature                   | Status     | CLI                  | Library API |
+| ------------------------- | ---------- | -------------------- | ----------- |
+| Encryption (AES-256-GCM)  | ✅ Complete | ✅                    | ✅           |
+| 23+ Format Support        | ✅ Complete | ✅                    | ✅           |
+| Version Control           | ✅ Complete | ✅                    | ✅           |
+| Model Cards               | ✅ Complete | ✅ 8 commands         | ✅           |
+| Model Utilities (8 tools) | ✅ Complete | ✅                    | ✅           |
+| RAG & MCP Tools           | ✅ Complete | ⚠️ Partial            | ✅           |
+| Cloud Storage             | ✅ Complete | ✅ 4 commands         | ✅           |
+| Format Conversion         | ✅ Complete | ✅                    | ✅           |
+| REST API (Axum + JWT)     | ✅ Complete | ✅ `aim serve`        | ✅           |
+| GraphQL API               | ✅ Complete | —                    | ✅           |
+| Streaming Encryption      | ✅ Complete | ✅ Auto               | ✅           |
+| SQLite Version Backend    | ✅ Complete | ✅ Flag               | ✅           |
+| Blockchain Audit Trail    | ✅ Complete | —                    | ✅           |
+| Federated Vault Sync      | ✅ Complete | —                    | ✅           |
+| GPU Encryption (OpenCL)   | ✅ Complete | ✅ Auto               | ✅           |
+| Python Bindings (PyO3)    | ✅ Complete | —                    | ✅           |
+| Model Download            | ✅ Complete | ✅ `aim pull`         | ✅           |
+| Model Signing             | ✅ Complete | ✅ `aim sign`         | ✅           |
+| Pickle Scanning           | ✅ Complete | ✅ `aim scan`         | ✅           |
+| Model Diffing             | ✅ Complete | ✅ `aim diff`         | ✅           |
+| Engine Interop            | ✅ Complete | ✅ `aim register`     | ✅           |
+| Benchmark Metadata        | ✅ Complete | ✅ `aim benchmark`    | ✅           |
+| License Scanning          | ✅ Complete | ✅ `aim license-scan` | ✅           |
+| Cross-Platform            | ✅ Complete | ✅                    | ✅           |
+| LRU Caching               | ✅ Complete | ⚠️ Info only          | ✅           |
+| Compression               | ✅ Complete | ✅                    | ✅           |
 
 ---
 

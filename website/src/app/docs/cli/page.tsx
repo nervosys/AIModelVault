@@ -92,6 +92,90 @@ Options:
   --token-expiry <SECONDS>   Token lifetime (default: 3600)
   --cors-permissive          Allow all CORS origins
   --no-dashboard             Disable web dashboard`}</CodeBlock>
+
+      <h2 className="text-2xl font-bold mt-10 mb-4" id="download">Model Download</h2>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">pull</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Download models from HuggingFace Hub, Ollama registry, or URLs.</p>
+      <CodeBlock language="bash">{`aim pull <SOURCE> [-o DIR] [--sha256 HASH] [--token TOKEN] [--store] [--name NAME]
+
+# HuggingFace
+aim pull hf://TheBloke/Llama-2-7B-GGUF/llama-2-7b.Q4_K_M.gguf
+
+# Ollama
+aim pull ollama://llama2:7b
+
+# URL with checksum verification
+aim pull https://example.com/model.safetensors --sha256 abc123...
+
+# Download and auto-store in vault
+aim pull hf://user/repo/model.safetensors --store --name my-model`}</CodeBlock>
+
+      <h2 className="text-2xl font-bold mt-10 mb-4" id="signing">Model Signing</h2>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">sign</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Sign a model with HMAC-SHA256. Auto-generates key on first use.</p>
+      <CodeBlock language="bash">{`aim sign <NAME> [-v VERSION] [-k KEY] [-i IDENTITY] [--file PATH]
+aim sign my-model --identity "ML Team <ml@company.com>"`}</CodeBlock>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">verify</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Verify a model signature.</p>
+      <CodeBlock language="bash">{`aim verify <NAME> --signature <SIG> [-k KEY] [--file PATH]
+aim verify my-model --signature my-model.sig`}</CodeBlock>
+
+      <h2 className="text-2xl font-bold mt-10 mb-4" id="scanning">Safety Scanning</h2>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">scan</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Scan PyTorch/pickle files for dangerous opcodes and malicious patterns.</p>
+      <CodeBlock language="bash">{`aim scan [<NAME>] [--file PATH] [-v VERSION] [-f text|json]
+
+# Scan a vault model
+aim scan my-model
+
+# Scan a file on disk
+aim scan --file ./model.pt --format json`}</CodeBlock>
+
+      <h2 className="text-2xl font-bold mt-10 mb-4" id="diffing">Model Diffing</h2>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">diff</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Compare two models at the tensor level (SafeTensors, GGUF).</p>
+      <CodeBlock language="bash">{`aim diff <LEFT> <RIGHT> [-f text|json]
+
+# Compare files
+aim diff model_v1.safetensors model_v2.safetensors
+
+# Compare vault versions
+aim diff mymodel@v1 mymodel@v2`}</CodeBlock>
+
+      <h2 className="text-2xl font-bold mt-10 mb-4" id="interop">Engine Interop</h2>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">register</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Register a model with Ollama or LM Studio.</p>
+      <CodeBlock language="bash">{`aim register <NAME> --engine <ollama|lm-studio> [-v VERSION] [--alias NAME] [--system-prompt TEXT]
+
+aim register my-model --engine ollama --alias my-assistant --system-prompt "You are helpful."
+aim register my-model --engine lm-studio`}</CodeBlock>
+
+      <h2 className="text-2xl font-bold mt-10 mb-4" id="benchmarks">Benchmarks</h2>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">benchmark add</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Attach benchmark scores to model versions.</p>
+      <CodeBlock language="bash">{`aim benchmark add <NAME> --version V --benchmark <BENCH> --score <N> --unit <UNIT> [--higher-is-better]
+aim benchmark add my-model --version 1 --benchmark mmlu --score 72.5 --unit percent --higher-is-better`}</CodeBlock>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">benchmark show</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Display benchmark results for a model.</p>
+      <CodeBlock language="bash">{`aim benchmark show <NAME> [--version V] [-f text|json]
+aim benchmark show my-model --version 1 --format json`}</CodeBlock>
+
+      <h2 className="text-2xl font-bold mt-10 mb-4" id="license">License Scanning</h2>
+
+      <h3 className="text-lg font-semibold mt-6 mb-2">license-scan</h3>
+      <p className="text-[var(--color-text-secondary)] mb-2">Detect licenses from model cards, GGUF metadata, and config files.</p>
+      <CodeBlock language="bash">{`aim license-scan <PATH> [-f text|json]
+
+aim license-scan ./my-model/
+aim license-scan model.gguf --format json`}</CodeBlock>
     </>
   );
 }
