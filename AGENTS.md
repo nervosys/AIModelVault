@@ -9,7 +9,7 @@
 | **Name**       | AI Model Vault                           |
 | **Binary**     | `aim`                                    |
 | **Crate**      | `ai-model-vault`                         |
-| **Version**    | 1.3.0                                    |
+| **Version**    | 1.4.0                                    |
 | **Language**   | Rust (edition 2021, MSRV 1.75)           |
 | **License**    | AGPL-3.0-or-later                        |
 | **Repository** | https://github.com/nervosys/AIModelVault |
@@ -35,6 +35,18 @@ AI Model Vault is an **encrypted AI/ML model management system**. It provides:
 15. **Engine Interop** — Register models with Ollama (`ollama create`) and LM Studio
 16. **Benchmark Metadata** — Store and query benchmark results per model version
 17. **License Scanning** — Detect licenses from model cards, config.json, GGUF metadata, LICENSE files
+18. **Model Tags & Search** — Tag models with labels and annotations, search by name/tags/annotations
+19. **Vault Export/Import** — Portable tar.gz vault bundles with selective model export
+20. **Garbage Collection** — Orphaned blob detection, temp file cleanup, space reclaim
+21. **TUI Dashboard** — Terminal UI browser for vault contents
+22. **Webhooks** — HTTP notification system with EventSubscriber integration
+23. **Access Control** — Role-based ACL (Reader/Writer/Admin) per principal
+24. **KMS Integration** — Fetch secrets from env, AWS Secrets Manager, Azure Key Vault, HashiCorp Vault
+25. **Model Validation** — Integrity probes with SHA-256 checksums per model version
+26. **Retention Policies** — Configurable max versions/age/minimum with dry-run enforcement
+27. **Cross-Model Lineage DAG** — Directed acyclic graph tracking model derivation chains
+28. **Plugin System** — Discover, install, uninstall plugins with JSON manifests
+29. **Config Profiles** — Named configuration profiles with activate/deactivate switching
 
 ## Discovery Files
 
@@ -109,6 +121,66 @@ aim benchmark show <NAME> [--version V] [--format text|json]
 
 # License scanning
 aim license-scan <PATH> [--format text|json]
+
+# Model tags & search
+aim tag add <MODEL> <TAGS>...                # Add tags to a model
+aim tag remove <MODEL> <TAGS>...             # Remove tags from a model
+aim tag list <MODEL>                          # List tags on a model
+aim tag annotate <MODEL> --key <K> --value <V>  # Add key-value annotation
+aim search <QUERY> [--tag TAG] [--format text|json]  # Search models
+
+# Vault export/import
+aim vault-export <OUTPUT>                     # Export vault as tar.gz bundle
+aim vault-import <ARCHIVE> [TARGET]           # Import vault bundle
+
+# Garbage collection
+aim gc [--dry-run]                            # Clean orphaned blobs & temp files
+
+# TUI dashboard
+aim browse                                    # Browse vault in terminal UI
+
+# Webhooks
+aim webhook add --url <URL> [--secret SECRET]  # Add webhook target
+aim webhook remove <ID>                       # Remove webhook target
+aim webhook list                              # List webhook targets
+aim webhook test <ID>                         # Test webhook delivery
+
+# Access control
+aim acl grant <PRINCIPAL> --role <ROLE>        # Grant role (reader/writer/admin)
+aim acl revoke <PRINCIPAL>                    # Revoke access
+aim acl list                                  # List ACL entries
+aim acl check <PRINCIPAL> --role <ROLE>        # Check permission
+
+# Model validation
+aim validate <NAME> [--version V]             # Validate model integrity
+
+# Retention policies
+aim policy set <MODEL> [--max-versions N] [--max-age-days N] [--keep-minimum N]
+aim policy remove <MODEL>                     # Remove retention policy
+aim policy list                               # List all policies
+aim policy apply <MODEL> [--dry-run]          # Apply policy to model
+aim policy apply-all [--dry-run]              # Apply all policies
+
+# Cross-model lineage DAG
+aim lineage-graph add --child <C> --parents <P>... --kind <KIND>
+aim lineage-graph show                        # Display lineage graph
+aim lineage-graph ancestors <MODEL>           # Show ancestors
+aim lineage-graph descendants <MODEL>         # Show descendants
+
+# Plugin system
+aim plugin discover                           # Scan for plugins
+aim plugin install <PATH>                     # Install plugin from manifest
+aim plugin uninstall <ID>                     # Uninstall plugin
+aim plugin list                               # List installed plugins
+aim plugin info <ID>                          # Show plugin details
+
+# Config profiles
+aim profile create <NAME> [--description TEXT] [--override KEY=VALUE]...
+aim profile remove <NAME>                     # Remove profile
+aim profile list                              # List all profiles
+aim profile activate <NAME>                   # Activate profile
+aim profile deactivate                        # Deactivate current profile
+aim profile show                              # Show active profile
 ```
 
 ## Supported Model Formats (23+)
@@ -206,6 +278,18 @@ src/
 ├── interop.rs          # Ollama & LM Studio registration
 ├── benchmark.rs        # Benchmark metadata storage
 ├── license_scan.rs     # License detection & SPDX normalization
+├── tags.rs             # Model tagging and search
+├── vault_bundle.rs     # Vault export/import bundles
+├── gc.rs               # Garbage collection
+├── tui.rs              # Terminal UI dashboard
+├── webhooks.rs         # Webhook notification system
+├── access_control.rs   # Role-based access control
+├── kms.rs              # External secrets manager integration
+├── validation.rs       # Model integrity validation
+├── policies.rs         # Retention policy enforcement
+├── lineage_graph.rs    # Cross-model lineage DAG
+├── plugins.rs          # Plugin system
+├── profiles.rs         # Configuration profiles
 └── python.rs           # Python bindings (PyO3)
 ```
 

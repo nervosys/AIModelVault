@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-04-04
+
+### Added
+
+- **Model Tags & Search** (`src/tags.rs`, ~250 lines) — Tag models with arbitrary labels and key-value annotations. Full-text search by name pattern, tags, or annotations. `TagStore` with `add_tags`/`remove_tags`/`search`. CLI: `aim tag add/remove/list/annotate`, `aim search`
+- **Vault Export/Import** (`src/vault_bundle.rs`, ~200 lines) — Export entire vaults (or filtered subsets) as portable tar.gz bundles. Import bundles into new vaults with overwrite control. CLI: `aim vault-export`, `aim vault-import`
+- **Garbage Collection** (`src/gc.rs`, ~200 lines) — Detect orphaned blobs, stale temp files, and reclaimable storage. Dry-run mode for safe preview. CLI: `aim gc [--dry-run]`
+- **TUI Dashboard** (`src/tui.rs`, ~150 lines) — Terminal UI browser showing all vault models with version counts, sizes, formats, and timestamps. CLI: `aim browse`
+- **Webhooks** (`src/webhooks.rs`, ~250 lines) — HTTP notification targets for vault events. Implements `EventSubscriber` for automatic dispatch on VaultEvent. CLI: `aim webhook add/remove/list/test`
+- **Access Control** (`src/access_control.rs`, ~200 lines) — Role-based ACL (Reader/Writer/Admin) per principal with JSON persistence. CLI: `aim acl grant/revoke/list/check`
+- **KMS Integration** (`src/kms.rs`, ~150 lines) — Fetch vault passphrases from external secrets managers (env, AWS Secrets Manager, Azure Key Vault, HashiCorp Vault). Library API only.
+- **Model Validation** (`src/validation.rs`, ~250 lines) — Integrity probes with SHA-256 checksums per model version. CLI: `aim validate <NAME> [--version V]`
+- **Retention Policies** (`src/policies.rs`, ~250 lines) — Configurable retention rules per model: max versions, max age, keep minimum. Dry-run enforcement. CLI: `aim policy set/remove/list/apply/apply-all`
+- **Cross-Model Lineage DAG** (`src/lineage_graph.rs`, ~200 lines) — Directed acyclic graph tracking model derivation chains (fine-tune, quantization, distillation, merge, prune, conversion). CLI: `aim lineage-graph add/show/ancestors/descendants`
+- **Plugin System** (`src/plugins.rs`, ~200 lines) — Discover, install, and uninstall plugins via JSON manifests with capability listing. CLI: `aim plugin discover/install/uninstall/list/info`
+- **Config Profiles** (`src/profiles.rs`, ~200 lines) — Named configuration profiles with activate/deactivate switching and vault setting overrides. CLI: `aim profile create/remove/list/activate/deactivate/show`
+- **11 new CLI handler files** in `src/cli/handlers/` for all new subcommands
+- **56 new tests** from 12 new modules (1,809 → 1,865 total)
+
+### Changed
+
+- **Version bump** — 1.3.0 → 1.4.0
+- **CLI command count** — 25+ → 38+ commands
+- **Test count** — 1,809 → 1,865
+- **`src/lib.rs`** — 12 new `pub mod` declarations and re-exports for all new public types
+- **`src/version.rs`** — Added `list_models_owned()` and `import_version()` helper methods
+- **`src/cli/args.rs`** — 13 new Commands variants, 8 new subcommand enums
+- **`src/main.rs`** — Imports and match arms for all new command variants
+- **Updated AGENTS.md** — New CLI commands, project layout, feature list
+- **Updated README.md** — Feature comparison table, command count, test count, architecture tree
+- **Updated ROADMAP.md** — v1.4.0 section with all 12 features
+
 ## [1.3.0] - 2026-04-04
 
 ### Added

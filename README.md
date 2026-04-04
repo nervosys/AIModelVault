@@ -5,9 +5,9 @@
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-1%2C809%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-1%2C865%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
 
 A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, model signing, safety scanning, and comprehensive utilities.
@@ -78,7 +78,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ### 6. 💻 CLI + Library API (Dual Interface)
 
 **Why it matters**: Use it your way - command line or code
-- **25+ CLI Commands**: `aim store`, `aim get`, `aim pull`, `aim sign`, `aim scan`, `aim diff`, etc.
+- **38+ CLI Commands**: `aim store`, `aim get`, `aim pull`, `aim sign`, `aim scan`, `aim diff`, `aim tag`, `aim browse`, etc.
 - **Full Rust API**: Complete programmatic control
 - **Scriptable**: Automate workflows with bash/PowerShell
 - **Interactive**: Quick operations from terminal
@@ -114,7 +114,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ### 10. 🔄 Production-Ready Reliability
 
 **Why it matters**: Trust it with your most important models
-- 1,809 comprehensive tests (100% passing)
+- 1,865 comprehensive tests (100% passing)
 - Type-safe Rust implementation (no memory bugs)
 - Comprehensive error handling
 - Detailed logging and debugging support
@@ -149,6 +149,18 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 | Engine Interop            | ✅ Complete | ✅ `aim register`     | ✅           |
 | Benchmark Metadata        | ✅ Complete | ✅ `aim benchmark`    | ✅           |
 | License Scanning          | ✅ Complete | ✅ `aim license-scan` | ✅           |
+| Model Tags & Search       | ✅ Complete | ✅ `aim tag`          | ✅           |
+| Vault Export/Import       | ✅ Complete | ✅ `aim vault-export` | ✅           |
+| Garbage Collection        | ✅ Complete | ✅ `aim gc`           | ✅           |
+| TUI Dashboard             | ✅ Complete | ✅ `aim browse`       | ✅           |
+| Webhooks                  | ✅ Complete | ✅ `aim webhook`      | ✅           |
+| Access Control            | ✅ Complete | ✅ `aim acl`          | ✅           |
+| KMS Integration           | ✅ Complete | —                    | ✅           |
+| Model Validation          | ✅ Complete | ✅ `aim validate`    | ✅           |
+| Retention Policies        | ✅ Complete | ✅ `aim policy`      | ✅           |
+| Cross-Model Lineage DAG   | ✅ Complete | ✅ `aim lineage-graph`| ✅          |
+| Plugin System             | ✅ Complete | ✅ `aim plugin`      | ✅           |
+| Config Profiles           | ✅ Complete | ✅ `aim profile`     | ✅           |
 | Cross-Platform            | ✅ Complete | ✅                    | ✅           |
 | LRU Caching               | ✅ Complete | ⚠️ Info only          | ✅           |
 | Compression               | ✅ Complete | ✅                    | ✅           |
@@ -479,8 +491,20 @@ AI Model Vault/
 │   ├── interop.rs         # Ollama & LM Studio registration
 │   ├── benchmark.rs       # Benchmark metadata storage
 │   ├── license_scan.rs    # License detection & SPDX normalization
+│   ├── tags.rs            # Model tagging and search
+│   ├── vault_bundle.rs    # Vault export/import bundles
+│   ├── gc.rs              # Garbage collection
+│   ├── tui.rs             # Terminal UI dashboard
+│   ├── webhooks.rs        # Webhook notification system
+│   ├── access_control.rs  # Role-based access control
+│   ├── kms.rs             # External secrets manager integration
+│   ├── validation.rs      # Model integrity validation
+│   ├── policies.rs        # Retention policy enforcement
+│   ├── lineage_graph.rs   # Cross-model lineage DAG
+│   ├── plugins.rs         # Plugin system
+│   ├── profiles.rs        # Configuration profiles
 │   └── python.rs          # Python bindings (PyO3)
-├── tests/                 # 1,809 comprehensive tests
+├── tests/                 # 1,865 comprehensive tests
 ├── docs/                  # Documentation
 ├── website/               # Next.js documentation site
 ├── deploy/                # Dockerfile & Helm chart
@@ -910,7 +934,7 @@ let result = server.execute_tool(
 | [Development Guide](DEVELOPMENT.md)              | For contributors and developers        |
 | [Security Policy](SECURITY.md)                   | Security standards and reporting       |
 | [Roadmap](ROADMAP.md)                            | Full development roadmap               |
-| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,809 tests) |
+| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,865 tests) |
 | [Python Bindings](docs/PYTHON_BINDINGS.md)       | PyO3 native bindings & pure-Python API |
 | [Changelog](CHANGELOG.md)                        | Version history and changes            |
 | [Documentation Website](website/)                | Next.js documentation site             |
@@ -999,7 +1023,7 @@ cargo bench --bench api_bench --features api   # API endpoints (9 benchmarks)
 ## 🧪 Testing & Quality
 
 ```bash
-# Run all tests (1,809 tests)
+# Run all tests (1,865 tests)
 cargo test
 
 # Run specific test suites
@@ -1024,8 +1048,8 @@ cargo bench --bench vault_bench               # Store/retrieve/list operations
 cargo bench --bench api_bench --features api  # REST API endpoint latency
 ```
 
-**Test Coverage**: 1,809 tests, all passing ✅
-- Library unit tests: 623
+**Test Coverage**: 1,865 tests, all passing ✅
+- Library unit tests: 679
 - Coverage & edge case tests: 873
 - Conversion tests: 31
 - Crypto tests: 14

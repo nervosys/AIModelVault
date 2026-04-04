@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
 > Last updated: 2026-04-04  
-> Current version: **1.3.0** (model download, signing, scanning, diffing, interop, benchmarks, license scanning)  
-> Status: Production release — v1.3.0 shipped with 7 new features, 25+ CLI commands
+> Current version: **1.4.0** (tags, vault bundles, gc, tui, webhooks, acl, kms, validation, policies, lineage DAG, plugins, profiles)  
+> Status: Production release — v1.4.0 shipped with 12 new features, 38+ CLI commands
 
 ---
 
@@ -473,6 +473,66 @@ Fixed critical wiring bugs and added comprehensive test coverage for v2 componen
 | `src/main.rs`             | Extract `use_sqlite`, pass to all 18 handler calls                           |
 | `src/python.rs`           | Added `PyVaultBuilder` class                                                 |
 | `examples/basic_usage.rs` | Updated to use `VaultBuilder` pattern                                        |
+
+---
+
+## v1.4.0 — Vault Management & Extensibility ✅
+
+12 new features for vault operations, access control, extensibility, and model governance.
+
+- [x] **Model Tags & Search** (`src/tags.rs`, ~250 lines) — Tag models with arbitrary labels and key-value annotations. Full-text search by name pattern, tags, or annotations. `TagStore` with `add_tags`/`remove_tags`/`search`. CLI: `aim tag add/remove/list/annotate`, `aim search`
+- [x] **Vault Export/Import** (`src/vault_bundle.rs`, ~200 lines) — Export entire vaults (or filtered subsets) as portable tar.gz bundles. Import bundles into new vaults with overwrite control. CLI: `aim vault-export <OUTPUT>`, `aim vault-import <ARCHIVE> [TARGET]`
+- [x] **Garbage Collection** (`src/gc.rs`, ~200 lines) — Detect orphaned blobs, stale temp files, and reclaimable storage. Dry-run mode for safe preview. `GcReport` with stats. CLI: `aim gc [--dry-run]`
+- [x] **TUI Dashboard** (`src/tui.rs`, ~150 lines) — Terminal UI browser showing all vault models with version counts, sizes, formats, and timestamps in a formatted table. CLI: `aim browse`
+- [x] **Webhooks** (`src/webhooks.rs`, ~250 lines) — HTTP notification targets for vault events. `WebhookStore` with add/remove/list/fire. Implements `EventSubscriber` for automatic dispatch on VaultEvent. CLI: `aim webhook add/remove/list/test`
+- [x] **Access Control** (`src/access_control.rs`, ~200 lines) — Role-based ACL (Reader/Writer/Admin) per principal. `AclGuard` with grant/revoke/resolve/require. JSON persistence. CLI: `aim acl grant/revoke/list/check`
+- [x] **KMS Integration** (`src/kms.rs`, ~150 lines) — Fetch vault passphrases from external secrets managers. `KmsBackend` enum supporting env vars, AWS Secrets Manager, Azure Key Vault, HashiCorp Vault. Library API only.
+- [x] **Model Validation** (`src/validation.rs`, ~250 lines) — Integrity probes with SHA-256 checksums per model version. Record expected hashes, validate against stored files. `ValidationStore` with probe management. CLI: `aim validate <NAME> [--version V]`
+- [x] **Retention Policies** (`src/policies.rs`, ~250 lines) — Configurable retention rules per model: max versions, max age, keep minimum. Dry-run enforcement. `PolicyStore` with apply/apply_all. CLI: `aim policy set/remove/list/apply/apply-all`
+- [x] **Cross-Model Lineage DAG** (`src/lineage_graph.rs`, ~200 lines) — Directed acyclic graph tracking model derivation chains (fine-tune, quantization, distillation, merge, prune, conversion). `LineageGraph` with add_edge/ancestors/descendants/display. CLI: `aim lineage-graph add/show/ancestors/descendants`
+- [x] **Plugin System** (`src/plugins.rs`, ~200 lines) — Discover, install, and uninstall plugins via JSON manifests. `PluginRegistry` with directory scanning, manifest validation, capability listing. CLI: `aim plugin discover/install/uninstall/list/info`
+- [x] **Config Profiles** (`src/profiles.rs`, ~200 lines) — Named configuration profiles with activate/deactivate switching. Override vault settings per profile. `ProfileStore` with set/remove/activate/deactivate. CLI: `aim profile create/remove/list/activate/deactivate/show`
+- [x] **CLI expansion** — 38+ commands (was 25+), 11 new CLI handler files
+- [x] **Test expansion** — 1,865 tests (was 1,809), 56 new tests from 12 modules
+
+### Files Created
+
+| File                                  | Lines  | Purpose                                       |
+| ------------------------------------- | ------ | --------------------------------------------- |
+| `src/tags.rs`                         | ~250   | Model tagging and search                      |
+| `src/vault_bundle.rs`                 | ~200   | Vault export/import as portable archives      |
+| `src/gc.rs`                           | ~200   | Garbage collection for orphaned blobs         |
+| `src/tui.rs`                          | ~150   | Terminal UI dashboard                         |
+| `src/webhooks.rs`                     | ~250   | Webhook notification system                   |
+| `src/access_control.rs`              | ~200   | Role-based access control                     |
+| `src/kms.rs`                          | ~150   | External secrets manager integration          |
+| `src/validation.rs`                   | ~250   | Model integrity validation                    |
+| `src/policies.rs`                     | ~250   | Retention policy enforcement                  |
+| `src/lineage_graph.rs`               | ~200   | Cross-model lineage DAG                       |
+| `src/plugins.rs`                      | ~200   | Plugin system with JSON manifests             |
+| `src/profiles.rs`                     | ~200   | Configuration profiles                        |
+| `src/cli/handlers/tags.rs`           | ~80    | CLI handler for tag/search commands           |
+| `src/cli/handlers/vault_bundle.rs`   | ~30    | CLI handler for vault export/import           |
+| `src/cli/handlers/gc.rs`             | ~30    | CLI handler for garbage collection            |
+| `src/cli/handlers/browse.rs`         | ~10    | CLI handler for TUI browse                    |
+| `src/cli/handlers/webhooks.rs`       | ~60    | CLI handler for webhook management            |
+| `src/cli/handlers/acl.rs`            | ~50    | CLI handler for access control                |
+| `src/cli/handlers/validation.rs`     | ~45    | CLI handler for model validation              |
+| `src/cli/handlers/policies.rs`       | ~70    | CLI handler for retention policies            |
+| `src/cli/handlers/lineage_graph.rs`  | ~50    | CLI handler for lineage DAG                   |
+| `src/cli/handlers/plugins.rs`        | ~60    | CLI handler for plugin management             |
+| `src/cli/handlers/profiles.rs`       | ~60    | CLI handler for config profiles               |
+
+### Files Modified
+
+| File                      | Change                                                                    |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `Cargo.toml`              | Version bump 1.3.0 → 1.4.0                                               |
+| `src/lib.rs`              | 12 new `pub mod` declarations, re-exports for all new public types        |
+| `src/version.rs`          | Added `list_models_owned()` and `import_version()` helper methods         |
+| `src/cli/args.rs`         | 13 new Commands variants, 8 new subcommand enums                          |
+| `src/cli/handlers/mod.rs` | 11 new `pub mod` declarations for handler files                           |
+| `src/main.rs`             | Imports and match arms for all 13 new command variants                    |
 
 ---
 
