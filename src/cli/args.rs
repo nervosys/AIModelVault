@@ -277,6 +277,145 @@ pub enum Commands {
         #[arg(long)]
         compact: bool,
     },
+
+    /// Pull/download a model from HuggingFace, Ollama, or HTTPS URL
+    Pull {
+        /// Model source URI (hf://org/model, ollama://model:tag, or https://...)
+        source: String,
+
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Expected SHA-256 hash for verification
+        #[arg(long)]
+        sha256: Option<String>,
+
+        /// HuggingFace auth token (for private repos)
+        #[arg(long, env = "HF_TOKEN")]
+        token: Option<String>,
+
+        /// Store directly into the vault after download
+        #[arg(long)]
+        store: bool,
+
+        /// Model name when using --store
+        #[arg(long)]
+        name: Option<String>,
+    },
+
+    /// Sign a model file for provenance verification
+    Sign {
+        /// Model name in vault (or path to file with --file)
+        name: String,
+
+        /// Version number (latest if not specified)
+        #[arg(short, long)]
+        version: Option<u32>,
+
+        /// Path to signing key pair (generated if not found)
+        #[arg(short, long)]
+        key: Option<PathBuf>,
+
+        /// Signer identity (e.g. email or name)
+        #[arg(short, long)]
+        identity: Option<String>,
+
+        /// Sign a file on disk instead of a vault model
+        #[arg(long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Verify a model file's signature
+    Verify {
+        /// Model name in vault (or path to file with --file)
+        name: String,
+
+        /// Version number (latest if not specified)
+        #[arg(short, long)]
+        version: Option<u32>,
+
+        /// Path to signature file
+        #[arg(short, long)]
+        signature: PathBuf,
+
+        /// Path to public key file (optional if secret key available)
+        #[arg(short, long)]
+        key: Option<PathBuf>,
+
+        /// Verify a file on disk instead of a vault model
+        #[arg(long)]
+        file: Option<PathBuf>,
+    },
+
+    /// Scan a model file for pickle deserialization vulnerabilities
+    Scan {
+        /// Model name in vault
+        name: Option<String>,
+
+        /// Scan a file on disk instead of a vault model
+        #[arg(long)]
+        file: Option<PathBuf>,
+
+        /// Version number (latest if not specified)
+        #[arg(short, long)]
+        version: Option<u32>,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+
+    /// Compare two model versions or files
+    Diff {
+        /// Left model (name@version or file path)
+        left: String,
+
+        /// Right model (name@version or file path)
+        right: String,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+
+    /// Register a vault model with an inference engine (Ollama, LM Studio)
+    Register {
+        /// Model name in vault
+        name: String,
+
+        /// Inference engine (ollama, lm-studio)
+        #[arg(short, long)]
+        engine: String,
+
+        /// Version number (latest if not specified)
+        #[arg(short, long)]
+        version: Option<u32>,
+
+        /// Name to register the model as (defaults to vault model name)
+        #[arg(long)]
+        alias: Option<String>,
+
+        /// System prompt (Ollama only)
+        #[arg(long)]
+        system_prompt: Option<String>,
+    },
+
+    /// Record or view benchmark results for a model
+    Benchmark {
+        #[command(subcommand)]
+        command: BenchmarkCommands,
+    },
+
+    /// Scan model files or directories for license information
+    LicenseScan {
+        /// Path to scan (file or directory)
+        path: PathBuf,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -607,5 +746,56 @@ pub enum CloudCommands {
         /// Show current configuration
         #[arg(short, long)]
         show: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum BenchmarkCommands {
+    /// Record a benchmark result for a model version
+    Add {
+        /// Model name
+        name: String,
+
+        /// Version number
+        #[arg(short, long)]
+        version: u32,
+
+        /// Benchmark name (e.g. MMLU, HumanEval, perplexity)
+        #[arg(short, long)]
+        benchmark: String,
+
+        /// Score value
+        #[arg(short, long)]
+        score: f64,
+
+        /// Unit (e.g. accuracy, ppl, pass@1, ms, tokens/s)
+        #[arg(short, long, default_value = "score")]
+        unit: String,
+
+        /// Higher is better
+        #[arg(long)]
+        higher_is_better: bool,
+
+        /// Hardware description
+        #[arg(long)]
+        hardware: Option<String>,
+
+        /// Dataset or split
+        #[arg(long)]
+        dataset: Option<String>,
+    },
+
+    /// Show benchmark results for a model
+    Show {
+        /// Model name
+        name: String,
+
+        /// Version number (shows all versions if not specified)
+        #[arg(short, long)]
+        version: Option<u32>,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
     },
 }

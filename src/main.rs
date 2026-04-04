@@ -15,11 +15,23 @@ use cli::args::{Cli, Commands};
 use cli::handlers::{
     analyze, archive, card, cloud, convert, database, introspect, telemetry as telemetry_handler,
     vault,
+    benchmark as benchmark_handler, diff as diff_handler, license_scan as license_scan_handler,
+    pull, register, scan, sign,
 };
 
 use ai_model_vault::{telemetry, Result, VaultConfig};
 
 fn main() -> Result<()> {
+    // Increase stack size for large clap enum on Windows
+    std::thread::Builder::new()
+        .stack_size(4 * 1024 * 1024) // 4 MB
+        .spawn(run)
+        .expect("Failed to spawn main thread")
+        .join()
+        .expect("Main thread panicked")
+}
+
+fn run() -> Result<()> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -151,6 +163,48 @@ fn main() -> Result<()> {
         Commands::Database { command } => database::handle_database(command),
         Commands::Telemetry { command } => telemetry_handler::handle_telemetry(command, config),
         Commands::Introspect { format, compact } => introspect::handle_introspect(format, compact),
+        Commands::Pull {
+            source,
+            output,
+            sha256,
+            token,
+            store,
+            name,
+        } => pull::handle_pull(source, output, sha256, token, store, name, config, use_sqlite),
+        Commands::Sign {
+            name,
+            version,
+            key,
+            identity,
+            file,
+        } => sign::handle_sign(name, version, key, identity, file, config, use_sqlite),
+        Commands::Verify {
+            name,
+            version,
+            signature,
+            key,
+            file,
+        } => sign::handle_verify(name, version, signature, key, file, config, use_sqlite),
+        Commands::Scan {
+            name,
+            file,
+            version,
+            format,
+        } => scan::handle_scan(name, file, version, format, config, use_sqlite),
+        Commands::Diff {
+            left,
+            right,
+            format,
+        } => diff_handler::handle_diff(left, right, format, config, use_sqlite),
+        Commands::Register {
+            name,
+            engine,
+            version,
+            alias,
+            system_prompt,
+        } => register::handle_register(name, engine, version, alias, system_prompt, config, use_sqlite),
+        Commands::Benchmark { command } => benchmark_handler::handle_benchmark(command, config),
+        Commands::LicenseScan { path, format } => license_scan_handler::handle_license_scan(path, format),
     };
 
     // Flush telemetry before exit

@@ -28,6 +28,13 @@ AI Model Vault is an **encrypted AI/ML model management system**. It provides:
 8. **Federation** — Sync vaults across peers with vector clocks
 9. **Blockchain Audit** — Append-only audit trail with Merkle proofs
 10. **API Server** — REST (Axum) + GraphQL (async-graphql) with JWT auth
+11. **Model Download** — Pull models from HuggingFace Hub, Ollama registry, or URLs with SHA-256 verification
+12. **Model Signing** — HMAC-SHA256 signatures with detached `.sig` files for provenance
+13. **Pickle Scanning** — Detect dangerous opcodes and patterns in PyTorch/pickle files
+14. **Model Diffing** — Compare model versions at the tensor level (SafeTensors, GGUF, generic)
+15. **Engine Interop** — Register models with Ollama (`ollama create`) and LM Studio
+16. **Benchmark Metadata** — Store and query benchmark results per model version
+17. **License Scanning** — Detect licenses from model cards, config.json, GGUF metadata, LICENSE files
 
 ## Discovery Files
 
@@ -79,6 +86,29 @@ aim serve [--port 8080] [--jwt-secret SECRET]
 
 # Agent discovery (machine-readable CLI schema)
 aim introspect [--format json|yaml|jsonld] [--compact]
+
+# Model download
+aim pull <SOURCE> [-o DIR] [--sha256 HASH] [--token TOKEN] [--store] [--name NAME]
+
+# Model signing & verification
+aim sign <NAME> [--version V] [--key KEY] [--identity ID] [--file PATH]
+aim verify <NAME> --signature <SIG> [--key KEY] [--file PATH]
+
+# Safety scanning
+aim scan [<NAME>] [--file PATH] [--version V] [--format text|json]
+
+# Model diffing
+aim diff <LEFT> <RIGHT> [--format text|json]   # LEFT/RIGHT: file path or name@version
+
+# Engine registration
+aim register <NAME> --engine <ollama|lm-studio> [--version V] [--alias NAME] [--system-prompt TEXT]
+
+# Benchmark metadata
+aim benchmark add <NAME> --version V --benchmark <BENCH> --score <N> --unit <UNIT>
+aim benchmark show <NAME> [--version V] [--format text|json]
+
+# License scanning
+aim license-scan <PATH> [--format text|json]
 ```
 
 ## Supported Model Formats (23+)
@@ -169,6 +199,13 @@ src/
 ├── telemetry.rs        # Anonymous telemetry (opt-in)
 ├── config.rs           # XDG-compliant configuration
 ├── error.rs            # Error types
+├── download.rs         # Model download (HuggingFace, Ollama, URLs)
+├── signing.rs          # HMAC-SHA256 model signing & verification
+├── scanning.rs         # Pickle safety scanning
+├── diff.rs             # Model diffing (tensor-level comparison)
+├── interop.rs          # Ollama & LM Studio registration
+├── benchmark.rs        # Benchmark metadata storage
+├── license_scan.rs     # License detection & SPDX normalization
 └── python.rs           # Python bindings (PyO3)
 ```
 

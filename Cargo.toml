@@ -77,6 +77,7 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.4", features = ["derive", "env"] }
 rpassword = "7.3"
 hex = "0.4"
+tempfile = "3.8"
 # Model format support (optional features)
 # These will be optional to reduce binary size
 safetensors = { version = "0.4", optional = true }
@@ -124,7 +125,6 @@ qdrant-client = { version = "1.13", optional = true }
 # lancedb removed: v0.4 depends on arrow-arith v51 which is incompatible with Rust 1.93+
 
 [dev-dependencies]
-tempfile = "3.8"
 criterion = "0.5"
 proptest = "1.4"
 assert_cmd = "2.1.2"

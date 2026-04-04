@@ -11,17 +11,24 @@
 #[cfg(feature = "api")]
 pub mod api;
 pub mod audit;
+pub mod benchmark;
 pub mod blockchain;
 pub mod compliance;
 pub mod config;
 pub mod conversion;
 pub mod crypto;
+pub mod diff;
+pub mod download;
 pub mod error;
 pub mod federation;
 pub mod formats;
+pub mod interop;
+pub mod license_scan;
 pub mod model_card;
 pub mod permissions;
 pub mod rag;
+pub mod scanning;
+pub mod signing;
 pub mod storage;
 pub mod telemetry;
 pub mod traits;
@@ -68,6 +75,32 @@ pub use vault::{Vault, VaultBuilder, VersionBackend};
 pub use version::{ModelVersion, VersionControl};
 #[cfg(feature = "sqlite")]
 pub use version_sqlite::SqliteVersionRepo;
+
+// Benchmark exports
+pub use benchmark::{BenchmarkRecord, BenchmarkResult, BenchmarkStore};
+
+// Diff exports
+pub use diff::{DiffSummary, ModelDiff, ModelDiffer, TensorChange, TensorInfo};
+
+// Download exports
+pub use download::{ModelDownloader, ModelSource};
+
+// Interop exports
+pub use interop::{
+    InferenceEngine, LmStudioOptions, OllamaOptions, RegistrationResult,
+    register_lm_studio, register_ollama,
+};
+
+// License scanning exports
+pub use license_scan::{
+    DetectedLicense, LicenseClass, LicenseScanReport, LicenseScanner, LicenseSource,
+};
+
+// Pickle scanning exports
+pub use scanning::{PickleScanner, ScanFinding, ScanReport, Severity};
+
+// Signing exports
+pub use signing::{ModelSignature, ModelSigner, SignatureVerification, SigningKeyPair};
 
 // Blockchain audit exports
 pub use blockchain::{
