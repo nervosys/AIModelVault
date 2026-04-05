@@ -844,7 +844,12 @@ impl PyTagStore {
         self.inner.get_tags(model).into_iter().collect()
     }
 
-    fn search(&self, query: Option<String>, tags: Option<Vec<String>>, known_models: Vec<String>) -> Vec<HashMap<String, String>> {
+    fn search(
+        &self,
+        query: Option<String>,
+        tags: Option<Vec<String>>,
+        known_models: Vec<String>,
+    ) -> Vec<HashMap<String, String>> {
         let sq = crate::tags::SearchQuery {
             name_pattern: query,
             tags: tags.unwrap_or_default(),
@@ -912,7 +917,10 @@ impl PyAclGuard {
         let r: crate::access_control::Role = role
             .parse()
             .map_err(|e: crate::error::VaultError| PyValueError::new_err(e.to_string()))?;
-        Ok(self.inner.resolve(principal).map_or(false, |resolved| resolved >= r))
+        Ok(self
+            .inner
+            .resolve(principal)
+            .map_or(false, |resolved| resolved >= r))
     }
 
     fn __repr__(&self) -> String {
@@ -970,10 +978,7 @@ impl PyProfileStore {
     }
 
     fn __repr__(&self) -> String {
-        format!(
-            "ProfileStore(active={:?})",
-            self.inner.active_name()
-        )
+        format!("ProfileStore(active={:?})", self.inner.active_name())
     }
 }
 

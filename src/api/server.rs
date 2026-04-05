@@ -148,10 +148,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/profiles",
             get(routes::profile_list).post(routes::profile_create),
         )
-        .route(
-            "/profiles/:name/activate",
-            post(routes::profile_activate),
-        )
+        .route("/profiles/:name/activate", post(routes::profile_activate))
         .route(
             "/lineage-graph",
             get(routes::lineage_graph_show).post(routes::lineage_graph_add),

@@ -96,11 +96,11 @@ registry.unregister("staging")
 
 ## REST API
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/v1/vaults` | List registered vaults |
-| `POST` | `/api/v1/vaults` | Register a new vault |
-| `POST` | `/api/v1/vaults/:name/activate` | Activate a vault |
+| Method | Path                            | Description            |
+| ------ | ------------------------------- | ---------------------- |
+| `GET`  | `/api/v1/vaults`                | List registered vaults |
+| `POST` | `/api/v1/vaults`                | Register a new vault   |
+| `POST` | `/api/v1/vaults/:name/activate` | Activate a vault       |
 
 ### Example: Register Vault
 

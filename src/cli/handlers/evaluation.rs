@@ -132,11 +132,11 @@ pub fn handle_eval(command: EvalCommands, config: VaultConfig) -> Result<()> {
 }
 
 fn parse_model_version(s: &str) -> Result<(String, u64)> {
-    let (name, ver) = s.rsplit_once('@').ok_or_else(|| {
-        VaultError::InvalidInput(format!("Expected name@version, got: {s}"))
-    })?;
-    let version: u64 = ver.parse().map_err(|_| {
-        VaultError::InvalidInput(format!("Invalid version number: {ver}"))
-    })?;
+    let (name, ver) = s
+        .rsplit_once('@')
+        .ok_or_else(|| VaultError::InvalidInput(format!("Expected name@version, got: {s}")))?;
+    let version: u64 = ver
+        .parse()
+        .map_err(|_| VaultError::InvalidInput(format!("Invalid version number: {ver}")))?;
     Ok((name.to_string(), version))
 }

@@ -114,11 +114,11 @@ suites = store.suites()
 
 ## REST API
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/v1/evaluations` | List evaluations (query: model, version) |
-| `POST` | `/api/v1/evaluations` | Record an evaluation run |
-| `GET` | `/api/v1/evaluations/suites` | List all known suites |
+| Method | Path                         | Description                              |
+| ------ | ---------------------------- | ---------------------------------------- |
+| `GET`  | `/api/v1/evaluations`        | List evaluations (query: model, version) |
+| `POST` | `/api/v1/evaluations`        | Record an evaluation run                 |
+| `GET`  | `/api/v1/evaluations/suites` | List all known suites                    |
 
 ### Example: Record Evaluation
 

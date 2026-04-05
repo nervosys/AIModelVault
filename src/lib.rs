@@ -38,6 +38,7 @@ pub mod profiles;
 pub mod quantization;
 pub mod rag;
 pub mod scanning;
+pub mod scheduler;
 pub mod signing;
 pub mod storage;
 pub mod tags;
@@ -49,7 +50,6 @@ pub mod validation;
 pub mod vault;
 pub mod vault_bundle;
 pub mod version;
-pub mod scheduler;
 #[cfg(feature = "sqlite")]
 pub mod version_sqlite;
 pub mod webhooks;
@@ -172,9 +172,7 @@ pub use quantization::{
 pub use evaluation::{EvalComparison, EvalRun, EvalStore, MetricDelta, MetricResult};
 
 // Scheduler exports
-pub use scheduler::{
-    BackupFrequency, BackupManager, BackupRecord, BackupReport, BackupSchedule,
-};
+pub use scheduler::{BackupFrequency, BackupManager, BackupRecord, BackupReport, BackupSchedule};
 
 // Multi-vault exports
 pub use multi_vault::{VaultEntry, VaultRegistry, VaultSummary};

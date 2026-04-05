@@ -992,11 +992,10 @@ fn test_cli_vault_import_help() {
 
 #[test]
 fn test_cli_gc_help() {
-    aim()
-        .args(["gc", "--help"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("gc").or(predicate::str::contains("garbage").or(predicate::str::contains("clean"))));
+    aim().args(["gc", "--help"]).assert().success().stdout(
+        predicate::str::contains("gc")
+            .or(predicate::str::contains("garbage").or(predicate::str::contains("clean"))),
+    );
 }
 
 #[test]
@@ -1327,7 +1326,11 @@ fn test_cli_quantize_help() {
         .args(["quantize", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("quantize").or(predicate::str::contains("Quantize").or(predicate::str::contains("quantization"))));
+        .stdout(
+            predicate::str::contains("quantize")
+                .or(predicate::str::contains("Quantize")
+                    .or(predicate::str::contains("quantization"))),
+        );
 }
 
 #[test]
@@ -1350,11 +1353,10 @@ fn test_cli_backup_help() {
 
 #[test]
 fn test_cli_vaults_help() {
-    aim()
-        .args(["vaults", "--help"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("vaults").or(predicate::str::contains("Vaults").or(predicate::str::contains("vault"))));
+    aim().args(["vaults", "--help"]).assert().success().stdout(
+        predicate::str::contains("vaults")
+            .or(predicate::str::contains("Vaults").or(predicate::str::contains("vault"))),
+    );
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -1372,7 +1374,15 @@ fn test_cli_quantize_set_list_remove() {
         .success();
 
     aim()
-        .args(["quantize", "set", "fast-q4", "--method", "q4_k_m", "--description", "Fast 4-bit"])
+        .args([
+            "quantize",
+            "set",
+            "fast-q4",
+            "--method",
+            "q4_k_m",
+            "--description",
+            "Fast 4-bit",
+        ])
         .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
         .assert()
         .success();
@@ -1402,7 +1412,14 @@ fn test_cli_quantize_estimate() {
         .success();
 
     aim()
-        .args(["quantize", "estimate", "--size", "1000000000", "--to", "q4_k_m"])
+        .args([
+            "quantize",
+            "estimate",
+            "--size",
+            "1000000000",
+            "--to",
+            "q4_k_m",
+        ])
         .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
         .assert()
         .success();
@@ -1420,11 +1437,17 @@ fn test_cli_eval_record_list_suites() {
 
     aim()
         .args([
-            "eval", "record", "my-model",
-            "--version", "1",
-            "--suite", "mmlu",
-            "--metric", "accuracy=0.85",
-            "--unit", "score",
+            "eval",
+            "record",
+            "my-model",
+            "--version",
+            "1",
+            "--suite",
+            "mmlu",
+            "--metric",
+            "accuracy=0.85",
+            "--unit",
+            "score",
         ])
         .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
         .assert()
@@ -1458,10 +1481,15 @@ fn test_cli_backup_set_list_remove() {
 
     aim()
         .args([
-            "backup", "set", "nightly",
-            "--frequency", "daily",
-            "--max-backups", "5",
-            "--output-dir", backup_dir.path().to_str().unwrap(),
+            "backup",
+            "set",
+            "nightly",
+            "--frequency",
+            "daily",
+            "--max-backups",
+            "5",
+            "--output-dir",
+            backup_dir.path().to_str().unwrap(),
         ])
         .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
         .assert()
@@ -1510,7 +1538,14 @@ fn test_cli_vaults_register_list_activate_deactivate() {
         .success();
 
     aim()
-        .args(["vaults", "register", "prod", vault_dir.path().to_str().unwrap(), "--description", "Production vault"])
+        .args([
+            "vaults",
+            "register",
+            "prod",
+            vault_dir.path().to_str().unwrap(),
+            "--description",
+            "Production vault",
+        ])
         .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
         .assert()
         .success();

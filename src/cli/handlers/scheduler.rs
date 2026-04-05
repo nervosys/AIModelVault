@@ -1,8 +1,8 @@
 //! CLI handler for backup scheduling (aim backup).
 
 use ai_model_vault::scheduler::{BackupFrequency, BackupManager, BackupSchedule};
-use ai_model_vault::{Result, VaultError};
 use ai_model_vault::VaultConfig;
+use ai_model_vault::{Result, VaultError};
 
 use crate::cli::args::BackupCommands;
 

@@ -16,9 +16,9 @@ use cli::handlers::{
     acl, analyze, archive, benchmark as benchmark_handler, browse, card, cloud, convert, database,
     diff as diff_handler, evaluation as evaluation_handler, gc, introspect,
     license_scan as license_scan_handler, lineage_graph, multi_vault as multi_vault_handler,
-    plugins, policies, profiles, pull, quantization as quantization_handler, register, scan, sign,
-    scheduler as scheduler_handler, tags, telemetry as telemetry_handler,
-    validation, vault, vault_bundle as vault_bundle_handler, webhooks as webhooks_handler,
+    plugins, policies, profiles, pull, quantization as quantization_handler, register, scan,
+    scheduler as scheduler_handler, sign, tags, telemetry as telemetry_handler, validation, vault,
+    vault_bundle as vault_bundle_handler, webhooks as webhooks_handler,
 };
 
 use ai_model_vault::{telemetry, Result, VaultConfig};

@@ -14,9 +14,7 @@ pub fn handle_quantize(command: QuantizeCommands, config: VaultConfig) -> Result
             method,
             description,
         } => {
-            let method: QuantMethod = method
-                .parse()
-                .map_err(|e: VaultError| e)?;
+            let method: QuantMethod = method.parse().map_err(|e: VaultError| e)?;
             let profile = QuantProfile {
                 name: name.clone(),
                 method,

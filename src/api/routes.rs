@@ -951,7 +951,9 @@ pub async fn add_tags(
     store
         .add_tags(&name, &body.tags)
         .map_err(|e| ApiError::internal(e.to_string()))?;
-    Ok(Json(serde_json::json!({ "model": name, "tags": body.tags })))
+    Ok(Json(
+        serde_json::json!({ "model": name, "tags": body.tags }),
+    ))
 }
 
 /// GET /api/v1/models/:name/tags
@@ -1047,8 +1049,8 @@ pub async fn acl_grant(
     let _claims = require_auth(&headers, &state)?;
     let vault = state.vault.read().await;
     let vault_path = vault.get_config().get_vault_path(None);
-    let mut guard =
-        crate::access_control::AclGuard::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let mut guard = crate::access_control::AclGuard::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
     let role: crate::access_control::Role = body
         .role
         .parse()
@@ -1070,8 +1072,8 @@ pub async fn acl_list(
     let _claims = require_auth(&headers, &state)?;
     let vault = state.vault.read().await;
     let vault_path = vault.get_config().get_vault_path(None);
-    let guard =
-        crate::access_control::AclGuard::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let guard = crate::access_control::AclGuard::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
     let entries: Vec<serde_json::Value> = guard
         .list()
         .iter()
@@ -1099,14 +1101,12 @@ pub async fn acl_revoke(
     let _claims = require_auth(&headers, &state)?;
     let vault = state.vault.read().await;
     let vault_path = vault.get_config().get_vault_path(None);
-    let mut guard =
-        crate::access_control::AclGuard::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let mut guard = crate::access_control::AclGuard::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
     guard
         .revoke(&body.principal)
         .map_err(|e| ApiError::internal(e.to_string()))?;
-    Ok(Json(
-        serde_json::json!({ "revoked": body.principal }),
-    ))
+    Ok(Json(serde_json::json!({ "revoked": body.principal })))
 }
 
 // ── Webhooks ─────────────────────────────────────────────────────────────────
@@ -1119,8 +1119,8 @@ pub async fn webhook_list(
     let _claims = require_auth(&headers, &state)?;
     let vault = state.vault.read().await;
     let vault_path = vault.get_config().get_vault_path(None);
-    let store =
-        crate::webhooks::WebhookStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let store = crate::webhooks::WebhookStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
     let hooks: Vec<serde_json::Value> = store
         .list()
         .iter()
@@ -1152,8 +1152,8 @@ pub async fn webhook_add(
     let _claims = require_auth(&headers, &state)?;
     let vault = state.vault.read().await;
     let vault_path = vault.get_config().get_vault_path(None);
-    let mut store =
-        crate::webhooks::WebhookStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let mut store = crate::webhooks::WebhookStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
     let id = format!("wh_{}", uuid_v4_simple());
     let target = crate::webhooks::WebhookTarget {
         id: id.clone(),
@@ -1180,8 +1180,8 @@ pub async fn webhook_remove(
     let _claims = require_auth(&headers, &state)?;
     let vault = state.vault.read().await;
     let vault_path = vault.get_config().get_vault_path(None);
-    let mut store =
-        crate::webhooks::WebhookStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let mut store = crate::webhooks::WebhookStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
     let removed = store
         .remove(&id)
         .map_err(|e| ApiError::internal(e.to_string()))?;
@@ -1545,7 +1545,9 @@ pub async fn quant_profile_set(
     store
         .set(profile)
         .map_err(|e| ApiError::internal(e.to_string()))?;
-    Ok(Json(serde_json::json!({ "status": "ok", "name": body.name })))
+    Ok(Json(
+        serde_json::json!({ "status": "ok", "name": body.name }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -1760,7 +1762,9 @@ pub async fn backup_schedule_set(
     };
     mgr.set_schedule(schedule)
         .map_err(|e| ApiError::internal(e.to_string()))?;
-    Ok(Json(serde_json::json!({ "status": "ok", "name": body.name })))
+    Ok(Json(
+        serde_json::json!({ "status": "ok", "name": body.name }),
+    ))
 }
 
 /// GET /api/v1/backups/history
@@ -1843,7 +1847,9 @@ pub async fn vault_register(
     };
     reg.register(entry)
         .map_err(|e| ApiError::internal(e.to_string()))?;
-    Ok(Json(serde_json::json!({ "status": "registered", "name": body.name })))
+    Ok(Json(
+        serde_json::json!({ "status": "registered", "name": body.name }),
+    ))
 }
 
 /// POST /api/v1/vaults/:name/activate
@@ -1859,7 +1865,9 @@ pub async fn vault_activate(
         .map_err(|e| ApiError::internal(e.to_string()))?;
     reg.activate(&name)
         .map_err(|e| ApiError::bad_request(e.to_string()))?;
-    Ok(Json(serde_json::json!({ "status": "activated", "name": name })))
+    Ok(Json(
+        serde_json::json!({ "status": "activated", "name": name }),
+    ))
 }
 
 /// Check if an audit entry is a security-sensitive event type.

@@ -56,14 +56,14 @@ Options:
 
 ## Quantization Methods
 
-| Method | Bits/Weight | Use Case |
-|--------|-------------|----------|
-| `q4_0` | 4.0 | Maximum compression, lower quality |
-| `q4_k_m` | 4.5 | Good balance of size and quality |
-| `q5_k_m` | 5.5 | Higher quality, moderate compression |
-| `q8_0` | 8.0 | Near-lossless, minimal compression |
-| `f16` | 16.0 | Half precision |
-| `f32` | 32.0 | Full precision (no quantization) |
+| Method   | Bits/Weight | Use Case                             |
+| -------- | ----------- | ------------------------------------ |
+| `q4_0`   | 4.0         | Maximum compression, lower quality   |
+| `q4_k_m` | 4.5         | Good balance of size and quality     |
+| `q5_k_m` | 5.5         | Higher quality, moderate compression |
+| `q8_0`   | 8.0         | Near-lossless, minimal compression   |
+| `f16`    | 16.0        | Half precision                       |
+| `f32`    | 32.0        | Full precision (no quantization)     |
 
 ## Python API
 
@@ -81,9 +81,9 @@ estimated = QuantProfileStore.estimate(1_000_000_000, "f32", "q4_k_m")
 
 ## REST API
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/v1/quantization/profiles` | List all profiles |
+| Method | Path                            | Description             |
+| ------ | ------------------------------- | ----------------------- |
+| `GET`  | `/api/v1/quantization/profiles` | List all profiles       |
 | `POST` | `/api/v1/quantization/profiles` | Create/update a profile |
 | `POST` | `/api/v1/quantization/estimate` | Estimate quantized size |
 

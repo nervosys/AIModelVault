@@ -56,11 +56,11 @@ Options:
 ## Backup Frequencies
 
 | Frequency | Aliases | Description |
-|-----------|---------|-------------|
-| `hourly` | `1h` | Every hour |
-| `daily` | `1d` | Every day |
-| `weekly` | `1w` | Every week |
-| `monthly` | `1m` | Every month |
+| --------- | ------- | ----------- |
+| `hourly`  | `1h`    | Every hour  |
+| `daily`   | `1d`    | Every day   |
+| `weekly`  | `1w`    | Every week  |
+| `monthly` | `1m`    | Every month |
 
 ## Rotation
 
@@ -88,11 +88,11 @@ count = manager.backup_count()
 
 ## REST API
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/v1/backups/schedules` | List all backup schedules |
-| `POST` | `/api/v1/backups/schedules` | Create/update a backup schedule |
-| `GET` | `/api/v1/backups/history` | Show backup history (query: schedule) |
+| Method | Path                        | Description                           |
+| ------ | --------------------------- | ------------------------------------- |
+| `GET`  | `/api/v1/backups/schedules` | List all backup schedules             |
+| `POST` | `/api/v1/backups/schedules` | Create/update a backup schedule       |
+| `GET`  | `/api/v1/backups/history`   | Show backup history (query: schedule) |
 
 ### Example: Create Schedule
 
