@@ -5,9 +5,9 @@
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-1%2C865%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-1%2C932%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
 
 A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, model signing, safety scanning, and comprehensive utilities.
@@ -78,7 +78,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ### 6. 💻 CLI + Library API (Dual Interface)
 
 **Why it matters**: Use it your way - command line or code
-- **38+ CLI Commands**: `aim store`, `aim get`, `aim pull`, `aim sign`, `aim scan`, `aim diff`, `aim tag`, `aim browse`, etc.
+- **42+ CLI Commands**: `aim store`, `aim get`, `aim pull`, `aim sign`, `aim scan`, `aim diff`, `aim tag`, `aim browse`, `aim quantize`, `aim eval`, etc.
 - **Full Rust API**: Complete programmatic control
 - **Scriptable**: Automate workflows with bash/PowerShell
 - **Interactive**: Quick operations from terminal
@@ -114,7 +114,7 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 ### 10. 🔄 Production-Ready Reliability
 
 **Why it matters**: Trust it with your most important models
-- 1,865 comprehensive tests (100% passing)
+- 1,932 comprehensive tests (100% passing)
 - Type-safe Rust implementation (no memory bugs)
 - Comprehensive error handling
 - Detailed logging and debugging support
@@ -424,12 +424,19 @@ Demonstrates:
 - **Event System**: `EventBus` with `VaultEvent` dispatching, `AuditLogSubscriber`, `MetricsSubscriber`
 - **Streaming Encryption**: Chunked AES-256-GCM for large models (constant 8 MiB memory)
 - **SQLite Version Backend**: ACID-compliant version storage with auto-migration from JSON
-- **REST API**: 20 Axum endpoints with JWT auth + RBAC, OpenAPI 3.1 spec, web dashboard
+- **REST API**: 41 Axum endpoints with JWT auth + RBAC, OpenAPI 3.1 spec, web dashboard
 - **GraphQL API**: async-graphql 7.0 with queries, mutations, and playground
 - **Blockchain Audit**: Append-only audit trail with Merkle tree proofs
 - **Federation**: Vector clock sync across vault peers
 - **GPU Encryption**: OpenCL-accelerated AES-256-CTR with automatic CPU fallback
 - **`aimv://` URIs**: Agent-addressable URI scheme for vault resources
+
+### Quantization, Evaluation & Operations (v1.5.0)
+
+- **Quantization Pipeline**: Profile-based quantization management with method selection (Q4_0, Q4_K_M, Q5_K_M, Q8_0, F16, F32) and size estimation
+- **Evaluation Harness**: Record, compare, and query model evaluation results across suites and metrics
+- **Backup Scheduling**: Configurable vault backup schedules with daily/weekly/monthly/custom intervals
+- **Multi-Vault Management**: Manage multiple named vaults from a single installation with activate/switch
 
 ## Security Standards Compliance
 
@@ -503,8 +510,12 @@ AI Model Vault/
 │   ├── lineage_graph.rs   # Cross-model lineage DAG
 │   ├── plugins.rs         # Plugin system
 │   ├── profiles.rs        # Configuration profiles
+│   ├── quantization.rs    # Quantization pipeline & profile store
+│   ├── evaluation.rs      # Model evaluation harness
+│   ├── scheduler.rs       # Vault backup scheduling
+│   ├── multi_vault.rs     # Multi-vault registry & switching
 │   └── python.rs          # Python bindings (PyO3)
-├── tests/                 # 1,865 comprehensive tests
+├── tests/                 # 1,932 comprehensive tests
 ├── docs/                  # Documentation
 ├── website/               # Next.js documentation site
 ├── deploy/                # Dockerfile & Helm chart

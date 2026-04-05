@@ -126,6 +126,11 @@ nav:
       - Utilities Guide: UTILITIES.md
       - Utilities Quick Ref: UTILITIES_QUICKREF.md
       - Utilities Summary: UTILITIES_SUMMARY.md
+  - Operations:
+      - Quantization Pipeline: QUANTIZATION.md
+      - Evaluation Harness: EVALUATION.md
+      - Backup Scheduling: BACKUP_SCHEDULING.md
+      - Multi-Vault Management: MULTI_VAULT.md
   - Performance:
       - Performance: PERFORMANCE.md
       - GPU Acceleration: GPU_ACCELERATION.md

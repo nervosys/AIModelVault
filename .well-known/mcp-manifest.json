@@ -1,8 +1,8 @@
 {
   "$schema": "https://modelcontextprotocol.io/schema/tools.json",
   "name": "ai-model-vault",
-  "version": "1.3.0",
-  "description": "MCP tool manifest for AI Model Vault — encrypted AI/ML model management with versioning, conversion, compliance, and RAG.",
+  "version": "1.5.0",
+  "description": "MCP tool manifest for AI Model Vault — encrypted AI/ML model management with versioning, conversion, compliance, RAG, quantization, evaluation, backup scheduling, and multi-vault management.",
   "protocol_version": "2024-11-05",
   "capabilities": {
     "tools": true,

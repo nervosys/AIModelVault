@@ -10,8 +10,8 @@ repository = "https://github.com/nervosys/AIModelVault"
 homepage = "https://github.com/nervosys/AIModelVault"
 documentation = "https://docs.rs/ai-model-vault"
 readme = "README.md"
-keywords = ["ai", "ml", "vault", "security", "encryption"]
-categories = ["cryptography", "science"]
+keywords = ["ai", "ml", "vault", "encryption", "model-management"]
+categories = ["cryptography", "command-line-utilities", "science"]
 
 [dependencies]
 # Cryptography - FIPS 140-3 compliant

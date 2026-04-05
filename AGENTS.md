@@ -181,6 +181,31 @@ aim profile list                              # List all profiles
 aim profile activate <NAME>                   # Activate profile
 aim profile deactivate                        # Deactivate current profile
 aim profile show                              # Show active profile
+
+# Quantization pipeline
+aim quantize set <MODEL> --method <METHOD> [--version V] [--bits N]
+aim quantize remove <MODEL> [--version V]     # Remove quantization profile
+aim quantize list [MODEL]                     # List quantization profiles
+aim quantize estimate <MODEL> --method <METHOD>  # Estimate output size
+
+# Evaluation harness
+aim eval record <MODEL> --suite <SUITE> --metric <METRIC> --score <N> [--version V]
+aim eval list <MODEL> [--version V] [--suite SUITE] [--format text|json]
+aim eval compare <MODEL> --versions <V1,V2,...> [--format text|json]
+aim eval suites                               # List known evaluation suites
+
+# Backup scheduling
+aim backup schedule <VAULT> --interval <daily|weekly|monthly|custom> [--hour H]
+aim backup list                               # List backup schedules
+aim backup run [VAULT]                        # Run backup now
+aim backup history [VAULT] [--format text|json]  # Show backup history
+
+# Multi-vault management
+aim vaults register <NAME> <PATH>             # Register a vault
+aim vaults unregister <NAME>                  # Unregister a vault
+aim vaults list                               # List all registered vaults
+aim vaults activate <NAME>                    # Switch active vault
+aim vaults active                             # Show active vault
 ```
 
 ## Supported Model Formats (23+)

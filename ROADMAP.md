@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-04-04  
-> Current version: **1.4.0** (tags, vault bundles, gc, tui, webhooks, acl, kms, validation, policies, lineage DAG, plugins, profiles)  
-> Status: Production release — v1.4.0 shipped with 12 new features, 38+ CLI commands
+> Last updated: 2026-04-05  
+> Current version: **1.5.0** (quantization pipeline, evaluation harness, backup scheduling, multi-vault registry)  
+> Status: Production release — v1.5.0 shipped with 4 new modules, 42+ CLI commands, 1,932 tests
 
 ---
 
@@ -473,6 +473,60 @@ Fixed critical wiring bugs and added comprehensive test coverage for v2 componen
 | `src/main.rs`             | Extract `use_sqlite`, pass to all 18 handler calls                           |
 | `src/python.rs`           | Added `PyVaultBuilder` class                                                 |
 | `examples/basic_usage.rs` | Updated to use `VaultBuilder` pattern                                        |
+
+---
+
+## v1.5.0 — Quantization, Evaluation, Backup & Multi-Vault ✅
+
+4 new modules for model optimization, evaluation, backup scheduling, and multi-vault management.
+
+- [x] **Quantization Pipeline** (`src/quantization.rs`, ~250 lines) — Profile-based quantization management with method selection (Q4_0, Q4_K_M, Q5_K_M, Q8_0, F16, F32), size estimation, and batch reporting. `QuantProfileStore` with `set`/`remove`/`get`/`list`. CLI: `aim quantize set/remove/list/estimate`
+- [x] **Evaluation Harness** (`src/evaluation.rs`, ~250 lines) — Record, compare, and query model evaluation results across suites and metrics. `EvalStore` with `record`/`get_runs`/`compare`/`suites`/`count`. CLI: `aim eval record/list/compare/suites`
+- [x] **Backup Scheduling** (`src/scheduler.rs`, ~200 lines) — Configurable vault backup schedules with cron-style intervals (daily, weekly, monthly, custom hours). `BackupScheduler` with `set_schedule`/`list_schedules`/`run_backup`/`history`. CLI: `aim backup schedule/list/run/history`
+- [x] **Multi-Vault Registry** (`src/multi_vault.rs`, ~200 lines) — Manage multiple named vaults from a single installation. `MultiVaultRegistry` with `register`/`unregister`/`list`/`activate`/`active`. CLI: `aim vaults register/unregister/list/activate/active`
+- [x] **CLI expansion** — 42+ commands (was 38+), 4 new CLI handler files
+- [x] **API expansion** — 12 new REST endpoints for quantization, evaluation, backup, multi-vault, and vault management
+- [x] **Python expansion** — 4 new PyO3 classes (`PyQuantProfileStore`, `PyEvalStore`, `PyBackupScheduler`, `PyMultiVaultRegistry`)
+- [x] **Test expansion** — 1,932 tests (was 1,865), 67 new tests from 4 modules + 20 CLI integration tests
+- [x] **Documentation** — 4 new docs (QUANTIZATION.md, EVALUATION.md, BACKUP_SCHEDULING.md, MULTI_VAULT.md)
+- [x] **Benchmarks** — New `module_bench.rs` with criterion benchmarks for all 4 modules
+
+### Files Created
+
+| File                                 | Lines | Purpose                                      |
+| ------------------------------------ | ----- | -------------------------------------------- |
+| `src/quantization.rs`                | ~250  | Quantization pipeline & profile store        |
+| `src/evaluation.rs`                  | ~250  | Evaluation harness                           |
+| `src/scheduler.rs`                   | ~200  | Backup scheduling                            |
+| `src/multi_vault.rs`                 | ~200  | Multi-vault registry & switching             |
+| `src/cli/handlers/quantization.rs`   | ~60   | CLI handler for quantization commands        |
+| `src/cli/handlers/evaluation.rs`     | ~60   | CLI handler for evaluation commands          |
+| `src/cli/handlers/scheduler.rs`      | ~50   | CLI handler for backup scheduling            |
+| `src/cli/handlers/multi_vault.rs`    | ~50   | CLI handler for multi-vault management       |
+| `docs/QUANTIZATION.md`              | ~130  | Quantization pipeline documentation          |
+| `docs/EVALUATION.md`                | ~100  | Evaluation harness documentation             |
+| `docs/BACKUP_SCHEDULING.md`         | ~100  | Backup scheduling documentation              |
+| `docs/MULTI_VAULT.md`               | ~100  | Multi-vault management documentation         |
+| `benches/module_bench.rs`            | ~100  | Criterion benchmarks for 4 new modules       |
+| `website/src/app/features/quantization/page.tsx` | ~60 | Website feature page             |
+| `website/src/app/features/evaluation/page.tsx`   | ~60 | Website feature page             |
+| `website/src/app/features/backup/page.tsx`       | ~60 | Website feature page             |
+| `website/src/app/features/multi-vault/page.tsx`  | ~60 | Website feature page             |
+
+### Files Modified
+
+| File                    | Change                                                              |
+| ----------------------- | ------------------------------------------------------------------- |
+| `Cargo.toml`            | Version bump 1.4.0 → 1.5.0, added `module_bench` bench target      |
+| `src/lib.rs`            | 4 new `pub mod` declarations, re-exports for new public types       |
+| `src/cli/args.rs`       | 4 new Command variants (`Quantize`, `Eval`, `Backup`, `Vaults`)     |
+| `src/cli/handlers/mod.rs` | 4 new `pub mod` declarations for handler files                   |
+| `src/main.rs`           | Imports and match arms for 4 new command variants                   |
+| `src/api/routes.rs`     | 12 new handler functions for v1.5.0 endpoints                       |
+| `src/api/server.rs`     | 12 new route registrations                                          |
+| `src/python.rs`         | 4 new PyO3 classes added to module                                  |
+| `tests/cli_tests.rs`    | 20 new integration tests for v1.5.0 CLI commands                   |
+| `CHANGELOG.md`          | v1.5.0 entry added                                                  |
 
 ---
 

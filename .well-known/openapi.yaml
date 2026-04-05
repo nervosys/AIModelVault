@@ -7,7 +7,7 @@ info:
     
     Requires the `api` cargo feature: `cargo build --features api`
     Start with: `aim serve --port 8080`
-  version: 1.3.0
+  version: 1.5.0
   license:
     name: AGPL-3.0-or-later
     url: https://www.gnu.org/licenses/agpl-3.0.html
@@ -725,6 +725,492 @@ paths:
               schema:
                 type: object
 
+  # --- v1.4.0 endpoints ---
+
+  /api/v1/models/{name}/tags:
+    get:
+      summary: Get model tags
+      tags: [Tags]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model tags
+    post:
+      summary: Add tags to model
+      tags: [Tags]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Tags added
+    delete:
+      summary: Remove tags from model
+      tags: [Tags]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Tags removed
+
+  /api/v1/search:
+    post:
+      summary: Search models by name, tags, or annotations
+      tags: [Tags]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                tag:
+                  type: string
+      responses:
+        '200':
+          description: Search results
+
+  /api/v1/acl:
+    get:
+      summary: List access control entries
+      tags: [Access Control]
+      responses:
+        '200':
+          description: ACL entries
+    post:
+      summary: Grant role to principal
+      tags: [Access Control]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principal, role]
+              properties:
+                principal:
+                  type: string
+                role:
+                  type: string
+                  enum: [reader, writer, admin]
+      responses:
+        '200':
+          description: Role granted
+    delete:
+      summary: Revoke access from principal
+      tags: [Access Control]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principal]
+              properties:
+                principal:
+                  type: string
+      responses:
+        '200':
+          description: Access revoked
+
+  /api/v1/webhooks:
+    get:
+      summary: List webhook targets
+      tags: [Webhooks]
+      responses:
+        '200':
+          description: Webhook list
+    post:
+      summary: Add webhook target
+      tags: [Webhooks]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                secret:
+                  type: string
+      responses:
+        '201':
+          description: Webhook created
+
+  /api/v1/webhooks/{id}:
+    delete:
+      summary: Remove webhook target
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook removed
+
+  /api/v1/models/{name}/validate:
+    post:
+      summary: Validate model integrity
+      tags: [Models]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validation result
+
+  /api/v1/gc:
+    post:
+      summary: Run garbage collection
+      tags: [Vault]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+      responses:
+        '200':
+          description: GC report
+
+  /api/v1/models/{name}/policy:
+    put:
+      summary: Set retention policy for model
+      tags: [Policies]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                max_versions:
+                  type: integer
+                max_age_days:
+                  type: integer
+                keep_minimum:
+                  type: integer
+      responses:
+        '200':
+          description: Policy set
+
+  /api/v1/policies:
+    get:
+      summary: List all retention policies
+      tags: [Policies]
+      responses:
+        '200':
+          description: Policy list
+
+  /api/v1/profiles:
+    get:
+      summary: List configuration profiles
+      tags: [Profiles]
+      responses:
+        '200':
+          description: Profile list
+    post:
+      summary: Create configuration profile
+      tags: [Profiles]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                overrides:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '201':
+          description: Profile created
+
+  /api/v1/profiles/{name}/activate:
+    post:
+      summary: Activate configuration profile
+      tags: [Profiles]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profile activated
+
+  /api/v1/lineage-graph:
+    get:
+      summary: Show cross-model lineage graph
+      tags: [Lineage]
+      responses:
+        '200':
+          description: Lineage graph
+    post:
+      summary: Add edge to lineage graph
+      tags: [Lineage]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [child, parents, kind]
+              properties:
+                child:
+                  type: string
+                parents:
+                  type: array
+                  items:
+                    type: string
+                kind:
+                  type: string
+      responses:
+        '201':
+          description: Edge added
+
+  /api/v1/plugins:
+    get:
+      summary: List installed plugins
+      tags: [Plugins]
+      responses:
+        '200':
+          description: Plugin list
+
+  # --- v1.5.0 endpoints ---
+
+  /api/v1/quantization/profiles:
+    get:
+      summary: List quantization profiles
+      tags: [Quantization]
+      responses:
+        '200':
+          description: Quantization profiles
+    post:
+      summary: Set quantization profile for model
+      tags: [Quantization]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, method]
+              properties:
+                model:
+                  type: string
+                method:
+                  type: string
+                  enum: [q4_0, q4_k_m, q5_k_m, q8_0, f16, f32]
+                version:
+                  type: integer
+                bits:
+                  type: integer
+      responses:
+        '200':
+          description: Profile set
+
+  /api/v1/quantization/estimate:
+    post:
+      summary: Estimate quantized output size
+      tags: [Quantization]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, method]
+              properties:
+                model:
+                  type: string
+                method:
+                  type: string
+      responses:
+        '200':
+          description: Size estimate
+
+  /api/v1/evaluations:
+    get:
+      summary: List evaluation results
+      tags: [Evaluation]
+      parameters:
+        - name: model
+          in: query
+          schema:
+            type: string
+        - name: version
+          in: query
+          schema:
+            type: integer
+        - name: suite
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Evaluation results
+    post:
+      summary: Record evaluation result
+      tags: [Evaluation]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, suite, metric, score]
+              properties:
+                model:
+                  type: string
+                version:
+                  type: integer
+                suite:
+                  type: string
+                metric:
+                  type: string
+                score:
+                  type: number
+      responses:
+        '201':
+          description: Result recorded
+
+  /api/v1/evaluations/suites:
+    get:
+      summary: List known evaluation suites
+      tags: [Evaluation]
+      responses:
+        '200':
+          description: Suite list
+
+  /api/v1/backups/schedules:
+    get:
+      summary: List backup schedules
+      tags: [Backups]
+      responses:
+        '200':
+          description: Schedule list
+    post:
+      summary: Create or update backup schedule
+      tags: [Backups]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vault, interval]
+              properties:
+                vault:
+                  type: string
+                interval:
+                  type: string
+                  enum: [daily, weekly, monthly, custom]
+                hour:
+                  type: integer
+      responses:
+        '200':
+          description: Schedule set
+
+  /api/v1/backups/history:
+    get:
+      summary: Get backup history
+      tags: [Backups]
+      parameters:
+        - name: vault
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Backup history
+
+  /api/v1/vaults:
+    get:
+      summary: List registered vaults
+      tags: [Multi-Vault]
+      responses:
+        '200':
+          description: Vault list
+    post:
+      summary: Register a new vault
+      tags: [Multi-Vault]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, path]
+              properties:
+                name:
+                  type: string
+                path:
+                  type: string
+      responses:
+        '201':
+          description: Vault registered
+
+  /api/v1/vaults/{name}/activate:
+    post:
+      summary: Activate a registered vault
+      tags: [Multi-Vault]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Vault activated
+
 tags:
   - name: Auth
     description: Authentication and token management
@@ -744,3 +1230,25 @@ tags:
     description: Retrieval-Augmented Generation knowledge base
   - name: Observability
     description: Health, metrics, audit log, and events
+  - name: Tags
+    description: Model tagging, annotations, and search
+  - name: Access Control
+    description: Role-based access control (RBAC)
+  - name: Webhooks
+    description: HTTP notification targets for vault events
+  - name: Policies
+    description: Retention policy management
+  - name: Profiles
+    description: Configuration profile management
+  - name: Lineage
+    description: Cross-model lineage DAG
+  - name: Plugins
+    description: Plugin system management
+  - name: Quantization
+    description: Quantization pipeline and profile management
+  - name: Evaluation
+    description: Model evaluation harness
+  - name: Backups
+    description: Backup scheduling and history
+  - name: Multi-Vault
+    description: Multi-vault registry and switching

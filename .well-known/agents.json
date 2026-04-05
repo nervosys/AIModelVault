@@ -4,8 +4,8 @@
   "project": {
     "id": "ai-model-vault",
     "name": "AI Model Vault",
-    "version": "1.3.0",
-    "description": "Encrypted AI/ML model management system with versioning, format conversion, compliance validation, RAG, MCP tools, and federated sync.",
+    "version": "1.5.0",
+    "description": "Encrypted AI/ML model management system with versioning, format conversion, compliance validation, RAG, MCP tools, federated sync, quantization, evaluation, backup scheduling, and multi-vault management.",
     "homepage": "https://github.com/nervosys/AIModelVault",
     "documentation": "https://github.com/nervosys/AIModelVault/tree/master/docs",
     "license": "AGPL-3.0-or-later",
@@ -31,7 +31,7 @@
     {
       "type": "cli",
       "binary": "aim",
-      "description": "Command-line interface with 30+ subcommands for vault, model, cloud, database, and utility operations. Use `aim introspect` for machine-readable CLI schema discovery.",
+      "description": "Command-line interface with 42+ subcommands for vault, model, cloud, database, quantization, evaluation, backup, multi-vault, and utility operations. Use `aim introspect` for machine-readable CLI schema discovery.",
       "install": "cargo install ai-model-vault",
       "help": "aim --help",
       "introspect": "aim introspect --format json",
@@ -162,6 +162,23 @@
       "output_formats": ["json", "yaml", "jsonld"],
       "flags": ["--compact"],
       "usage": "aim introspect --format json | jq '.commands[]'"
+    },
+    "quantization": {
+      "description": "Quantization pipeline with profile management and size estimation",
+      "commands": ["aim quantize set", "aim quantize remove", "aim quantize list", "aim quantize estimate"],
+      "methods": ["q4_0", "q4_k_m", "q5_k_m", "q8_0", "f16", "f32"]
+    },
+    "evaluation": {
+      "description": "Model evaluation harness for recording and comparing benchmark results",
+      "commands": ["aim eval record", "aim eval list", "aim eval compare", "aim eval suites"]
+    },
+    "backup_scheduling": {
+      "description": "Automated vault backup scheduling with configurable intervals",
+      "commands": ["aim backup schedule", "aim backup list", "aim backup run", "aim backup history"]
+    },
+    "multi_vault": {
+      "description": "Multi-vault registry for managing and switching between multiple vaults",
+      "commands": ["aim vaults register", "aim vaults unregister", "aim vaults list", "aim vaults activate", "aim vaults active"]
     }
   },
 

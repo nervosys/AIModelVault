@@ -65,7 +65,7 @@ VOLUME ["/data", "/config", "/cache"]
 
 LABEL org.opencontainers.image.title="AI Model Vault" \
     org.opencontainers.image.description="Universal secure vault for AI model formats" \
-    org.opencontainers.image.version="1.2.1" \
+    org.opencontainers.image.version="1.5.0" \
     org.opencontainers.image.source="https://github.com/nervosys/AIModelVault" \
     org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
@@ -101,6 +101,6 @@ VOLUME ["/data", "/config", "/cache"]
 
 LABEL org.opencontainers.image.title="AI Model Vault" \
     org.opencontainers.image.description="Universal secure vault for AI model formats" \
-    org.opencontainers.image.version="1.2.1" \
-    org.opencontainers.image.source="https://github.com/nervosys/ai-model-vault" \
+    org.opencontainers.image.version="1.5.0" \
+    org.opencontainers.image.source="https://github.com/nervosys/AIModelVault" \
     org.opencontainers.image.licenses="AGPL-3.0-or-later"
