@@ -29,6 +29,10 @@ const navigation: NavSection[] = [
       { label: "Model Download", href: "/docs/download" },
       { label: "Model Diffing", href: "/docs/diffing" },
       { label: "Benchmarks", href: "/docs/benchmarks" },
+      { label: "Quantization", href: "/docs/quantization" },
+      { label: "Evaluation", href: "/docs/evaluation" },
+      { label: "Backup Scheduling", href: "/docs/backup-scheduling" },
+      { label: "Multi-Vault", href: "/docs/multi-vault" },
     ],
   },
   {

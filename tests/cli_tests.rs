@@ -1316,3 +1316,276 @@ fn test_cli_search_empty_query() {
         .assert()
         .success();
 }
+
+// ──────────────────────────────────────────────────────────────
+// v1.5.0 Feature — Help Tests
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_quantize_help() {
+    aim()
+        .args(["quantize", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("quantize").or(predicate::str::contains("Quantize").or(predicate::str::contains("quantization"))));
+}
+
+#[test]
+fn test_cli_eval_help() {
+    aim()
+        .args(["eval", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("eval").or(predicate::str::contains("Eval")));
+}
+
+#[test]
+fn test_cli_backup_help() {
+    aim()
+        .args(["backup", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("backup").or(predicate::str::contains("Backup")));
+}
+
+#[test]
+fn test_cli_vaults_help() {
+    aim()
+        .args(["vaults", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("vaults").or(predicate::str::contains("Vaults").or(predicate::str::contains("vault"))));
+}
+
+// ──────────────────────────────────────────────────────────────
+// v1.5.0 Feature — Functional Tests
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_quantize_set_list_remove() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["quantize", "set", "fast-q4", "--method", "q4_k_m", "--description", "Fast 4-bit"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["quantize", "list"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("fast-q4"));
+
+    aim()
+        .args(["quantize", "remove", "fast-q4"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_quantize_estimate() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["quantize", "estimate", "--size", "1000000000", "--to", "q4_k_m"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_eval_record_list_suites() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args([
+            "eval", "record", "my-model",
+            "--version", "1",
+            "--suite", "mmlu",
+            "--metric", "accuracy=0.85",
+            "--unit", "score",
+        ])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["eval", "list", "my-model"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("mmlu").or(predicate::str::contains("my-model")));
+
+    aim()
+        .args(["eval", "suites"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("mmlu"));
+}
+
+#[test]
+fn test_cli_backup_set_list_remove() {
+    let dir = tempdir().unwrap();
+    let backup_dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args([
+            "backup", "set", "nightly",
+            "--frequency", "daily",
+            "--max-backups", "5",
+            "--output-dir", backup_dir.path().to_str().unwrap(),
+        ])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["backup", "list"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("nightly"));
+
+    aim()
+        .args(["backup", "remove", "nightly"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_backup_history_empty() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["backup", "history"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_vaults_register_list_activate_deactivate() {
+    let dir = tempdir().unwrap();
+    let vault_dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["vaults", "register", "prod", vault_dir.path().to_str().unwrap(), "--description", "Production vault"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["vaults", "list"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("prod"));
+
+    aim()
+        .args(["vaults", "activate", "prod"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["vaults", "deactivate"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["vaults", "unregister", "prod"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+// ──────────────────────────────────────────────────────────────
+// v1.5.0 Feature — Error Cases
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_quantize_set_missing_method() {
+    aim()
+        .args(["quantize", "set", "test-profile"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_eval_record_missing_args() {
+    aim()
+        .args(["eval", "record"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_backup_set_missing_args() {
+    aim()
+        .args(["backup", "set"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_vaults_register_missing_path() {
+    aim()
+        .args(["vaults", "register", "test-vault"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_eval_compare_missing_suite() {
+    aim()
+        .args(["eval", "compare", "a@1", "b@1"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}

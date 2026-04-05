@@ -163,5 +163,21 @@ pub use vault_bundle::{BundleManifest, ExportReport, ImportReport};
 // Webhook exports
 pub use webhooks::{WebhookPayload, WebhookStore, WebhookTarget};
 
+// Quantization exports
+pub use quantization::{
+    BatchQuantReport, QuantMethod, QuantProfile, QuantProfileStore, QuantResult,
+};
+
+// Evaluation exports
+pub use evaluation::{EvalComparison, EvalRun, EvalStore, MetricDelta, MetricResult};
+
+// Scheduler exports
+pub use scheduler::{
+    BackupFrequency, BackupManager, BackupRecord, BackupReport, BackupSchedule,
+};
+
+// Multi-vault exports
+pub use multi_vault::{VaultEntry, VaultRegistry, VaultSummary};
+
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

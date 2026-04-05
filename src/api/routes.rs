@@ -1488,6 +1488,380 @@ pub async fn plugin_list(
     Ok(Json(plugins))
 }
 
+// ── Quantization ─────────────────────────────────────────────────────────────
+
+/// GET /api/v1/quantization/profiles
+pub async fn quant_profile_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store = crate::quantization::QuantProfileStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let profiles: Vec<serde_json::Value> = store
+        .list()
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "name": p.name,
+                "method": p.method.to_string(),
+                "description": p.description,
+            })
+        })
+        .collect();
+    Ok(Json(profiles))
+}
+
+#[derive(Deserialize)]
+pub struct QuantProfileRequest {
+    pub name: String,
+    pub method: String,
+    pub description: Option<String>,
+}
+
+/// POST /api/v1/quantization/profiles
+pub async fn quant_profile_set(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<QuantProfileRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store = crate::quantization::QuantProfileStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let method: crate::quantization::QuantMethod = body
+        .method
+        .parse()
+        .map_err(|e: crate::VaultError| ApiError::bad_request(e.to_string()))?;
+    let profile = crate::quantization::QuantProfile {
+        name: body.name.clone(),
+        method,
+        description: body.description,
+        metadata: std::collections::BTreeMap::new(),
+    };
+    store
+        .set(profile)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "status": "ok", "name": body.name })))
+}
+
+#[derive(Deserialize)]
+pub struct QuantEstimateRequest {
+    pub size: u64,
+    pub from: String,
+    pub to: String,
+}
+
+/// POST /api/v1/quantization/estimate
+pub async fn quant_estimate(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<QuantEstimateRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let from: crate::quantization::QuantMethod = body
+        .from
+        .parse()
+        .map_err(|e: crate::VaultError| ApiError::bad_request(e.to_string()))?;
+    let to: crate::quantization::QuantMethod = body
+        .to
+        .parse()
+        .map_err(|e: crate::VaultError| ApiError::bad_request(e.to_string()))?;
+    let estimated = crate::quantization::estimate_quantized_size(body.size, from, to);
+    Ok(Json(serde_json::json!({
+        "original_bytes": body.size,
+        "estimated_bytes": estimated,
+        "compression_ratio": body.size as f64 / estimated as f64,
+        "from": from.to_string(),
+        "to": to.to_string(),
+    })))
+}
+
+// ── Evaluations ──────────────────────────────────────────────────────────────
+
+/// GET /api/v1/evaluations
+pub async fn eval_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store = crate::evaluation::EvalStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let model = params.get("model");
+    let version: Option<u64> = params.get("version").and_then(|v| v.parse().ok());
+    let runs = if let Some(m) = model {
+        store.get_runs(m, version)
+    } else {
+        store.get_runs("", None) // empty = all if model is not specified
+    };
+    let results: Vec<serde_json::Value> = runs
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "model": r.model,
+                "version": r.version,
+                "suite": r.suite,
+                "timestamp": r.timestamp,
+                "metrics": r.metrics.iter().map(|m| serde_json::json!({
+                    "name": m.name,
+                    "value": m.value,
+                    "unit": m.unit,
+                    "higher_is_better": m.higher_is_better,
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    Ok(Json(results))
+}
+
+#[derive(Deserialize)]
+pub struct EvalRecordRequest {
+    pub model: String,
+    pub version: u64,
+    pub suite: String,
+    pub metrics: Vec<EvalMetricInput>,
+}
+
+#[derive(Deserialize)]
+pub struct EvalMetricInput {
+    pub name: String,
+    pub value: f64,
+    #[serde(default = "default_unit")]
+    pub unit: String,
+    #[serde(default = "default_true")]
+    pub higher_is_better: bool,
+}
+
+fn default_unit() -> String {
+    "score".to_string()
+}
+fn default_true() -> bool {
+    true
+}
+
+/// POST /api/v1/evaluations
+pub async fn eval_record(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<EvalRecordRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store = crate::evaluation::EvalStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let metrics: Vec<crate::evaluation::MetricResult> = body
+        .metrics
+        .into_iter()
+        .map(|m| crate::evaluation::MetricResult {
+            name: m.name,
+            value: m.value,
+            unit: m.unit,
+            higher_is_better: m.higher_is_better,
+        })
+        .collect();
+    let run = crate::evaluation::EvalRun {
+        suite: body.suite.clone(),
+        model: body.model.clone(),
+        version: body.version,
+        metrics,
+        timestamp: Utc::now().to_rfc3339(),
+        context: std::collections::BTreeMap::new(),
+    };
+    store
+        .record(run)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "status": "recorded" })))
+}
+
+/// GET /api/v1/evaluations/suites
+pub async fn eval_suites(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<String>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store = crate::evaluation::EvalStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(store.suites()))
+}
+
+// ── Backup Schedules ─────────────────────────────────────────────────────────
+
+/// GET /api/v1/backups/schedules
+pub async fn backup_schedule_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mgr = crate::scheduler::BackupManager::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let schedules: Vec<serde_json::Value> = mgr
+        .list_schedules()
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "name": s.name,
+                "frequency": s.frequency.to_string(),
+                "max_backups": s.max_backups,
+                "output_dir": s.output_dir.display().to_string(),
+                "enabled": s.enabled,
+                "created_at": s.created_at,
+            })
+        })
+        .collect();
+    Ok(Json(schedules))
+}
+
+#[derive(Deserialize)]
+pub struct BackupScheduleRequest {
+    pub name: String,
+    pub frequency: String,
+    #[serde(default = "default_max_backups")]
+    pub max_backups: usize,
+    pub output_dir: String,
+}
+
+fn default_max_backups() -> usize {
+    7
+}
+
+/// POST /api/v1/backups/schedules
+pub async fn backup_schedule_set(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<BackupScheduleRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut mgr = crate::scheduler::BackupManager::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let freq: crate::scheduler::BackupFrequency = body
+        .frequency
+        .parse()
+        .map_err(|e: crate::VaultError| ApiError::bad_request(e.to_string()))?;
+    let schedule = crate::scheduler::BackupSchedule {
+        name: body.name.clone(),
+        frequency: freq,
+        max_backups: body.max_backups,
+        output_dir: std::path::PathBuf::from(&body.output_dir),
+        enabled: true,
+        created_at: Utc::now().to_rfc3339(),
+    };
+    mgr.set_schedule(schedule)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "status": "ok", "name": body.name })))
+}
+
+/// GET /api/v1/backups/history
+pub async fn backup_history(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mgr = crate::scheduler::BackupManager::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let schedule = params.get("schedule").map(|s| s.as_str());
+    let history: Vec<serde_json::Value> = mgr
+        .get_history(schedule)
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "path": r.path.display().to_string(),
+                "timestamp": r.timestamp,
+                "size_bytes": r.size_bytes,
+                "schedule_name": r.schedule_name,
+            })
+        })
+        .collect();
+    Ok(Json(history))
+}
+
+// ── Multi-Vault Registry ─────────────────────────────────────────────────────
+
+/// GET /api/v1/vaults
+pub async fn vault_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let config_dir = &vault.get_config().dirs.config_dir;
+    let reg = crate::multi_vault::VaultRegistry::new(config_dir)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let vaults: Vec<serde_json::Value> = reg
+        .list()
+        .iter()
+        .map(|v| {
+            serde_json::json!({
+                "name": v.name,
+                "path": v.path.display().to_string(),
+                "is_active": v.is_active,
+                "exists": v.exists,
+            })
+        })
+        .collect();
+    Ok(Json(vaults))
+}
+
+#[derive(Deserialize)]
+pub struct VaultRegisterRequest {
+    pub name: String,
+    pub path: String,
+    pub description: Option<String>,
+}
+
+/// POST /api/v1/vaults
+pub async fn vault_register(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<VaultRegisterRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let config_dir = &vault.get_config().dirs.config_dir;
+    let mut reg = crate::multi_vault::VaultRegistry::new(config_dir)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let entry = crate::multi_vault::VaultEntry {
+        name: body.name.clone(),
+        path: std::path::PathBuf::from(&body.path),
+        description: body.description,
+        registered_at: Utc::now().to_rfc3339(),
+    };
+    reg.register(entry)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "status": "registered", "name": body.name })))
+}
+
+/// POST /api/v1/vaults/:name/activate
+pub async fn vault_activate(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(name): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let config_dir = &vault.get_config().dirs.config_dir;
+    let mut reg = crate::multi_vault::VaultRegistry::new(config_dir)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    reg.activate(&name)
+        .map_err(|e| ApiError::bad_request(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "status": "activated", "name": name })))
+}
+
 /// Check if an audit entry is a security-sensitive event type.
 ///
 /// Used by role-based filtering: non-admin roles cannot see these events.

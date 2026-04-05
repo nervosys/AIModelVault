@@ -14,8 +14,10 @@ use clap::Parser;
 use cli::args::{Cli, Commands};
 use cli::handlers::{
     acl, analyze, archive, benchmark as benchmark_handler, browse, card, cloud, convert, database,
-    diff as diff_handler, gc, introspect, license_scan as license_scan_handler, lineage_graph,
-    plugins, policies, profiles, pull, register, scan, sign, tags, telemetry as telemetry_handler,
+    diff as diff_handler, evaluation as evaluation_handler, gc, introspect,
+    license_scan as license_scan_handler, lineage_graph, multi_vault as multi_vault_handler,
+    plugins, policies, profiles, pull, quantization as quantization_handler, register, scan, sign,
+    scheduler as scheduler_handler, tags, telemetry as telemetry_handler,
     validation, vault, vault_bundle as vault_bundle_handler, webhooks as webhooks_handler,
 };
 
@@ -236,6 +238,10 @@ fn run() -> Result<()> {
         Commands::LineageGraph { command } => lineage_graph::handle_lineage_graph(command, config),
         Commands::Plugin { command } => plugins::handle_plugin(command, config),
         Commands::Profile { command } => profiles::handle_profile(command, config),
+        Commands::Quantize { command } => quantization_handler::handle_quantize(command, config),
+        Commands::Eval { command } => evaluation_handler::handle_eval(command, config),
+        Commands::Backup { command } => scheduler_handler::handle_backup(command, config),
+        Commands::Vaults { command } => multi_vault_handler::handle_vaults(command, config),
     };
 
     // Flush telemetry before exit

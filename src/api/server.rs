@@ -157,6 +157,27 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             get(routes::lineage_graph_show).post(routes::lineage_graph_add),
         )
         .route("/plugins", get(routes::plugin_list))
+        // v1.5.0 endpoints
+        .route(
+            "/quantization/profiles",
+            get(routes::quant_profile_list).post(routes::quant_profile_set),
+        )
+        .route("/quantization/estimate", post(routes::quant_estimate))
+        .route(
+            "/evaluations",
+            get(routes::eval_list).post(routes::eval_record),
+        )
+        .route("/evaluations/suites", get(routes::eval_suites))
+        .route(
+            "/backups/schedules",
+            get(routes::backup_schedule_list).post(routes::backup_schedule_set),
+        )
+        .route("/backups/history", get(routes::backup_history))
+        .route(
+            "/vaults",
+            get(routes::vault_list).post(routes::vault_register),
+        )
+        .route("/vaults/:name/activate", post(routes::vault_activate))
         .with_state(state.clone());
 
     let dashboard = if state.config.enable_dashboard {

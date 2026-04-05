@@ -977,6 +977,290 @@ impl PyProfileStore {
     }
 }
 
+// ── PyQuantProfileStore ──────────────────────────────────────────────────────
+
+/// Quantization profile manager.
+#[pyclass(name = "QuantProfileStore")]
+struct PyQuantProfileStore {
+    inner: crate::quantization::QuantProfileStore,
+}
+
+#[pymethods]
+impl PyQuantProfileStore {
+    #[new]
+    fn new(vault_path: &str) -> PyResult<Self> {
+        let path = std::path::PathBuf::from(vault_path);
+        let store = crate::quantization::QuantProfileStore::new(&path).map_err(to_py_err)?;
+        Ok(Self { inner: store })
+    }
+
+    #[pyo3(signature = (name, method, description=None))]
+    fn set(&mut self, name: &str, method: &str, description: Option<String>) -> PyResult<()> {
+        let m: crate::quantization::QuantMethod = method
+            .parse()
+            .map_err(|e: crate::error::VaultError| PyValueError::new_err(e.to_string()))?;
+        let profile = crate::quantization::QuantProfile {
+            name: name.to_string(),
+            method: m,
+            description,
+            metadata: std::collections::BTreeMap::new(),
+        };
+        self.inner.set(profile).map_err(to_py_err)
+    }
+
+    fn remove(&mut self, name: &str) -> PyResult<bool> {
+        self.inner.remove(name).map_err(to_py_err)
+    }
+
+    fn list(&self) -> Vec<HashMap<String, String>> {
+        self.inner
+            .list()
+            .iter()
+            .map(|p| {
+                let mut m = HashMap::new();
+                m.insert("name".into(), p.name.clone());
+                m.insert("method".into(), p.method.to_string());
+                if let Some(ref d) = p.description {
+                    m.insert("description".into(), d.clone());
+                }
+                m
+            })
+            .collect()
+    }
+
+    fn estimate(size: u64, from_method: &str, to_method: &str) -> PyResult<u64> {
+        let from: crate::quantization::QuantMethod = from_method
+            .parse()
+            .map_err(|e: crate::error::VaultError| PyValueError::new_err(e.to_string()))?;
+        let to: crate::quantization::QuantMethod = to_method
+            .parse()
+            .map_err(|e: crate::error::VaultError| PyValueError::new_err(e.to_string()))?;
+        Ok(crate::quantization::estimate_quantized_size(size, from, to))
+    }
+
+    fn __repr__(&self) -> String {
+        format!("QuantProfileStore({} profiles)", self.inner.list().len())
+    }
+}
+
+// ── PyEvalStore ──────────────────────────────────────────────────────────────
+
+/// Evaluation result store.
+#[pyclass(name = "EvalStore")]
+struct PyEvalStore {
+    inner: crate::evaluation::EvalStore,
+}
+
+#[pymethods]
+impl PyEvalStore {
+    #[new]
+    fn new(vault_path: &str) -> PyResult<Self> {
+        let path = std::path::PathBuf::from(vault_path);
+        let store = crate::evaluation::EvalStore::new(&path).map_err(to_py_err)?;
+        Ok(Self { inner: store })
+    }
+
+    #[pyo3(signature = (model, version, suite, metrics, higher_is_better=true))]
+    fn record(
+        &mut self,
+        model: &str,
+        version: u64,
+        suite: &str,
+        metrics: HashMap<String, f64>,
+        higher_is_better: bool,
+    ) -> PyResult<()> {
+        let metric_results: Vec<crate::evaluation::MetricResult> = metrics
+            .into_iter()
+            .map(|(name, value)| crate::evaluation::MetricResult {
+                name,
+                value,
+                unit: "score".to_string(),
+                higher_is_better,
+            })
+            .collect();
+        let run = crate::evaluation::EvalRun {
+            suite: suite.to_string(),
+            model: model.to_string(),
+            version,
+            metrics: metric_results,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            context: std::collections::BTreeMap::new(),
+        };
+        self.inner.record(run).map_err(to_py_err)
+    }
+
+    #[pyo3(signature = (model, version=None))]
+    fn get_runs(&self, model: &str, version: Option<u64>) -> Vec<HashMap<String, String>> {
+        self.inner
+            .get_runs(model, version)
+            .iter()
+            .map(|r| {
+                let mut m = HashMap::new();
+                m.insert("model".into(), r.model.clone());
+                m.insert("version".into(), r.version.to_string());
+                m.insert("suite".into(), r.suite.clone());
+                m.insert("timestamp".into(), r.timestamp.clone());
+                m
+            })
+            .collect()
+    }
+
+    fn suites(&self) -> Vec<String> {
+        self.inner.suites()
+    }
+
+    fn count(&self) -> usize {
+        self.inner.count()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("EvalStore({} runs)", self.inner.count())
+    }
+}
+
+// ── PyBackupManager ──────────────────────────────────────────────────────────
+
+/// Backup schedule manager.
+#[pyclass(name = "BackupManager")]
+struct PyBackupManager {
+    inner: crate::scheduler::BackupManager,
+}
+
+#[pymethods]
+impl PyBackupManager {
+    #[new]
+    fn new(vault_path: &str) -> PyResult<Self> {
+        let path = std::path::PathBuf::from(vault_path);
+        let mgr = crate::scheduler::BackupManager::new(&path).map_err(to_py_err)?;
+        Ok(Self { inner: mgr })
+    }
+
+    fn set_schedule(
+        &mut self,
+        name: &str,
+        frequency: &str,
+        max_backups: usize,
+        output_dir: &str,
+    ) -> PyResult<()> {
+        let freq: crate::scheduler::BackupFrequency = frequency
+            .parse()
+            .map_err(|e: crate::error::VaultError| PyValueError::new_err(e.to_string()))?;
+        let schedule = crate::scheduler::BackupSchedule {
+            name: name.to_string(),
+            frequency: freq,
+            max_backups,
+            output_dir: std::path::PathBuf::from(output_dir),
+            enabled: true,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        };
+        self.inner.set_schedule(schedule).map_err(to_py_err)
+    }
+
+    fn remove_schedule(&mut self, name: &str) -> PyResult<bool> {
+        self.inner.remove_schedule(name).map_err(to_py_err)
+    }
+
+    fn list_schedules(&self) -> Vec<HashMap<String, String>> {
+        self.inner
+            .list_schedules()
+            .iter()
+            .map(|s| {
+                let mut m = HashMap::new();
+                m.insert("name".into(), s.name.clone());
+                m.insert("frequency".into(), s.frequency.to_string());
+                m.insert("max_backups".into(), s.max_backups.to_string());
+                m.insert("output_dir".into(), s.output_dir.display().to_string());
+                m.insert("enabled".into(), s.enabled.to_string());
+                m
+            })
+            .collect()
+    }
+
+    fn backup_count(&self) -> usize {
+        self.inner.backup_count()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "BackupManager({} schedules, {} backups)",
+            self.inner.list_schedules().len(),
+            self.inner.backup_count()
+        )
+    }
+}
+
+// ── PyVaultRegistry ──────────────────────────────────────────────────────────
+
+/// Multi-vault registry.
+#[pyclass(name = "VaultRegistry")]
+struct PyVaultRegistry {
+    inner: crate::multi_vault::VaultRegistry,
+}
+
+#[pymethods]
+impl PyVaultRegistry {
+    #[new]
+    fn new(config_dir: &str) -> PyResult<Self> {
+        let path = std::path::PathBuf::from(config_dir);
+        let reg = crate::multi_vault::VaultRegistry::new(&path).map_err(to_py_err)?;
+        Ok(Self { inner: reg })
+    }
+
+    #[pyo3(signature = (name, path, description=None))]
+    fn register(&mut self, name: &str, path: &str, description: Option<String>) -> PyResult<()> {
+        let entry = crate::multi_vault::VaultEntry {
+            name: name.to_string(),
+            path: std::path::PathBuf::from(path),
+            description,
+            registered_at: chrono::Utc::now().to_rfc3339(),
+        };
+        self.inner.register(entry).map_err(to_py_err)
+    }
+
+    fn unregister(&mut self, name: &str) -> PyResult<bool> {
+        self.inner.unregister(name).map_err(to_py_err)
+    }
+
+    fn activate(&mut self, name: &str) -> PyResult<()> {
+        self.inner.activate(name).map_err(to_py_err)
+    }
+
+    fn deactivate(&mut self) -> PyResult<()> {
+        self.inner.deactivate().map_err(to_py_err)
+    }
+
+    fn active_name(&self) -> Option<String> {
+        self.inner.active_name().map(|s| s.to_string())
+    }
+
+    fn list(&self) -> Vec<HashMap<String, String>> {
+        self.inner
+            .list()
+            .iter()
+            .map(|v| {
+                let mut m = HashMap::new();
+                m.insert("name".into(), v.name.clone());
+                m.insert("path".into(), v.path.display().to_string());
+                m.insert("is_active".into(), v.is_active.to_string());
+                m.insert("exists".into(), v.exists.to_string());
+                m
+            })
+            .collect()
+    }
+
+    fn count(&self) -> usize {
+        self.inner.count()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "VaultRegistry({} vaults, active={:?})",
+            self.inner.count(),
+            self.inner.active_name()
+        )
+    }
+}
+
 // ── module init ──────────────────────────────────────────────────────────────
 
 /// The `aimodelvault._native` extension module.
@@ -994,6 +1278,10 @@ fn aimodelvault_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTagStore>()?;
     m.add_class::<PyAclGuard>()?;
     m.add_class::<PyProfileStore>()?;
+    m.add_class::<PyQuantProfileStore>()?;
+    m.add_class::<PyEvalStore>()?;
+    m.add_class::<PyBackupManager>()?;
+    m.add_class::<PyVaultRegistry>()?;
     m.add_function(wrap_pyfunction!(sha256_hex, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     Ok(())

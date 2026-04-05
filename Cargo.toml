@@ -245,3 +245,7 @@ harness = false
 name = "api_bench"
 harness = false
 required-features = ["api"]
+
+[[bench]]
+name = "module_bench"
+harness = false

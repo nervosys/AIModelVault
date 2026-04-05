@@ -509,6 +509,30 @@ pub enum Commands {
         #[command(subcommand)]
         command: ProfileCommands,
     },
+
+    /// Manage quantization profiles and estimate sizes
+    Quantize {
+        #[command(subcommand)]
+        command: QuantizeCommands,
+    },
+
+    /// Record and compare model evaluations
+    Eval {
+        #[command(subcommand)]
+        command: EvalCommands,
+    },
+
+    /// Manage vault backup schedules
+    Backup {
+        #[command(subcommand)]
+        command: BackupCommands,
+    },
+
+    /// Manage multiple vault registrations
+    Vaults {
+        #[command(subcommand)]
+        command: VaultsCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1098,4 +1122,179 @@ pub enum ProfileCommands {
         /// Profile name
         name: String,
     },
+}
+
+#[derive(Subcommand)]
+pub enum QuantizeCommands {
+    /// Create or update a quantization profile
+    Set {
+        /// Profile name
+        name: String,
+
+        /// Quantization method (q4_0, q4_k_m, q5_k_m, q8_0, f16, f32)
+        #[arg(short, long)]
+        method: String,
+
+        /// Description
+        #[arg(short, long)]
+        description: Option<String>,
+    },
+
+    /// Remove a quantization profile
+    Remove {
+        /// Profile name
+        name: String,
+    },
+
+    /// List quantization profiles
+    List,
+
+    /// Estimate output size for a quantization method
+    Estimate {
+        /// Original file size in bytes
+        #[arg(short, long)]
+        size: u64,
+
+        /// Source precision (default: f32)
+        #[arg(long, default_value = "f32")]
+        from: String,
+
+        /// Target quantization method
+        #[arg(short, long)]
+        to: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum EvalCommands {
+    /// Record an evaluation run
+    Record {
+        /// Model name
+        name: String,
+
+        /// Model version
+        #[arg(short, long)]
+        version: u64,
+
+        /// Evaluation suite name (e.g. mmlu, hellaswag)
+        #[arg(short, long)]
+        suite: String,
+
+        /// Metric in name=value format (repeatable)
+        #[arg(short, long, required = true)]
+        metric: Vec<String>,
+
+        /// Unit for all metrics (default: score)
+        #[arg(short, long, default_value = "score")]
+        unit: String,
+
+        /// Higher is better (default: true)
+        #[arg(long, default_value_t = true)]
+        higher_is_better: bool,
+    },
+
+    /// List evaluation runs for a model
+    List {
+        /// Model name
+        name: String,
+
+        /// Filter by version
+        #[arg(short, long)]
+        version: Option<u64>,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+
+    /// Compare two model versions on a suite
+    Compare {
+        /// First model (name@version)
+        a: String,
+
+        /// Second model (name@version)
+        b: String,
+
+        /// Evaluation suite
+        #[arg(short, long)]
+        suite: String,
+
+        /// Output format (text, json)
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+
+    /// List all known evaluation suites
+    Suites,
+}
+
+#[derive(Subcommand)]
+pub enum BackupCommands {
+    /// Create or update a backup schedule
+    Set {
+        /// Schedule name
+        name: String,
+
+        /// Frequency (hourly, daily, weekly, monthly)
+        #[arg(short, long)]
+        frequency: String,
+
+        /// Maximum backups to retain
+        #[arg(short, long, default_value_t = 7)]
+        max_backups: usize,
+
+        /// Output directory for backup archives
+        #[arg(short, long)]
+        output_dir: std::path::PathBuf,
+    },
+
+    /// Remove a backup schedule
+    Remove {
+        /// Schedule name
+        name: String,
+    },
+
+    /// List backup schedules
+    List,
+
+    /// Show backup history
+    History {
+        /// Filter by schedule name
+        #[arg(short, long)]
+        schedule: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum VaultsCommands {
+    /// Register a vault
+    Register {
+        /// Vault name/alias
+        name: String,
+
+        /// Path to vault directory
+        path: std::path::PathBuf,
+
+        /// Description
+        #[arg(short, long)]
+        description: Option<String>,
+    },
+
+    /// Unregister a vault
+    Unregister {
+        /// Vault name
+        name: String,
+    },
+
+    /// Set the active vault
+    Activate {
+        /// Vault name
+        name: String,
+    },
+
+    /// Clear the active vault
+    Deactivate,
+
+    /// List registered vaults
+    List,
 }

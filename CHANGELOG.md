@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-04-05
+
+### Added
+
+- **Quantization Pipeline** (`src/quantization.rs`, ~250 lines) — Profile-based quantization management with method selection (Q4_0, Q4_K_M, Q5_K_M, Q8_0, F16, F32), size estimation, and batch reporting. `QuantProfileStore` with `set`/`remove`/`get`/`list`. CLI: `aim quantize set/remove/list/estimate`
+- **Evaluation Harness** (`src/evaluation.rs`, ~250 lines) — Record, compare, and query model evaluation results across suites and metrics. `EvalStore` with `record`/`get_runs`/`compare`/`suites`/`count`. CLI: `aim eval record/list/compare/suites`
+- **Backup Scheduling** (`src/scheduler.rs`, ~250 lines) — Configurable vault backup schedules (hourly/daily/weekly/monthly) with rotation limits and history tracking. `BackupManager` with `set_schedule`/`remove_schedule`/`list_schedules`/`record_backup`. CLI: `aim backup set/remove/list/history`
+- **Multi-Vault Management** (`src/multi_vault.rs`, ~200 lines) — Registry for managing multiple vaults with activate/deactivate switching. `VaultRegistry` with `register`/`unregister`/`activate`/`deactivate`/`list`. CLI: `aim vaults register/unregister/activate/deactivate/list`
+- **4 new CLI handler files** in `src/cli/handlers/` — `quantization.rs`, `evaluation.rs`, `scheduler.rs`, `multi_vault.rs`
+- **4 new Python binding classes** — `PyQuantProfileStore`, `PyEvalStore`, `PyBackupManager`, `PyVaultRegistry` (15 classes total)
+- **12 new API endpoints** — REST routes for quantization profiles, evaluation runs, backup schedules, and multi-vault management under `/api/v1/`
+- **28 new tests** from 4 new modules (1,865 → 1,917 total with integration tests)
+
+### Changed
+
+- **Version bump** — 1.4.0 → 1.5.0
+- **CLI command count** — 38+ → 42+ commands
+- **Test count** — 1,865 → 1,917
+- **`src/lib.rs`** — 4 new `pub mod` declarations and 18 new type re-exports
+- **`src/cli/args.rs`** — 4 new Commands variants, 4 new subcommand enums (QuantizeCommands, EvalCommands, BackupCommands, VaultsCommands)
+- **`src/main.rs`** — Imports and match arms for all 4 new command variants
+- **`src/python.rs`** — 4 new pyclass types registered in module init (11 → 15 classes)
+- **`src/api/routes.rs`** — 12 new route handlers, 6 new request/response structs
+- **`src/api/server.rs`** — 9 new route registrations under v1.5.0 endpoints section
+- **Updated AGENTS.md** — New CLI commands, project layout, feature list
+- **Updated CI/CD** — `.github/workflows/ci.yml` updated for new features
+
 ## [1.4.0] - 2026-04-04
 
 ### Added
