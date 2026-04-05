@@ -5,6 +5,7 @@ use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Response};
 use axum::Json;
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -925,6 +926,566 @@ fn validate_model_name(name: &str) -> Result<(), ApiError> {
         ));
     }
     Ok(())
+}
+
+// ── Tags ─────────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct TagAddRequest {
+    pub tags: Vec<String>,
+}
+
+/// POST /api/v1/models/:name/tags
+pub async fn add_tags(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+    Json(body): Json<TagAddRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    validate_model_name(&name)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store =
+        crate::tags::TagStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    store
+        .add_tags(&name, &body.tags)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "model": name, "tags": body.tags })))
+}
+
+/// GET /api/v1/models/:name/tags
+pub async fn get_tags(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    validate_model_name(&name)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store =
+        crate::tags::TagStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let tags = store.get_tags(&name);
+    Ok(Json(serde_json::json!({ "model": name, "tags": tags })))
+}
+
+/// DELETE /api/v1/models/:name/tags
+pub async fn remove_tags(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+    Json(body): Json<TagAddRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    validate_model_name(&name)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store =
+        crate::tags::TagStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    store
+        .remove_tags(&name, &body.tags)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(
+        serde_json::json!({ "model": name, "removed": body.tags }),
+    ))
+}
+
+// ── Search ───────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct SearchRequest {
+    pub query: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
+
+/// POST /api/v1/search
+pub async fn search_models(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<SearchRequest>,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store =
+        crate::tags::TagStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let sq = crate::tags::SearchQuery {
+        tags: body.tags.unwrap_or_default(),
+        name_pattern: body.query,
+        annotations: vec![],
+    };
+    let known_models = vault.list_models();
+    let results = store.search(&sq, &known_models);
+    let out: Vec<serde_json::Value> = results
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "model": r.model,
+                "tags": r.tags,
+                "annotations": r.annotations,
+            })
+        })
+        .collect();
+    Ok(Json(out))
+}
+
+// ── ACL ──────────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct AclGrantRequest {
+    pub principal: String,
+    pub role: String,
+}
+
+/// POST /api/v1/acl
+pub async fn acl_grant(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<AclGrantRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut guard =
+        crate::access_control::AclGuard::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let role: crate::access_control::Role = body
+        .role
+        .parse()
+        .map_err(|e: crate::error::VaultError| ApiError::bad_request(e.to_string()))?;
+    guard
+        .grant(&body.principal, role)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({
+        "principal": body.principal,
+        "role": body.role,
+    })))
+}
+
+/// GET /api/v1/acl
+pub async fn acl_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let guard =
+        crate::access_control::AclGuard::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let entries: Vec<serde_json::Value> = guard
+        .list()
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "principal": e.principal,
+                "role": e.role.to_string(),
+            })
+        })
+        .collect();
+    Ok(Json(entries))
+}
+
+#[derive(Deserialize)]
+pub struct AclRevokeRequest {
+    pub principal: String,
+}
+
+/// DELETE /api/v1/acl
+pub async fn acl_revoke(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<AclRevokeRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut guard =
+        crate::access_control::AclGuard::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    guard
+        .revoke(&body.principal)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(
+        serde_json::json!({ "revoked": body.principal }),
+    ))
+}
+
+// ── Webhooks ─────────────────────────────────────────────────────────────────
+
+/// GET /api/v1/webhooks
+pub async fn webhook_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store =
+        crate::webhooks::WebhookStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let hooks: Vec<serde_json::Value> = store
+        .list()
+        .iter()
+        .map(|h| {
+            serde_json::json!({
+                "id": h.id,
+                "url": h.url,
+                "enabled": h.enabled,
+                "events": h.events,
+            })
+        })
+        .collect();
+    Ok(Json(hooks))
+}
+
+#[derive(Deserialize)]
+pub struct WebhookAddRequest {
+    pub url: String,
+    pub secret: Option<String>,
+    pub events: Option<Vec<String>>,
+}
+
+/// POST /api/v1/webhooks
+pub async fn webhook_add(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<WebhookAddRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store =
+        crate::webhooks::WebhookStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let id = format!("wh_{}", uuid_v4_simple());
+    let target = crate::webhooks::WebhookTarget {
+        id: id.clone(),
+        url: body.url.clone(),
+        secret: body.secret,
+        events: body.events.unwrap_or_default(),
+        enabled: true,
+    };
+    store
+        .add(target)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "id": id, "url": body.url })),
+    ))
+}
+
+/// DELETE /api/v1/webhooks/:id
+pub async fn webhook_remove(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store =
+        crate::webhooks::WebhookStore::new(&vault_path).map_err(|e| ApiError::internal(e.to_string()))?;
+    let removed = store
+        .remove(&id)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "id": id, "removed": removed })))
+}
+
+// ── Validation ───────────────────────────────────────────────────────────────
+
+/// POST /api/v1/models/:name/validate
+pub async fn validate_model(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    validate_model_name(&name)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store = crate::validation::ValidationStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    // Use vault data dir as fallback path for validation
+    let data_dir = vault_path.join("data");
+    let file_path = data_dir.join(&name);
+    match store.validate(&name, &file_path) {
+        Ok(report) => Ok(Json(serde_json::json!({
+            "model": name,
+            "overall_pass": report.overall_pass,
+            "results": report.results.iter().map(|r| serde_json::json!({
+                "probe": r.probe_label,
+                "passed": r.passed,
+                "message": r.message,
+            })).collect::<Vec<_>>(),
+        }))),
+        Err(e) => Err(ApiError::internal(e.to_string())),
+    }
+}
+
+// ── GC ───────────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct GcQuery {
+    #[serde(default)]
+    dry_run: bool,
+}
+
+/// POST /api/v1/gc
+pub async fn garbage_collect(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Query(q): Query<GcQuery>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let report =
+        crate::gc::gc(&vault_path, q.dry_run).map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({
+        "dry_run": q.dry_run,
+        "orphaned_blobs": report.orphaned_blobs,
+        "temp_files": report.temp_files,
+        "reclaimable_bytes": report.reclaimable_bytes,
+        "deleted": report.deleted,
+    })))
+}
+
+// ── Policies ─────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct PolicySetRequest {
+    pub max_versions: Option<usize>,
+    pub max_age_days: Option<u32>,
+    pub keep_minimum: Option<usize>,
+}
+
+/// PUT /api/v1/models/:name/policy
+pub async fn policy_set(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+    Json(body): Json<PolicySetRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    validate_model_name(&name)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store = crate::policies::PolicyStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let policy = crate::policies::RetentionPolicy {
+        max_versions: body.max_versions.unwrap_or(0),
+        max_age_days: body.max_age_days.unwrap_or(0),
+        keep_minimum: body.keep_minimum.unwrap_or(1),
+    };
+    store
+        .set(&name, policy)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "model": name, "policy": "set" })))
+}
+
+/// GET /api/v1/policies
+pub async fn policy_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store = crate::policies::PolicyStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let policies = store.list();
+    let out: Vec<serde_json::Value> = policies
+        .iter()
+        .map(|(model, p)| {
+            serde_json::json!({
+                "model": model,
+                "max_versions": p.max_versions,
+                "max_age_days": p.max_age_days,
+                "keep_minimum": p.keep_minimum,
+            })
+        })
+        .collect();
+    Ok(Json(serde_json::json!({ "policies": out })))
+}
+
+// ── Profiles ─────────────────────────────────────────────────────────────────
+
+/// GET /api/v1/profiles
+pub async fn profile_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let store = crate::profiles::ProfileStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let profiles: Vec<serde_json::Value> = store
+        .list()
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "name": p.name,
+                "description": p.description,
+                "overrides": p.overrides,
+            })
+        })
+        .collect();
+    let active = store.active().map(|p| p.name.clone());
+    Ok(Json(serde_json::json!({
+        "profiles": profiles,
+        "active": active,
+    })))
+}
+
+#[derive(Deserialize)]
+pub struct ProfileCreateRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub overrides: Option<std::collections::BTreeMap<String, String>>,
+}
+
+/// POST /api/v1/profiles
+pub async fn profile_create(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<ProfileCreateRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store = crate::profiles::ProfileStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let profile = crate::profiles::Profile {
+        name: body.name.clone(),
+        description: body.description,
+        overrides: body.overrides.unwrap_or_default(),
+        created_at: Utc::now().to_rfc3339(),
+    };
+    store
+        .set(profile)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "name": body.name })),
+    ))
+}
+
+/// POST /api/v1/profiles/:name/activate
+pub async fn profile_activate(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut store = crate::profiles::ProfileStore::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    store
+        .activate(&name)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(Json(serde_json::json!({ "activated": name })))
+}
+
+// ── Lineage Graph ────────────────────────────────────────────────────────────
+
+/// GET /api/v1/lineage-graph
+pub async fn lineage_graph_show(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let graph = crate::lineage_graph::LineageGraph::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let edges: Vec<serde_json::Value> = graph
+        .edges()
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "parents": e.parents,
+                "child": e.child,
+                "kind": format!("{:?}", e.kind),
+                "notes": e.notes,
+            })
+        })
+        .collect();
+    Ok(Json(serde_json::json!({ "edges": edges })))
+}
+
+#[derive(Deserialize)]
+pub struct LineageAddRequest {
+    pub child: String,
+    pub parents: Vec<String>,
+    pub kind: String,
+    pub notes: Option<String>,
+}
+
+/// POST /api/v1/lineage-graph
+pub async fn lineage_graph_add(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(body): Json<LineageAddRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let mut graph = crate::lineage_graph::LineageGraph::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let kind = match body.kind.to_lowercase().as_str() {
+        "fine-tune" | "finetune" => crate::lineage_graph::DerivationKind::FineTune,
+        "merge" => crate::lineage_graph::DerivationKind::Merge,
+        "distillation" => crate::lineage_graph::DerivationKind::Distillation,
+        "quantization" => crate::lineage_graph::DerivationKind::Quantization,
+        "conversion" => crate::lineage_graph::DerivationKind::Conversion,
+        "prune" => crate::lineage_graph::DerivationKind::Prune,
+        other => crate::lineage_graph::DerivationKind::Custom(other.to_string()),
+    };
+    let mut notes = std::collections::BTreeMap::new();
+    if let Some(n) = &body.notes {
+        notes.insert("notes".to_string(), n.clone());
+    }
+    let edge = crate::lineage_graph::LineageEdge {
+        parents: body.parents.clone(),
+        child: body.child.clone(),
+        kind,
+        notes,
+        created_at: Utc::now().to_rfc3339(),
+    };
+    graph
+        .add_edge(edge)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "child": body.child, "parents": body.parents })),
+    ))
+}
+
+// ── Plugins ──────────────────────────────────────────────────────────────────
+
+/// GET /api/v1/plugins
+pub async fn plugin_list(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<serde_json::Value>>, ApiError> {
+    let _claims = require_auth(&headers, &state)?;
+    let vault = state.vault.read().await;
+    let vault_path = vault.get_config().get_vault_path(None);
+    let registry = crate::plugins::PluginRegistry::new(&vault_path)
+        .map_err(|e| ApiError::internal(e.to_string()))?;
+    let plugins: Vec<serde_json::Value> = registry
+        .list()
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "id": p.manifest.id,
+                "name": p.manifest.name,
+                "version": p.manifest.version,
+                "description": p.manifest.description,
+                "loaded": p.loaded,
+            })
+        })
+        .collect();
+    Ok(Json(plugins))
 }
 
 /// Check if an audit entry is a security-sensitive event type.

@@ -949,3 +949,370 @@ fn test_cli_init_twice_same_dir() {
         .assert()
         .success();
 }
+
+// ──────────────────────────────────────────────────────────────
+// v1.4.0 Feature — Help Tests
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_tag_help() {
+    aim()
+        .args(["tag", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("tag").or(predicate::str::contains("Tag")));
+}
+
+#[test]
+fn test_cli_search_help() {
+    aim()
+        .args(["search", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("search").or(predicate::str::contains("Search")));
+}
+
+#[test]
+fn test_cli_vault_export_help() {
+    aim()
+        .args(["vault-export", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("export").or(predicate::str::contains("Export")));
+}
+
+#[test]
+fn test_cli_vault_import_help() {
+    aim()
+        .args(["vault-import", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("import").or(predicate::str::contains("Import")));
+}
+
+#[test]
+fn test_cli_gc_help() {
+    aim()
+        .args(["gc", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("gc").or(predicate::str::contains("garbage").or(predicate::str::contains("clean"))));
+}
+
+#[test]
+fn test_cli_browse_help() {
+    aim()
+        .args(["browse", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("browse").or(predicate::str::contains("Browse")));
+}
+
+#[test]
+fn test_cli_webhook_help() {
+    aim()
+        .args(["webhook", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("webhook").or(predicate::str::contains("Webhook")));
+}
+
+#[test]
+fn test_cli_acl_help() {
+    aim()
+        .args(["acl", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("acl").or(predicate::str::contains("access")));
+}
+
+#[test]
+fn test_cli_validate_help() {
+    aim()
+        .args(["validate", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("validate").or(predicate::str::contains("Validate")));
+}
+
+#[test]
+fn test_cli_policy_help() {
+    aim()
+        .args(["policy", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("policy").or(predicate::str::contains("Policy")));
+}
+
+#[test]
+fn test_cli_lineage_graph_help() {
+    aim()
+        .args(["lineage-graph", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("lineage").or(predicate::str::contains("Lineage")));
+}
+
+#[test]
+fn test_cli_plugin_help() {
+    aim()
+        .args(["plugin", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("plugin").or(predicate::str::contains("Plugin")));
+}
+
+#[test]
+fn test_cli_profile_help() {
+    aim()
+        .args(["profile", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("profile").or(predicate::str::contains("Profile")));
+}
+
+// ──────────────────────────────────────────────────────────────
+// v1.4.0 Feature — Functional Tests
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_gc_dry_run_on_vault() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["gc", "--dry-run"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_acl_grant_list_revoke() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["acl", "grant", "alice", "writer"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["acl", "list"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("alice"));
+
+    aim()
+        .args(["acl", "revoke", "alice"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_webhook_add_list_remove() {
+    let dir = tempdir().unwrap();
+    let id = format!("hook-{}", std::process::id());
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["webhook", "add", &id, "https://example.com/hook"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["webhook", "list"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("example.com"));
+}
+
+#[test]
+fn test_cli_policy_set_show() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["policy", "set", "test-model", "--max-versions", "5"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["policy", "show", "test-model"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("test-model"));
+}
+
+#[test]
+fn test_cli_profile_create_list_activate() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["profile", "create", "dev"])
+        .env("aimodelvault_CONFIG", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["profile", "list"])
+        .env("aimodelvault_CONFIG", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("dev"));
+
+    aim()
+        .args(["profile", "activate", "dev"])
+        .env("aimodelvault_CONFIG", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["profile", "show", "dev"])
+        .env("aimodelvault_CONFIG", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("dev"));
+}
+
+#[test]
+fn test_cli_lineage_graph_show_empty() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["lineage-graph", "show", "any-model"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_plugin_list_empty() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["plugin", "list"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_cli_tag_add_list_on_vault() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["tag", "add", "my-model", "llm", "production"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["tag", "list", "my-model"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("llm"));
+}
+
+// ──────────────────────────────────────────────────────────────
+// v1.4.0 Feature — Error Cases
+// ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_cli_validate_missing_args() {
+    aim()
+        .args(["validate"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_vault_export_missing_args() {
+    aim()
+        .args(["vault-export"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_vault_import_missing_args() {
+    aim()
+        .args(["vault-import"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_tag_add_missing_args() {
+    aim()
+        .args(["tag", "add"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+#[test]
+fn test_cli_search_empty_query() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["search"])
+        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+}

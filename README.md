@@ -124,46 +124,46 @@ A production-ready, FIPS 140-3 compliant secure vault for storing and managing A
 
 ## 🎯 Quick Feature Comparison
 
-| Feature                   | Status     | CLI                  | Library API |
-| ------------------------- | ---------- | -------------------- | ----------- |
-| Encryption (AES-256-GCM)  | ✅ Complete | ✅                    | ✅           |
-| 23+ Format Support        | ✅ Complete | ✅                    | ✅           |
-| Version Control           | ✅ Complete | ✅                    | ✅           |
-| Model Cards               | ✅ Complete | ✅ 8 commands         | ✅           |
-| Model Utilities (8 tools) | ✅ Complete | ✅                    | ✅           |
-| RAG & MCP Tools           | ✅ Complete | ⚠️ Partial            | ✅           |
-| Cloud Storage             | ✅ Complete | ✅ 4 commands         | ✅           |
-| Format Conversion         | ✅ Complete | ✅                    | ✅           |
-| REST API (Axum + JWT)     | ✅ Complete | ✅ `aim serve`        | ✅           |
-| GraphQL API               | ✅ Complete | —                    | ✅           |
-| Streaming Encryption      | ✅ Complete | ✅ Auto               | ✅           |
-| SQLite Version Backend    | ✅ Complete | ✅ Flag               | ✅           |
-| Blockchain Audit Trail    | ✅ Complete | —                    | ✅           |
-| Federated Vault Sync      | ✅ Complete | —                    | ✅           |
-| GPU Encryption (OpenCL)   | ✅ Complete | ✅ Auto               | ✅           |
-| Python Bindings (PyO3)    | ✅ Complete | —                    | ✅           |
-| Model Download            | ✅ Complete | ✅ `aim pull`         | ✅           |
-| Model Signing             | ✅ Complete | ✅ `aim sign`         | ✅           |
-| Pickle Scanning           | ✅ Complete | ✅ `aim scan`         | ✅           |
-| Model Diffing             | ✅ Complete | ✅ `aim diff`         | ✅           |
-| Engine Interop            | ✅ Complete | ✅ `aim register`     | ✅           |
-| Benchmark Metadata        | ✅ Complete | ✅ `aim benchmark`    | ✅           |
-| License Scanning          | ✅ Complete | ✅ `aim license-scan` | ✅           |
-| Model Tags & Search       | ✅ Complete | ✅ `aim tag`          | ✅           |
-| Vault Export/Import       | ✅ Complete | ✅ `aim vault-export` | ✅           |
-| Garbage Collection        | ✅ Complete | ✅ `aim gc`           | ✅           |
-| TUI Dashboard             | ✅ Complete | ✅ `aim browse`       | ✅           |
-| Webhooks                  | ✅ Complete | ✅ `aim webhook`      | ✅           |
-| Access Control            | ✅ Complete | ✅ `aim acl`          | ✅           |
-| KMS Integration           | ✅ Complete | —                    | ✅           |
-| Model Validation          | ✅ Complete | ✅ `aim validate`    | ✅           |
-| Retention Policies        | ✅ Complete | ✅ `aim policy`      | ✅           |
-| Cross-Model Lineage DAG   | ✅ Complete | ✅ `aim lineage-graph`| ✅          |
-| Plugin System             | ✅ Complete | ✅ `aim plugin`      | ✅           |
-| Config Profiles           | ✅ Complete | ✅ `aim profile`     | ✅           |
-| Cross-Platform            | ✅ Complete | ✅                    | ✅           |
-| LRU Caching               | ✅ Complete | ⚠️ Info only          | ✅           |
-| Compression               | ✅ Complete | ✅                    | ✅           |
+| Feature                   | Status     | CLI                   | Library API |
+| ------------------------- | ---------- | --------------------- | ----------- |
+| Encryption (AES-256-GCM)  | ✅ Complete | ✅                     | ✅           |
+| 23+ Format Support        | ✅ Complete | ✅                     | ✅           |
+| Version Control           | ✅ Complete | ✅                     | ✅           |
+| Model Cards               | ✅ Complete | ✅ 8 commands          | ✅           |
+| Model Utilities (8 tools) | ✅ Complete | ✅                     | ✅           |
+| RAG & MCP Tools           | ✅ Complete | ⚠️ Partial             | ✅           |
+| Cloud Storage             | ✅ Complete | ✅ 4 commands          | ✅           |
+| Format Conversion         | ✅ Complete | ✅                     | ✅           |
+| REST API (Axum + JWT)     | ✅ Complete | ✅ `aim serve`         | ✅           |
+| GraphQL API               | ✅ Complete | —                     | ✅           |
+| Streaming Encryption      | ✅ Complete | ✅ Auto                | ✅           |
+| SQLite Version Backend    | ✅ Complete | ✅ Flag                | ✅           |
+| Blockchain Audit Trail    | ✅ Complete | —                     | ✅           |
+| Federated Vault Sync      | ✅ Complete | —                     | ✅           |
+| GPU Encryption (OpenCL)   | ✅ Complete | ✅ Auto                | ✅           |
+| Python Bindings (PyO3)    | ✅ Complete | —                     | ✅           |
+| Model Download            | ✅ Complete | ✅ `aim pull`          | ✅           |
+| Model Signing             | ✅ Complete | ✅ `aim sign`          | ✅           |
+| Pickle Scanning           | ✅ Complete | ✅ `aim scan`          | ✅           |
+| Model Diffing             | ✅ Complete | ✅ `aim diff`          | ✅           |
+| Engine Interop            | ✅ Complete | ✅ `aim register`      | ✅           |
+| Benchmark Metadata        | ✅ Complete | ✅ `aim benchmark`     | ✅           |
+| License Scanning          | ✅ Complete | ✅ `aim license-scan`  | ✅           |
+| Model Tags & Search       | ✅ Complete | ✅ `aim tag`           | ✅           |
+| Vault Export/Import       | ✅ Complete | ✅ `aim vault-export`  | ✅           |
+| Garbage Collection        | ✅ Complete | ✅ `aim gc`            | ✅           |
+| TUI Dashboard             | ✅ Complete | ✅ `aim browse`        | ✅           |
+| Webhooks                  | ✅ Complete | ✅ `aim webhook`       | ✅           |
+| Access Control            | ✅ Complete | ✅ `aim acl`           | ✅           |
+| KMS Integration           | ✅ Complete | —                     | ✅           |
+| Model Validation          | ✅ Complete | ✅ `aim validate`      | ✅           |
+| Retention Policies        | ✅ Complete | ✅ `aim policy`        | ✅           |
+| Cross-Model Lineage DAG   | ✅ Complete | ✅ `aim lineage-graph` | ✅           |
+| Plugin System             | ✅ Complete | ✅ `aim plugin`        | ✅           |
+| Config Profiles           | ✅ Complete | ✅ `aim profile`       | ✅           |
+| Cross-Platform            | ✅ Complete | ✅                     | ✅           |
+| LRU Caching               | ✅ Complete | ⚠️ Info only           | ✅           |
+| Compression               | ✅ Complete | ✅                     | ✅           |
 
 ---
 

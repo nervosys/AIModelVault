@@ -21,7 +21,7 @@ export default function HomePage() {
             {/* Classification badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-mono font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              v1.3.0 — Operational
+              v1.5.0 — Operational
             </div>
 
             {/* Vault door icon */}
@@ -113,7 +113,7 @@ export default function HomePage() {
           <FeatureCard
             icon="🌐"
             title="REST API"
-            description="14 RESTful endpoints with JWT auth, OpenAPI spec, and an embedded web dashboard."
+            description="30+ RESTful endpoints with JWT auth, OpenAPI spec, and an embedded web dashboard."
             href="/docs/api"
           />
           <FeatureCard
@@ -181,6 +181,78 @@ export default function HomePage() {
             title="License Scanning"
             description="Detect licenses from model cards, GGUF metadata, and config files with SPDX normalization."
             href="/docs/license-scanning"
+          />
+          <FeatureCard
+            icon="🏷️"
+            title="Tags & Search"
+            description="Tag models with labels and key-value annotations, then search by name, tags, or metadata."
+            href="/docs/tags"
+          />
+          <FeatureCard
+            icon="📦"
+            title="Vault Export/Import"
+            description="Portable tar.gz vault bundles for backup, migration, and selective model export."
+            href="/docs/vault-bundle"
+          />
+          <FeatureCard
+            icon="🧹"
+            title="Garbage Collection"
+            description="Detect orphaned blobs, clean temp files, and reclaim disk space with dry-run support."
+            href="/docs/gc"
+          />
+          <FeatureCard
+            icon="📟"
+            title="TUI Dashboard"
+            description="Browse vault contents in a rich terminal UI with keyboard navigation and live search."
+            href="/docs/tui"
+          />
+          <FeatureCard
+            icon="🔔"
+            title="Webhooks"
+            description="HTTP notification system for store, delete, and version events with HMAC-signed payloads."
+            href="/docs/webhooks"
+          />
+          <FeatureCard
+            icon="🛂"
+            title="Access Control"
+            description="Role-based ACL (Reader/Writer/Admin) per principal with grant, revoke, and check commands."
+            href="/docs/access-control"
+          />
+          <FeatureCard
+            icon="🔑"
+            title="KMS Integration"
+            description="Fetch secrets from env, AWS Secrets Manager, Azure Key Vault, or HashiCorp Vault."
+            href="/docs/kms"
+          />
+          <FeatureCard
+            icon="✅"
+            title="Model Validation"
+            description="Integrity probes with SHA-256 checksums per model version for tamper detection."
+            href="/docs/validation"
+          />
+          <FeatureCard
+            icon="📋"
+            title="Retention Policies"
+            description="Configurable max versions, max age, and keep-minimum with dry-run enforcement."
+            href="/docs/policies"
+          />
+          <FeatureCard
+            icon="🌳"
+            title="Lineage DAG"
+            description="Cross-model directed acyclic graph tracking fine-tune, merge, and distill chains."
+            href="/docs/lineage-graph"
+          />
+          <FeatureCard
+            icon="🧩"
+            title="Plugins"
+            description="Discover, install, and manage plugins with JSON manifests for extensibility."
+            href="/docs/plugins"
+          />
+          <FeatureCard
+            icon="⚙️"
+            title="Config Profiles"
+            description="Named configuration profiles with activate/deactivate switching and key-value overrides."
+            href="/docs/profiles"
           />
         </div>
       </section>
@@ -258,9 +330,9 @@ export default function HomePage() {
           </div>
           <div className="grid md:grid-cols-3 gap-6 text-center">
             {[
-              { value: "1,809", label: "Tests Passing", status: "●" },
+              { value: "1,917+", label: "Tests Passing", status: "●" },
               { value: "23+", label: "Model Formats", status: "●" },
-              { value: "14", label: "API Endpoints", status: "●" },
+              { value: "30+", label: "API Endpoints", status: "●" },
             ].map((stat) => (
               <div
                 key={stat.label}

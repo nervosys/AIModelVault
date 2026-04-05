@@ -9,7 +9,7 @@
 | **Name**       | AI Model Vault                           |
 | **Binary**     | `aim`                                    |
 | **Crate**      | `ai-model-vault`                         |
-| **Version**    | 1.4.0                                    |
+| **Version**    | 1.5.0                                    |
 | **Language**   | Rust (edition 2021, MSRV 1.75)           |
 | **License**    | AGPL-3.0-or-later                        |
 | **Repository** | https://github.com/nervosys/AIModelVault |
@@ -290,6 +290,10 @@ src/
 ├── lineage_graph.rs    # Cross-model lineage DAG
 ├── plugins.rs          # Plugin system
 ├── profiles.rs         # Configuration profiles
+├── quantization.rs     # Quantization pipeline & profile store
+├── evaluation.rs       # Model evaluation harness
+├── scheduler.rs        # Vault backup scheduling
+├── multi_vault.rs      # Multi-vault registry & switching
 └── python.rs           # Python bindings (PyO3)
 ```
 

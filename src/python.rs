@@ -815,6 +815,168 @@ fn version() -> &'static str {
     crate::VERSION
 }
 
+// ── PyTagStore ───────────────────────────────────────────────────────────────
+
+/// Tag store for model tagging and search.
+#[pyclass(name = "TagStore")]
+struct PyTagStore {
+    inner: crate::tags::TagStore,
+}
+
+#[pymethods]
+impl PyTagStore {
+    #[new]
+    fn new(vault_path: &str) -> PyResult<Self> {
+        let path = std::path::PathBuf::from(vault_path);
+        let store = crate::tags::TagStore::new(&path).map_err(to_py_err)?;
+        Ok(Self { inner: store })
+    }
+
+    fn add_tags(&mut self, model: &str, tags: Vec<String>) -> PyResult<()> {
+        self.inner.add_tags(model, &tags).map_err(to_py_err)
+    }
+
+    fn remove_tags(&mut self, model: &str, tags: Vec<String>) -> PyResult<()> {
+        self.inner.remove_tags(model, &tags).map_err(to_py_err)
+    }
+
+    fn get_tags(&self, model: &str) -> Vec<String> {
+        self.inner.get_tags(model).into_iter().collect()
+    }
+
+    fn search(&self, query: Option<String>, tags: Option<Vec<String>>, known_models: Vec<String>) -> Vec<HashMap<String, String>> {
+        let sq = crate::tags::SearchQuery {
+            name_pattern: query,
+            tags: tags.unwrap_or_default(),
+            annotations: vec![],
+        };
+        self.inner
+            .search(&sq, &known_models)
+            .into_iter()
+            .map(|r| {
+                let mut m = HashMap::new();
+                m.insert("model".into(), r.model);
+                m.insert("tags".into(), format!("{:?}", r.tags));
+                m
+            })
+            .collect()
+    }
+
+    fn __repr__(&self) -> String {
+        "TagStore(...)".to_string()
+    }
+}
+
+// ── PyAclGuard ───────────────────────────────────────────────────────────────
+
+/// Access control guard for role-based permissions.
+#[pyclass(name = "AclGuard")]
+struct PyAclGuard {
+    inner: crate::access_control::AclGuard,
+}
+
+#[pymethods]
+impl PyAclGuard {
+    #[new]
+    fn new(vault_path: &str) -> PyResult<Self> {
+        let path = std::path::PathBuf::from(vault_path);
+        let guard = crate::access_control::AclGuard::new(&path).map_err(to_py_err)?;
+        Ok(Self { inner: guard })
+    }
+
+    fn grant(&mut self, principal: &str, role: &str) -> PyResult<()> {
+        let r: crate::access_control::Role = role
+            .parse()
+            .map_err(|e: crate::error::VaultError| PyValueError::new_err(e.to_string()))?;
+        self.inner.grant(principal, r).map_err(to_py_err)
+    }
+
+    fn revoke(&mut self, principal: &str) -> PyResult<bool> {
+        self.inner.revoke(principal).map_err(to_py_err)
+    }
+
+    fn list(&self) -> Vec<HashMap<String, String>> {
+        self.inner
+            .list()
+            .iter()
+            .map(|e| {
+                let mut m = HashMap::new();
+                m.insert("principal".into(), e.principal.clone());
+                m.insert("role".into(), e.role.to_string());
+                m
+            })
+            .collect()
+    }
+
+    fn check(&self, principal: &str, role: &str) -> PyResult<bool> {
+        let r: crate::access_control::Role = role
+            .parse()
+            .map_err(|e: crate::error::VaultError| PyValueError::new_err(e.to_string()))?;
+        Ok(self.inner.resolve(principal).map_or(false, |resolved| resolved >= r))
+    }
+
+    fn __repr__(&self) -> String {
+        "AclGuard(...)".to_string()
+    }
+}
+
+// ── PyProfileStore ───────────────────────────────────────────────────────────
+
+/// Configuration profile manager.
+#[pyclass(name = "ProfileStore")]
+struct PyProfileStore {
+    inner: crate::profiles::ProfileStore,
+}
+
+#[pymethods]
+impl PyProfileStore {
+    #[new]
+    fn new(config_dir: &str) -> PyResult<Self> {
+        let path = std::path::PathBuf::from(config_dir);
+        let store = crate::profiles::ProfileStore::new(&path).map_err(to_py_err)?;
+        Ok(Self { inner: store })
+    }
+
+    #[pyo3(signature = (name, description=None, overrides=None))]
+    fn create_profile(
+        &mut self,
+        name: &str,
+        description: Option<String>,
+        overrides: Option<HashMap<String, String>>,
+    ) -> PyResult<()> {
+        let profile = crate::profiles::Profile {
+            name: name.to_string(),
+            description,
+            overrides: overrides.unwrap_or_default().into_iter().collect(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+        };
+        self.inner.set(profile).map_err(to_py_err)
+    }
+
+    fn activate(&mut self, name: &str) -> PyResult<()> {
+        self.inner.activate(name).map_err(to_py_err)
+    }
+
+    fn deactivate(&mut self) -> PyResult<()> {
+        self.inner.deactivate().map_err(to_py_err)
+    }
+
+    fn active_name(&self) -> Option<String> {
+        self.inner.active_name().map(|s| s.to_string())
+    }
+
+    fn list_profiles(&self) -> Vec<String> {
+        self.inner.list().iter().map(|p| p.name.clone()).collect()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "ProfileStore(active={:?})",
+            self.inner.active_name()
+        )
+    }
+}
+
 // ── module init ──────────────────────────────────────────────────────────────
 
 /// The `aimodelvault._native` extension module.
@@ -829,6 +991,9 @@ fn aimodelvault_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyModelCard>()?;
     m.add_class::<PyModelStream>()?;
     m.add_class::<PyVaultBuilder>()?;
+    m.add_class::<PyTagStore>()?;
+    m.add_class::<PyAclGuard>()?;
+    m.add_class::<PyProfileStore>()?;
     m.add_function(wrap_pyfunction!(sha256_hex, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     Ok(())

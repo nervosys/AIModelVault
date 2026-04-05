@@ -9,7 +9,7 @@
 //! `axum-server` with `rustls` for direct TLS termination. Never expose
 //! the API over plain HTTP on untrusted networks.
 
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -121,6 +121,42 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/metrics", get(routes::metrics))
         .route("/events", get(routes::events))
         .route("/openapi.json", get(routes::openapi_json))
+        // v1.4.0 endpoints
+        .route(
+            "/models/:name/tags",
+            get(routes::get_tags)
+                .post(routes::add_tags)
+                .delete(routes::remove_tags),
+        )
+        .route("/search", post(routes::search_models))
+        .route(
+            "/acl",
+            get(routes::acl_list)
+                .post(routes::acl_grant)
+                .delete(routes::acl_revoke),
+        )
+        .route(
+            "/webhooks",
+            get(routes::webhook_list).post(routes::webhook_add),
+        )
+        .route("/webhooks/:id", delete(routes::webhook_remove))
+        .route("/models/:name/validate", post(routes::validate_model))
+        .route("/gc", post(routes::garbage_collect))
+        .route("/models/:name/policy", put(routes::policy_set))
+        .route("/policies", get(routes::policy_list))
+        .route(
+            "/profiles",
+            get(routes::profile_list).post(routes::profile_create),
+        )
+        .route(
+            "/profiles/:name/activate",
+            post(routes::profile_activate),
+        )
+        .route(
+            "/lineage-graph",
+            get(routes::lineage_graph_show).post(routes::lineage_graph_add),
+        )
+        .route("/plugins", get(routes::plugin_list))
         .with_state(state.clone());
 
     let dashboard = if state.config.enable_dashboard {

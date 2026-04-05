@@ -497,42 +497,42 @@ Fixed critical wiring bugs and added comprehensive test coverage for v2 componen
 
 ### Files Created
 
-| File                                  | Lines  | Purpose                                       |
-| ------------------------------------- | ------ | --------------------------------------------- |
-| `src/tags.rs`                         | ~250   | Model tagging and search                      |
-| `src/vault_bundle.rs`                 | ~200   | Vault export/import as portable archives      |
-| `src/gc.rs`                           | ~200   | Garbage collection for orphaned blobs         |
-| `src/tui.rs`                          | ~150   | Terminal UI dashboard                         |
-| `src/webhooks.rs`                     | ~250   | Webhook notification system                   |
-| `src/access_control.rs`              | ~200   | Role-based access control                     |
-| `src/kms.rs`                          | ~150   | External secrets manager integration          |
-| `src/validation.rs`                   | ~250   | Model integrity validation                    |
-| `src/policies.rs`                     | ~250   | Retention policy enforcement                  |
-| `src/lineage_graph.rs`               | ~200   | Cross-model lineage DAG                       |
-| `src/plugins.rs`                      | ~200   | Plugin system with JSON manifests             |
-| `src/profiles.rs`                     | ~200   | Configuration profiles                        |
-| `src/cli/handlers/tags.rs`           | ~80    | CLI handler for tag/search commands           |
-| `src/cli/handlers/vault_bundle.rs`   | ~30    | CLI handler for vault export/import           |
-| `src/cli/handlers/gc.rs`             | ~30    | CLI handler for garbage collection            |
-| `src/cli/handlers/browse.rs`         | ~10    | CLI handler for TUI browse                    |
-| `src/cli/handlers/webhooks.rs`       | ~60    | CLI handler for webhook management            |
-| `src/cli/handlers/acl.rs`            | ~50    | CLI handler for access control                |
-| `src/cli/handlers/validation.rs`     | ~45    | CLI handler for model validation              |
-| `src/cli/handlers/policies.rs`       | ~70    | CLI handler for retention policies            |
-| `src/cli/handlers/lineage_graph.rs`  | ~50    | CLI handler for lineage DAG                   |
-| `src/cli/handlers/plugins.rs`        | ~60    | CLI handler for plugin management             |
-| `src/cli/handlers/profiles.rs`       | ~60    | CLI handler for config profiles               |
+| File                                | Lines | Purpose                                  |
+| ----------------------------------- | ----- | ---------------------------------------- |
+| `src/tags.rs`                       | ~250  | Model tagging and search                 |
+| `src/vault_bundle.rs`               | ~200  | Vault export/import as portable archives |
+| `src/gc.rs`                         | ~200  | Garbage collection for orphaned blobs    |
+| `src/tui.rs`                        | ~150  | Terminal UI dashboard                    |
+| `src/webhooks.rs`                   | ~250  | Webhook notification system              |
+| `src/access_control.rs`             | ~200  | Role-based access control                |
+| `src/kms.rs`                        | ~150  | External secrets manager integration     |
+| `src/validation.rs`                 | ~250  | Model integrity validation               |
+| `src/policies.rs`                   | ~250  | Retention policy enforcement             |
+| `src/lineage_graph.rs`              | ~200  | Cross-model lineage DAG                  |
+| `src/plugins.rs`                    | ~200  | Plugin system with JSON manifests        |
+| `src/profiles.rs`                   | ~200  | Configuration profiles                   |
+| `src/cli/handlers/tags.rs`          | ~80   | CLI handler for tag/search commands      |
+| `src/cli/handlers/vault_bundle.rs`  | ~30   | CLI handler for vault export/import      |
+| `src/cli/handlers/gc.rs`            | ~30   | CLI handler for garbage collection       |
+| `src/cli/handlers/browse.rs`        | ~10   | CLI handler for TUI browse               |
+| `src/cli/handlers/webhooks.rs`      | ~60   | CLI handler for webhook management       |
+| `src/cli/handlers/acl.rs`           | ~50   | CLI handler for access control           |
+| `src/cli/handlers/validation.rs`    | ~45   | CLI handler for model validation         |
+| `src/cli/handlers/policies.rs`      | ~70   | CLI handler for retention policies       |
+| `src/cli/handlers/lineage_graph.rs` | ~50   | CLI handler for lineage DAG              |
+| `src/cli/handlers/plugins.rs`       | ~60   | CLI handler for plugin management        |
+| `src/cli/handlers/profiles.rs`      | ~60   | CLI handler for config profiles          |
 
 ### Files Modified
 
-| File                      | Change                                                                    |
-| ------------------------- | ------------------------------------------------------------------------- |
-| `Cargo.toml`              | Version bump 1.3.0 → 1.4.0                                               |
-| `src/lib.rs`              | 12 new `pub mod` declarations, re-exports for all new public types        |
-| `src/version.rs`          | Added `list_models_owned()` and `import_version()` helper methods         |
-| `src/cli/args.rs`         | 13 new Commands variants, 8 new subcommand enums                          |
-| `src/cli/handlers/mod.rs` | 11 new `pub mod` declarations for handler files                           |
-| `src/main.rs`             | Imports and match arms for all 13 new command variants                    |
+| File                      | Change                                                             |
+| ------------------------- | ------------------------------------------------------------------ |
+| `Cargo.toml`              | Version bump 1.3.0 → 1.4.0                                         |
+| `src/lib.rs`              | 12 new `pub mod` declarations, re-exports for all new public types |
+| `src/version.rs`          | Added `list_models_owned()` and `import_version()` helper methods  |
+| `src/cli/args.rs`         | 13 new Commands variants, 8 new subcommand enums                   |
+| `src/cli/handlers/mod.rs` | 11 new `pub mod` declarations for handler files                    |
+| `src/main.rs`             | Imports and match arms for all 13 new command variants             |
 
 ---
 
