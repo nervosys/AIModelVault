@@ -97,6 +97,7 @@ nav:
       - CLI Reference: CLI.md
       - Demo Guide: DEMO_GUIDE.md
       - Examples Guide: EXAMPLES_GUIDE.md
+      - Examples: EXAMPLES.md
   - Core Features:
       - Top 10 Features: TOP_10_FEATURES.md
       - Providers & Formats: PROVIDERS_FORMATS.md
@@ -106,10 +107,16 @@ nav:
       - Model Cards: MODEL_CARDS.md
       - Model Cards Quick Ref: MODEL_CARDS_QUICKREF.md
       - HDF5 Support: HDF5_SUPPORT.md
+      - Model Download: MODEL_DOWNLOAD.md
+      - Model Signing: MODEL_SIGNING.md
+      - Model Diffing: MODEL_DIFFING.md
+      - Engine Interop: ENGINE_INTEROP.md
   - Security:
       - Security Audit: SECURITY_AUDIT.md
       - Security Hardening: SECURITY_HARDENING.md
       - Vulnerability Fixes: VULNERABILITY_FIXES.md
+      - Safety Scanning: SAFETY_SCANNING.md
+      - License Scanning: LICENSE_SCANNING.md
   - AI & RAG:
       - RAG System: RAG.md
       - RAG Quick Ref: RAG_QUICKREF.md
@@ -135,6 +142,7 @@ nav:
       - Performance: PERFORMANCE.md
       - GPU Acceleration: GPU_ACCELERATION.md
       - Feature Flags: FEATURE_FLAGS.md
+      - Benchmarks: BENCHMARKS.md
   - Architecture:
       - Architecture: ARCHITECTURE.md
       - Architecture V2: ARCHITECTURE_V2.md

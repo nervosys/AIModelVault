@@ -1,8 +1,37 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-04-05  
+> Last updated: 2026-04-06  
 > Current version: **1.5.0** (quantization pipeline, evaluation harness, backup scheduling, multi-vault registry)  
-> Status: Production release — v1.5.0 shipped with 4 new modules, 42+ CLI commands, 1,932 tests
+> Status: Production release — v1.5.0 shipped with 4 new modules, 42+ CLI commands, 1,983 tests
+
+---
+
+## v1.6.0 — Test Coverage, Benchmarks & Documentation (in progress)
+
+Strengthen the project's quality foundation: expand integration test coverage for v1.3–v1.5 modules, add feature-level performance benchmarks, and complete documentation site navigation.
+
+### Test Coverage Expansion
+
+- [x] **Module integration tests** (`tests/module_integration_tests.rs`, 51 tests) — Cross-module integration tests covering tags/search, access control, lineage DAG, plugins, profiles, policies, validation, webhooks, quantization, evaluation, scheduler, multi-vault, signing, scanning, diff, license scanning, benchmarks, GC, and cross-module workflows
+- [ ] **Property-based tests** — Proptest strategies for crypto round-trips, format detection, and version numbering invariants
+- [ ] **Fuzz target expansion** — Additional fuzz targets for pickle scanner, diff engine, model card parser
+
+### Performance Benchmarks
+
+- [x] **Feature benchmarks** (`benches/feature_bench.rs`) — Criterion benchmarks for tags/search (100 models), ACL (50 principals), lineage graph (20-deep chains), plugins (20 installs), profiles, policies (50 models), validation (1–100 KB probes), webhooks (20 targets), signing (1–100 KB), scanning (1–100 KB), diff (1–100 KB), license scanning
+- [ ] **CI benchmark tracking** — Store benchmark results per commit, detect regressions in CI
+
+### Documentation Completeness
+
+- [x] **mkdocs nav expansion** — Added 8 missing docs to navigation: Examples, Model Download, Model Signing, Model Diffing, Engine Interop, Safety Scanning, License Scanning, Benchmarks
+- [ ] **mkdocs build validation** — CI step to verify `mkdocs build --strict` passes
+- [ ] **API reference generation** — Auto-generated Rustdoc integration with mkdocs
+
+### Maintenance
+
+- [x] **Import fixes** — Restored incorrectly removed imports in `vault.rs` (`VersionRepo`) and `database.rs` (`ChunkInfo`, `Document`)
+- [ ] **Dependency audit** — Run `cargo deny` and `cargo audit` with updated advisories
+- [ ] **MSRV validation** — Verify MSRV 1.75 compatibility with all new code
 
 ---
 

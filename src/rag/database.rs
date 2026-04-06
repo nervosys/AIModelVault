@@ -1,6 +1,7 @@
 //! Database connectivity abstractions for RAG systems.
 
 use crate::error::{Result, VaultError};
+use crate::rag::documents::{ChunkInfo, Document};
 use std::collections::HashMap;
 
 /// Database abstraction for rule-based systems

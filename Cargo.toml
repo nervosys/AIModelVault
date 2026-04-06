@@ -249,3 +249,7 @@ required-features = ["api"]
 [[bench]]
 name = "module_bench"
 harness = false
+
+[[bench]]
+name = "feature_bench"
+harness = false
