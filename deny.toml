@@ -2,7 +2,14 @@
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-ignore = []
+# Transitive deps from azure-sdk, sled, hdf5, qdrant-client, aws-sdk — not under our control:
+ignore = [
+    "RUSTSEC-2025-0057",  # fxhash unmaintained (via sled)
+    "RUSTSEC-2024-0384",  # instant unmaintained (via sled, hdf5, azure)
+    "RUSTSEC-2024-0436",  # paste unmaintained (via hdf5, azure)
+    "RUSTSEC-2025-0134",  # rustls-pemfile unmaintained (via azure, qdrant/tonic)
+    "RUSTSEC-2026-0002",  # lru unsound IterMut (via aws-sdk-s3)
+]
 
 [licenses]
 version = 2

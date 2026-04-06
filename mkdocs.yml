@@ -154,3 +154,4 @@ nav:
       - PyTorch & UV Guide: PYTORCH_UV_GUIDE.md
       - UV Integration: UV_INTEGRATION.md
       - Executive Summary: EXECUTIVE_SUMMARY.md
+  - API Reference: api/ai_model_vault/index.html

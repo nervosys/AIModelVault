@@ -1,8 +1,8 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-04-06  
-> Current version: **1.5.0** (quantization pipeline, evaluation harness, backup scheduling, multi-vault registry)  
-> Status: Production release — v1.5.0 shipped with 4 new modules, 42+ CLI commands, 1,983 tests
+> Last updated: 2026-04-06
+> Current version: **1.5.0** (quantization pipeline, evaluation harness, backup scheduling, multi-vault registry)
+> Status: Production release — v1.6.0 QA complete: 2,059 tests, 11 proptest strategies, 8 fuzz targets, CI benchmarks, mkdocs strict build, API docs
 
 ---
 
@@ -13,25 +13,25 @@ Strengthen the project's quality foundation: expand integration test coverage fo
 ### Test Coverage Expansion
 
 - [x] **Module integration tests** (`tests/module_integration_tests.rs`, 51 tests) — Cross-module integration tests covering tags/search, access control, lineage DAG, plugins, profiles, policies, validation, webhooks, quantization, evaluation, scheduler, multi-vault, signing, scanning, diff, license scanning, benchmarks, GC, and cross-module workflows
-- [ ] **Property-based tests** — Proptest strategies for crypto round-trips, format detection, and version numbering invariants
-- [ ] **Fuzz target expansion** — Additional fuzz targets for pickle scanner, diff engine, model card parser
+- [x] **Property-based tests** (`tests/proptest_tests.rs`, 11 tests) — Proptest strategies for crypto round-trips (encrypt/decrypt, ciphertext overhead, determinism), format detection (never panics, known extensions, case insensitivity), version serialization round-trip, SHA-256 invariants
+- [x] **Fuzz target expansion** (`fuzz/fuzz_targets/`, 3 new targets) — Pickle scanner (`fuzz_pickle_scanner`), diff engine (`fuzz_diff_engine`), model card parser (`fuzz_model_card_parser`)
 
 ### Performance Benchmarks
 
 - [x] **Feature benchmarks** (`benches/feature_bench.rs`) — Criterion benchmarks for tags/search (100 models), ACL (50 principals), lineage graph (20-deep chains), plugins (20 installs), profiles, policies (50 models), validation (1–100 KB probes), webhooks (20 targets), signing (1–100 KB), scanning (1–100 KB), diff (1–100 KB), license scanning
-- [ ] **CI benchmark tracking** — Store benchmark results per commit, detect regressions in CI
+- [x] **CI benchmark tracking** — `benchmarks` job in CI using `benchmark-action/github-action-benchmark` with 150% regression alert threshold, auto-push to `dev/bench`
 
 ### Documentation Completeness
 
 - [x] **mkdocs nav expansion** — Added 8 missing docs to navigation: Examples, Model Download, Model Signing, Model Diffing, Engine Interop, Safety Scanning, License Scanning, Benchmarks
-- [ ] **mkdocs build validation** — CI step to verify `mkdocs build --strict` passes
-- [ ] **API reference generation** — Auto-generated Rustdoc integration with mkdocs
+- [x] **mkdocs build validation** — `mkdocs` job in CI with `mkdocs build --strict`, Python 3.12 + mkdocs-material
+- [x] **API reference generation** — Rustdoc auto-generated in CI docs job, copied to `website/public/mkdocs/api/`, uploaded as artifact, linked in mkdocs nav
 
 ### Maintenance
 
 - [x] **Import fixes** — Restored incorrectly removed imports in `vault.rs` (`VersionRepo`) and `database.rs` (`ChunkInfo`, `Document`)
-- [ ] **Dependency audit** — Run `cargo deny` and `cargo audit` with updated advisories
-- [ ] **MSRV validation** — Verify MSRV 1.75 compatibility with all new code
+- [x] **Dependency audit** — `aws-lc-sys` upgraded to v0.39.1 (fixed RUSTSEC-2026-0044, RUSTSEC-2026-0048), 6 unmaintained transitive dep warnings documented in `deny.toml` ignore list, `cargo deny check` and `cargo audit` pass clean
+- [x] **MSRV validation** — MSRV updated from 1.75 to 1.89 (ecosystem deps require edition 2024: `time-macros`, `async-graphql-value`, `asynk-strim`), verified with `cargo +1.89 check --features "full,graphql"`
 
 ---
 

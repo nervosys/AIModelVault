@@ -42,3 +42,18 @@ doc = false
 name = "fuzz_conversion_pipeline"
 path = "fuzz_targets/fuzz_conversion_pipeline.rs"
 doc = false
+
+[[bin]]
+name = "fuzz_pickle_scanner"
+path = "fuzz_targets/fuzz_pickle_scanner.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_diff_engine"
+path = "fuzz_targets/fuzz_diff_engine.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_model_card_parser"
+path = "fuzz_targets/fuzz_model_card_parser.rs"
+doc = false

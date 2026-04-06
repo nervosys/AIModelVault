@@ -61,15 +61,15 @@ jobs:
       run: cargo fmt -- --check
 
   msrv:
-    name: MSRV (1.75)
+    name: MSRV (1.89)
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust 1.75
+    - name: Install Rust 1.89
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: "1.75"
+        toolchain: "1.89"
 
     - name: Cache cargo
       uses: actions/cache@v4
@@ -92,10 +92,22 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
 
-    - name: Build docs
+    - name: Build Rustdoc API reference
       run: cargo doc --lib --no-deps --features "full,graphql"
       env:
         RUSTDOCFLAGS: "-D warnings"
+
+    - name: Copy API docs to mkdocs site
+      run: |
+        mkdir -p website/public/mkdocs/api
+        cp -r target/doc/* website/public/mkdocs/api/
+
+    - name: Upload API docs artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-docs
+        path: website/public/mkdocs/api/
+        retention-days: 30
 
   python:
     name: Python Tests
@@ -156,6 +168,15 @@ jobs:
 
     - name: Fuzz conversion_pipeline
       run: cargo +nightly fuzz run fuzz_conversion_pipeline -- -max_total_time=30
+
+    - name: Fuzz pickle_scanner
+      run: cargo +nightly fuzz run fuzz_pickle_scanner -- -max_total_time=30
+
+    - name: Fuzz diff_engine
+      run: cargo +nightly fuzz run fuzz_diff_engine -- -max_total_time=30
+
+    - name: Fuzz model_card_parser
+      run: cargo +nightly fuzz run fuzz_model_card_parser -- -max_total_time=30
 
   security:
     name: Security Audit
@@ -245,3 +266,59 @@ jobs:
 
     - name: Check licenses & advisories
       run: cargo deny check
+
+  benchmarks:
+    name: Benchmark Tracking
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-bench-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Run benchmarks
+      run: cargo bench --features "full,graphql" -- --output-format bencher | tee bench-output.txt
+
+    - name: Store benchmark results
+      uses: benchmark-action/github-action-benchmark@v1
+      with:
+        name: AI Model Vault Benchmarks
+        tool: cargo
+        output-file-path: bench-output.txt
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        auto-push: true
+        alert-threshold: "150%"
+        comment-on-alert: true
+        fail-on-alert: false
+        benchmark-data-dir-path: dev/bench
+
+  mkdocs:
+    name: MkDocs Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install mkdocs
+      run: pip install mkdocs-material
+
+    - name: Build docs (strict)
+      run: mkdocs build --strict

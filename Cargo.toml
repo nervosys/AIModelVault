@@ -2,7 +2,7 @@
 name = "ai-model-vault"
 version = "1.5.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.89"
 authors = ["NERVOSYS AI Team"]
 description = "Universal cross-platform XDG-compliant secure vault for AI model formats (Neural and Neurosymbolic)"
 license = "AGPL-3.0-or-later"
