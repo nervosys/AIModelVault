@@ -1,12 +1,12 @@
 # AI Model Vault — Roadmap
 
 > Last updated: 2026-04-06
-> Current version: **1.5.0** (quantization pipeline, evaluation harness, backup scheduling, multi-vault registry)
-> Status: Production release — v1.6.0 QA complete: 2,059 tests, 11 proptest strategies, 8 fuzz targets, CI benchmarks, mkdocs strict build, API docs
+> Current version: **1.6.0** (test coverage, benchmarks, documentation, dependency audit)
+> Status: Production release — 2,059 tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, CI benchmark tracking, mkdocs strict build, API docs
 
 ---
 
-## v1.6.0 — Test Coverage, Benchmarks & Documentation (in progress)
+## v1.6.0 — Test Coverage, Benchmarks & Documentation (complete)
 
 Strengthen the project's quality foundation: expand integration test coverage for v1.3–v1.5 modules, add feature-level performance benchmarks, and complete documentation site navigation.
 

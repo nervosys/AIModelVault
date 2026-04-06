@@ -9,7 +9,7 @@
 | **Name**       | AI Model Vault                           |
 | **Binary**     | `aim`                                    |
 | **Crate**      | `ai-model-vault`                         |
-| **Version**    | 1.5.0                                    |
+| **Version**    | 1.6.0                                    |
 | **Language**   | Rust (edition 2021, MSRV 1.89)           |
 | **License**    | AGPL-3.0-or-later                        |
 | **Repository** | https://github.com/nervosys/AIModelVault |

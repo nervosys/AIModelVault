@@ -2,12 +2,12 @@
 
 > Universal cross-platform secure vault for AI model storage, versioning, and management with military-grade encryption and comprehensive utilities.
 
-[![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.89%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-1%2C932%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-2%2C059%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
 
 A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, model signing, safety scanning, and comprehensive utilities.
@@ -437,6 +437,15 @@ Demonstrates:
 - **Evaluation Harness**: Record, compare, and query model evaluation results across suites and metrics
 - **Backup Scheduling**: Configurable vault backup schedules with daily/weekly/monthly/custom intervals
 - **Multi-Vault Management**: Manage multiple named vaults from a single installation with activate/switch
+
+### Test Coverage, Benchmarks & Documentation (v1.6.0)
+
+- **Integration Tests**: 51 cross-module integration tests covering all v1.3–v1.5 modules
+- **Property-Based Tests**: 11 proptest strategies for crypto, format detection, versioning, and hashing
+- **Fuzz Targets**: 8 total fuzz targets including pickle scanner, diff engine, model card parser
+- **Feature Benchmarks**: Criterion benchmarks for tags, ACL, lineage, plugins, profiles, policies, validation, webhooks, signing, scanning, diff, license scanning
+- **CI Benchmark Tracking**: Automated regression detection with benchmark-action/github-action-benchmark
+- **API Reference**: Auto-generated Rustdoc integrated into mkdocs site
 
 ## Security Standards Compliance
 

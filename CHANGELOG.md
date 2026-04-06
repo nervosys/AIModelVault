@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-04-06
+
+### Added
+
+- **Module integration tests** (`tests/module_integration_tests.rs`, 51 tests) — Cross-module integration tests covering tags/search, access control, lineage DAG, plugins, profiles, policies, validation, webhooks, quantization, evaluation, scheduler, multi-vault, signing, scanning, diff, license scanning, benchmarks, GC, and cross-module workflows
+- **Property-based tests** (`tests/proptest_tests.rs`, 11 tests) — Proptest strategies for crypto round-trips, format detection, version serialization, SHA-256 invariants
+- **Fuzz target expansion** (`fuzz/fuzz_targets/`, 3 new targets) — Pickle scanner, diff engine, model card parser (8 total)
+- **Feature benchmarks** (`benches/feature_bench.rs`) — Criterion benchmarks for tags/search, ACL, lineage graph, plugins, profiles, policies, validation, webhooks, signing, scanning, diff, license scanning
+- **CI benchmark tracking** — `benchmark-action/github-action-benchmark` job with 150% regression alert threshold
+- **mkdocs nav expansion** — Added 8 missing docs to navigation: Examples, Model Download, Model Signing, Model Diffing, Engine Interop, Safety Scanning, License Scanning, Benchmarks
+- **mkdocs build validation** — CI job with `mkdocs build --strict`
+- **API reference generation** — Rustdoc auto-generated in CI, copied to mkdocs site, uploaded as artifact
+
+### Changed
+
+- **Version bump** — 1.5.0 → 1.6.0
+- **MSRV** — Updated from 1.75 to 1.89 (ecosystem deps require edition 2024: `time-macros`, `async-graphql-value`, `asynk-strim`)
+- **Test count** — 1,917 → 2,059
+
+### Fixed
+
+- **Import fixes** — Restored incorrectly removed imports in `vault.rs` (`VersionRepo`) and `database.rs` (`ChunkInfo`, `Document`)
+
+### Security
+
+- **`aws-lc-sys`** upgraded to v0.39.1 — fixed RUSTSEC-2026-0044 and RUSTSEC-2026-0048
+- **Dependency audit** — 6 unmaintained transitive dep warnings documented in `deny.toml` ignore list; `cargo deny check` and `cargo audit` pass clean
+
 ## [1.5.0] - 2026-04-05
 
 ### Added
