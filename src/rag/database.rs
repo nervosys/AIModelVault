@@ -3,8 +3,6 @@
 use crate::error::{Result, VaultError};
 use std::collections::HashMap;
 
-use super::documents::{ChunkInfo, Document};
-
 /// Database abstraction for rule-based systems
 pub trait Database {
     /// Query the database

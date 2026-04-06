@@ -12,7 +12,7 @@ use crate::crypto::{FipsCrypto, KeyManager, SecureKey};
 use crate::error::{Result, VaultError};
 use crate::formats::ModelMetadata;
 use crate::storage::Storage;
-use crate::traits::{EventBus, VaultEvent, VaultState, VersionRepo};
+use crate::traits::{EventBus, VaultEvent, VaultState};
 use crate::version::{ModelVersion, VersionControl};
 
 /// Version storage backend selector.
