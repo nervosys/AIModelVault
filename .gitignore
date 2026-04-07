@@ -90,6 +90,7 @@ tarpaulin_stderr.log
 # Videos (contains node_modules)
 videos/
 
-# Test outputs (keep committed for reference)
-# reports/*.txt can be gitignored if you prefer
+# Test/demo outputs (contain local paths — never commit)
+reports/*.txt
+reports/XDG_DEMO_COMPLETE.md
 
