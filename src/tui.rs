@@ -21,11 +21,11 @@ pub fn browse(vault_path: &Path) -> Result<String> {
     let mut out = String::new();
 
     // Header
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("  ╔══════════════════════════════════════════════════════════╗\n");
     out.push_str("  ║              AI Model Vault — Dashboard                 ║\n");
     out.push_str("  ╚══════════════════════════════════════════════════════════╝\n");
-    out.push_str("\n");
+    out.push('\n');
 
     // Summary
     let total_versions: usize = models.iter().map(|m| vc.list_versions(m).len()).sum();
@@ -86,7 +86,7 @@ pub fn browse(vault_path: &Path) -> Result<String> {
         ));
     }
 
-    out.push_str("\n");
+    out.push('\n');
     Ok(out)
 }
 

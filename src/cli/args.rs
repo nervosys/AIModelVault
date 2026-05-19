@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "aim")]
-#[command(version = "1.0.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Universal secure vault for AI model formats (Neural & Neurosymbolic)", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]

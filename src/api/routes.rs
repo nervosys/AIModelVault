@@ -1585,6 +1585,7 @@ pub async fn quant_estimate(
 // ── Evaluations ──────────────────────────────────────────────────────────────
 
 /// GET /api/v1/evaluations
+#[allow(clippy::implicit_hasher)]
 pub async fn eval_list(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -1768,6 +1769,7 @@ pub async fn backup_schedule_set(
 }
 
 /// GET /api/v1/backups/history
+#[allow(clippy::implicit_hasher)]
 pub async fn backup_history(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,

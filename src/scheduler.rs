@@ -178,7 +178,7 @@ impl BackupManager {
     pub fn get_history(&self, schedule: Option<&str>) -> Vec<&BackupRecord> {
         self.history
             .iter()
-            .filter(|r| schedule.map_or(true, |s| r.schedule_name == s))
+            .filter(|r| schedule.is_none_or(|s| r.schedule_name == s))
             .collect()
     }
 

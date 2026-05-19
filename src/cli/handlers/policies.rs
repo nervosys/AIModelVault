@@ -4,7 +4,11 @@ use ai_model_vault::{PolicyStore, Result, VaultConfig};
 
 use crate::cli::args::PolicyCommands;
 
-pub fn handle_policy(command: PolicyCommands, config: VaultConfig, _use_sqlite: bool) -> Result<()> {
+pub fn handle_policy(
+    command: PolicyCommands,
+    config: VaultConfig,
+    _use_sqlite: bool,
+) -> Result<()> {
     let mut store = PolicyStore::new(&config.dirs.vault_dir)?;
 
     match command {
@@ -42,8 +46,7 @@ pub fn handle_policy(command: PolicyCommands, config: VaultConfig, _use_sqlite: 
             }
         }
         PolicyCommands::Apply { model, dry_run } => {
-            let mut vc =
-                ai_model_vault::version::VersionControl::new(&config.dirs.vault_dir)?;
+            let mut vc = ai_model_vault::version::VersionControl::new(&config.dirs.vault_dir)?;
             if let Some(m) = model {
                 let report = store.apply(&m, &mut vc, dry_run)?;
                 if dry_run {

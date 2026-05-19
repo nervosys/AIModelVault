@@ -122,17 +122,14 @@ impl PolicyStore {
         vc: &mut VersionControl,
         dry_run: bool,
     ) -> Result<PolicyReport> {
-        let policy = match self.get(model) {
-            Some(p) => p.clone(),
-            None => {
-                let versions = vc.list_versions(model);
-                return Ok(PolicyReport {
-                    model: model.to_string(),
-                    versions_before: versions.len(),
-                    versions_removed: vec![],
-                    versions_after: versions.len(),
-                });
-            }
+        let Some(policy) = self.get(model).cloned() else {
+            let versions = vc.list_versions(model);
+            return Ok(PolicyReport {
+                model: model.to_string(),
+                versions_before: versions.len(),
+                versions_removed: vec![],
+                versions_after: versions.len(),
+            });
         };
 
         let mut versions: Vec<ModelVersion> =

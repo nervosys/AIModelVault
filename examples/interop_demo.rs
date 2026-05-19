@@ -2,9 +2,7 @@
 //!
 //! Run with: cargo run --example interop_demo
 
-use ai_model_vault::interop::{
-    OllamaOptions, LmStudioOptions, InferenceEngine,
-};
+use ai_model_vault::interop::{InferenceEngine, LmStudioOptions, OllamaOptions};
 use std::path::PathBuf;
 
 fn main() -> ai_model_vault::Result<()> {
@@ -51,14 +49,22 @@ fn main() -> ai_model_vault::Result<()> {
     // 3. CLI usage
     println!("3. CLI commands:");
     println!("   aim register my-model --engine ollama");
-    println!("   aim register my-model --engine ollama --alias chat-bot --system-prompt 'Be helpful'");
+    println!(
+        "   aim register my-model --engine ollama --alias chat-bot --system-prompt 'Be helpful'"
+    );
     println!("   aim register my-model --engine lm-studio");
     println!("   aim register my-model --engine lm-studio --version 2\n");
 
     // 4. Supported engines
     println!("4. Supported engines:");
-    println!("   {:?} — Generates Modelfile, runs 'ollama create'", InferenceEngine::Ollama);
-    println!("   {:?} — Copies to LM Studio models directory\n", InferenceEngine::LmStudio);
+    println!(
+        "   {:?} — Generates Modelfile, runs 'ollama create'",
+        InferenceEngine::Ollama
+    );
+    println!(
+        "   {:?} — Copies to LM Studio models directory\n",
+        InferenceEngine::LmStudio
+    );
 
     println!("=== Interop example complete ===");
     Ok(())

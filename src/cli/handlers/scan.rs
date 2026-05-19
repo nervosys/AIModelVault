@@ -30,7 +30,11 @@ pub fn handle_scan(
         let temp_path = temp_dir.path().join(&model_name);
         std::fs::write(&temp_path, &data)?;
 
-        println!("Scanning vault model: {} (v{})", model_name, version.unwrap_or(0));
+        println!(
+            "Scanning vault model: {} (v{})",
+            model_name,
+            version.unwrap_or(0)
+        );
         PickleScanner::scan(&temp_path)?
     } else {
         return Err(VaultError::InvalidInput(
@@ -38,21 +42,24 @@ pub fn handle_scan(
         ));
     };
 
-    match format.as_str() {
-        "json" => {
-            let json = serde_json::to_string_pretty(&report)
-                .map_err(|e| VaultError::SerializationError(e.to_string()))?;
-            println!("{}", json);
+    if format.as_str() == "json" {
+        let json = serde_json::to_string_pretty(&report)
+            .map_err(|e| VaultError::SerializationError(e.to_string()))?;
+        println!("{}", json);
+    } else {
+        println!("File: {} ({} bytes)", report.file_path, report.file_size);
+        println!(
+            "Pickle format: {} | ZIP archive: {}",
+            report.is_pickle_format, report.is_zip_archive
+        );
+        println!("Safe: {}\n", if report.safe { "YES" } else { "NO" });
+        for finding in &report.findings {
+            println!(
+                "  [{}] {} — {} (×{})",
+                finding.severity, finding.code, finding.description, finding.count
+            );
         }
-        _ => {
-            println!("File: {} ({} bytes)", report.file_path, report.file_size);
-            println!("Pickle format: {} | ZIP archive: {}", report.is_pickle_format, report.is_zip_archive);
-            println!("Safe: {}\n", if report.safe { "YES" } else { "NO" });
-            for finding in &report.findings {
-                println!("  [{}] {} — {} (×{})", finding.severity, finding.code, finding.description, finding.count);
-            }
-            println!("\n{}", report.recommendation);
-        }
+        println!("\n{}", report.recommendation);
     }
 
     Ok(())

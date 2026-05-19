@@ -20,29 +20,85 @@ use crate::error::Result;
 
 /// Pickle opcodes that can trigger arbitrary code execution.
 const DANGEROUS_OPCODES: &[(u8, &str, &str)] = &[
-    (0x52, "REDUCE", "Calls a callable with args — arbitrary code execution"),
-    (0x63, "GLOBAL", "Imports a module attribute — can import os, subprocess, etc."),
-    (0x62, "BUILD", "Calls __setstate__ — can trigger arbitrary code in __setstate__"),
-    (0x69, "INST", "Instantiates a class — can run __init__ with arbitrary args"),
-    (0x81, "NEWOBJ", "Creates a new object — tp.__new__(cls, *args)"),
+    (
+        0x52,
+        "REDUCE",
+        "Calls a callable with args — arbitrary code execution",
+    ),
+    (
+        0x63,
+        "GLOBAL",
+        "Imports a module attribute — can import os, subprocess, etc.",
+    ),
+    (
+        0x62,
+        "BUILD",
+        "Calls __setstate__ — can trigger arbitrary code in __setstate__",
+    ),
+    (
+        0x69,
+        "INST",
+        "Instantiates a class — can run __init__ with arbitrary args",
+    ),
+    (
+        0x81,
+        "NEWOBJ",
+        "Creates a new object — tp.__new__(cls, *args)",
+    ),
     (0x92, "NEWOBJ_EX", "Extended NEWOBJ with kwargs"),
-    (0x93, "STACK_GLOBAL", "Push a global from stack values — similar to GLOBAL"),
+    (
+        0x93,
+        "STACK_GLOBAL",
+        "Push a global from stack values — similar to GLOBAL",
+    ),
 ];
 
 /// Patterns found in malicious pickle payloads (byte sequences).
 const DANGEROUS_PATTERNS: &[(&[u8], &str, &str)] = &[
-    (b"os\n", "os module import", "Accesses the operating system module"),
-    (b"subprocess", "subprocess module", "Can execute shell commands"),
-    (b"__builtin__", "__builtin__ access", "Access to Python builtins (exec, eval)"),
+    (
+        b"os\n",
+        "os module import",
+        "Accesses the operating system module",
+    ),
+    (
+        b"subprocess",
+        "subprocess module",
+        "Can execute shell commands",
+    ),
+    (
+        b"__builtin__",
+        "__builtin__ access",
+        "Access to Python builtins (exec, eval)",
+    ),
     (b"builtins", "builtins module", "Access to Python builtins"),
-    (b"commands", "commands module", "Legacy command execution module"),
+    (
+        b"commands",
+        "commands module",
+        "Legacy command execution module",
+    ),
     (b"nt\nsystem", "nt.system call", "Windows system() call"),
     (b"posix\nsystem", "posix.system call", "Unix system() call"),
-    (b"exec\n", "exec function", "Arbitrary Python code execution"),
-    (b"eval\n", "eval function", "Arbitrary Python expression evaluation"),
-    (b"__import__", "__import__ function", "Dynamic module importing"),
+    (
+        b"exec\n",
+        "exec function",
+        "Arbitrary Python code execution",
+    ),
+    (
+        b"eval\n",
+        "eval function",
+        "Arbitrary Python expression evaluation",
+    ),
+    (
+        b"__import__",
+        "__import__ function",
+        "Dynamic module importing",
+    ),
     (b"runpy", "runpy module", "Runs Python modules/scripts"),
-    (b"webbrowser", "webbrowser module", "Can open arbitrary URLs"),
+    (
+        b"webbrowser",
+        "webbrowser module",
+        "Can open arbitrary URLs",
+    ),
 ];
 
 // ── Severity ─────────────────────────────────────────────────────────────────
@@ -125,9 +181,7 @@ impl PickleScanner {
                 || data[0..4] == [0x80, 0x02, 0x7D, 0x71]); // pickle proto 2
 
         // Check for pickle magic bytes (protocol markers \x80\x02 through \x80\x05)
-        let is_pickle = data.len() >= 2
-            && data[0] == 0x80
-            && (2..=5).contains(&data[1]);
+        let is_pickle = data.len() >= 2 && data[0] == 0x80 && (2..=5).contains(&data[1]);
 
         let is_pickle_format = is_pickle || is_zip || Self::has_pickle_extension(path);
 
@@ -147,9 +201,7 @@ impl PickleScanner {
         // Build summary
         let mut summary = HashMap::new();
         for f in &findings {
-            *summary
-                .entry(format!("{}", f.severity))
-                .or_insert(0) += 1;
+            *summary.entry(format!("{}", f.severity)).or_insert(0) += 1;
         }
 
         let critical_count = summary.get("CRIT").copied().unwrap_or(0);
@@ -327,12 +379,7 @@ mod tests {
 
         let report = PickleScanner::scan_bytes(&data, "model.pt");
         assert!(report.is_pickle_format);
-        assert!(
-            report
-                .findings
-                .iter()
-                .any(|f| f.code == "REDUCE")
-        );
+        assert!(report.findings.iter().any(|f| f.code == "REDUCE"));
     }
 
     #[test]

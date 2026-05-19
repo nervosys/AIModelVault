@@ -59,7 +59,10 @@ fn resolve_model(
             .unwrap_or(ver_str)
             .parse()
             .map_err(|_| {
-                VaultError::InvalidInput(format!("Invalid version in '{}': '{}'", reference, ver_str))
+                VaultError::InvalidInput(format!(
+                    "Invalid version in '{}': '{}'",
+                    reference, ver_str
+                ))
             })?;
         (name.to_string(), Some(ver))
     } else {

@@ -26,8 +26,8 @@ fn main() -> ai_model_vault::Result<()> {
 
     // 3. Create a downloader with HuggingFace token
     println!("3. Creating authenticated downloader...");
-    let _authed_downloader = ModelDownloader::new("./downloaded_models")
-        .with_hf_token("hf_example_token".to_string());
+    let _authed_downloader =
+        ModelDownloader::new("./downloaded_models").with_hf_token("hf_example_token".to_string());
     println!("   ✓ Token configured for private repos\n");
 
     // 4. Demonstrate download (dry run - would need network)

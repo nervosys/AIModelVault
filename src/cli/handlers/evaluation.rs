@@ -91,13 +91,12 @@ pub fn handle_eval(command: EvalCommands, config: VaultConfig) -> Result<()> {
             let (model_b, version_b) = parse_model_version(&b)?;
 
             match store.compare(&model_a, version_a, &model_b, version_b, &suite) {
-                Some(cmp) => match format.as_str() {
-                    "json" => {
+                Some(cmp) => {
+                    if format.as_str() == "json" {
                         let json = serde_json::to_string_pretty(&cmp)
                             .map_err(|e| VaultError::SerializationError(e.to_string()))?;
                         println!("{}", json);
-                    }
-                    _ => {
+                    } else {
                         println!(
                             "Comparing {} v{} vs {} v{} on '{}':",
                             cmp.model_a, cmp.version_a, cmp.model_b, cmp.version_b, cmp.suite
@@ -110,7 +109,7 @@ pub fn handle_eval(command: EvalCommands, config: VaultConfig) -> Result<()> {
                             );
                         }
                     }
-                },
+                }
                 None => {
                     println!("No matching evaluation runs found for comparison.");
                 }

@@ -56,8 +56,7 @@ pub fn handle_sign(
 
         let sig = ModelSigner::sign(&keypair, &temp_path, metadata)?;
         let sig_dir = vault.get_config().dirs.data_dir.clone();
-        let sig_path = sig_dir
-            .join(format!("{}_v{}.sig", name, version.unwrap_or(0)));
+        let sig_path = sig_dir.join(format!("{}_v{}.sig", name, version.unwrap_or(0)));
         ModelSigner::save_signature(&sig, &sig_path)?;
 
         println!("Signed model '{}' (v{})", name, version.unwrap_or(0));

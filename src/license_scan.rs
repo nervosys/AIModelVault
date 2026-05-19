@@ -177,7 +177,10 @@ impl LicenseScanner {
         }
 
         if licenses.is_empty() {
-            warnings.push(format!("No license information found in {}", path.display()));
+            warnings.push(format!(
+                "No license information found in {}",
+                path.display()
+            ));
         }
 
         let has_license = !licenses.is_empty();
@@ -230,7 +233,11 @@ impl LicenseScanner {
                 .strip_prefix("license:")
                 .or_else(|| trimmed.strip_prefix("license :"))
             {
-                let raw = value.trim().trim_matches('"').trim_matches('\'').to_string();
+                let raw = value
+                    .trim()
+                    .trim_matches('"')
+                    .trim_matches('\'')
+                    .to_string();
                 if !raw.is_empty() {
                     let spdx = Self::normalize_spdx(&raw);
                     let classification = Self::classify_license(&raw);
@@ -248,8 +255,7 @@ impl LicenseScanner {
 
     /// Extract license from config.json.
     fn extract_config_license(json_text: &str) -> Option<DetectedLicense> {
-        let parsed: BTreeMap<String, serde_json::Value> =
-            serde_json::from_str(json_text).ok()?;
+        let parsed: BTreeMap<String, serde_json::Value> = serde_json::from_str(json_text).ok()?;
 
         let raw = parsed.get("license")?.as_str()?.to_string();
         let spdx = Self::normalize_spdx(&raw);
@@ -270,9 +276,7 @@ impl LicenseScanner {
     fn extract_gguf_license(data: &[u8]) -> Option<DetectedLicense> {
         // Simple approach: search for "general.license" string in the binary
         let needle = b"general.license";
-        let pos = data
-            .windows(needle.len())
-            .position(|w| w == needle)?;
+        let pos = data.windows(needle.len()).position(|w| w == needle)?;
 
         // The value follows the key after some GGUF encoding bytes.
         // Look for a reasonable UTF-8 string starting a few bytes after the key.
@@ -304,7 +308,9 @@ impl LicenseScanner {
         // Check for well-known license texts
         let detected = if lower.contains("apache license") && lower.contains("version 2.0") {
             ("Apache-2.0", LicenseClass::Permissive)
-        } else if lower.contains("mit license") || lower.contains("permission is hereby granted, free of charge") {
+        } else if lower.contains("mit license")
+            || lower.contains("permission is hereby granted, free of charge")
+        {
             ("MIT", LicenseClass::Permissive)
         } else if lower.contains("gnu affero general public license") {
             ("AGPL-3.0", LicenseClass::Copyleft)
@@ -312,11 +318,16 @@ impl LicenseScanner {
             ("GPL-3.0", LicenseClass::Copyleft)
         } else if lower.contains("gnu general public license") {
             ("GPL-2.0", LicenseClass::Copyleft)
-        } else if lower.contains("bsd 3-clause") || lower.contains("redistribution and use in source and binary") {
+        } else if lower.contains("bsd 3-clause")
+            || lower.contains("redistribution and use in source and binary")
+        {
             ("BSD-3-Clause", LicenseClass::Permissive)
         } else if lower.contains("bsd 2-clause") {
             ("BSD-2-Clause", LicenseClass::Permissive)
-        } else if lower.contains("creative commons") && lower.contains("attribution") && lower.contains("noncommercial") {
+        } else if lower.contains("creative commons")
+            && lower.contains("attribution")
+            && lower.contains("noncommercial")
+        {
             ("CC-BY-NC-4.0", LicenseClass::Restricted)
         } else if lower.contains("creative commons") && lower.contains("share alike") {
             ("CC-BY-SA-4.0", LicenseClass::Copyleft)
@@ -401,8 +412,7 @@ impl LicenseScanner {
             && classes.contains(&&LicenseClass::Permissive)
         {
             warnings.push(
-                "Mixed copyleft and permissive licenses detected — check compatibility"
-                    .to_string(),
+                "Mixed copyleft and permissive licenses detected — check compatibility".to_string(),
             );
         }
 
@@ -434,10 +444,7 @@ impl LicenseScanReport {
             out.push_str("⚠ No licenses detected.\n");
         } else {
             for lic in &self.licenses {
-                let spdx = lic
-                    .spdx_id
-                    .as_deref()
-                    .unwrap_or("(unknown)");
+                let spdx = lic.spdx_id.as_deref().unwrap_or("(unknown)");
                 out.push_str(&format!(
                     "  {} [{}] (from {:?})\n",
                     spdx, lic.classification, lic.source
@@ -527,8 +534,14 @@ mod tests {
 
     #[test]
     fn test_classify_license() {
-        assert_eq!(LicenseScanner::classify_license("MIT"), LicenseClass::Permissive);
-        assert_eq!(LicenseScanner::classify_license("AGPL-3.0"), LicenseClass::Copyleft);
+        assert_eq!(
+            LicenseScanner::classify_license("MIT"),
+            LicenseClass::Permissive
+        );
+        assert_eq!(
+            LicenseScanner::classify_license("AGPL-3.0"),
+            LicenseClass::Copyleft
+        );
         assert_eq!(
             LicenseScanner::classify_license("cc-by-nc-4.0"),
             LicenseClass::Restricted

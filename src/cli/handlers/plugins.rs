@@ -14,7 +14,10 @@ pub fn handle_plugin(command: PluginCommands, config: VaultConfig) -> Result<()>
                 println!("No plugins installed.");
             } else {
                 for p in plugins {
-                    println!("  {} v{} -- {}", p.manifest.name, p.manifest.version, p.manifest.description);
+                    println!(
+                        "  {} v{} -- {}",
+                        p.manifest.name, p.manifest.version, p.manifest.description
+                    );
                 }
             }
         }

@@ -68,13 +68,7 @@ impl BenchmarkRecord {
     }
 
     /// Add a benchmark result.
-    pub fn add_result(
-        &mut self,
-        benchmark: &str,
-        score: f64,
-        unit: &str,
-        higher_is_better: bool,
-    ) {
+    pub fn add_result(&mut self, benchmark: &str, score: f64, unit: &str, higher_is_better: bool) {
         self.results.push(BenchmarkResult {
             benchmark: benchmark.to_string(),
             score,
@@ -140,7 +134,7 @@ impl BenchmarkRecord {
             "Benchmarks for {} v{}\n",
             self.model_name, self.version
         ));
-        out.push_str(&format!("──────────────────────────────────\n"));
+        out.push_str("──────────────────────────────────\n");
 
         if let Some(hw) = &self.hardware {
             out.push_str(&format!("Hardware: {}\n", hw));

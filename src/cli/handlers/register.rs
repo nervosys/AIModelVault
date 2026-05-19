@@ -1,8 +1,8 @@
 //! CLI handler for inference engine registration (aim register).
 
 use ai_model_vault::{
-    LmStudioOptions, OllamaOptions, Result, VaultConfig, VaultError,
-    register_lm_studio, register_ollama,
+    register_lm_studio, register_ollama, LmStudioOptions, OllamaOptions, Result, VaultConfig,
+    VaultError,
 };
 
 use crate::cli::helpers::{build_vault, prompt_passphrase};

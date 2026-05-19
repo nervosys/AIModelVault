@@ -4,8 +4,7 @@ use ai_model_vault::{Result, VaultConfig};
 use std::path::PathBuf;
 
 pub fn handle_vault_export(output: PathBuf, config: VaultConfig) -> Result<()> {
-    let report =
-        ai_model_vault::vault_bundle::export_vault(&config.dirs.vault_dir, &output, None)?;
+    let report = ai_model_vault::vault_bundle::export_vault(&config.dirs.vault_dir, &output, None)?;
     println!("Exported vault to {:?}", output);
     println!("  Models: {}", report.models_exported.len());
     println!("  Versions: {}", report.total_versions);

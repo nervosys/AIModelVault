@@ -24,10 +24,7 @@ pub enum ModelSource {
         revision: Option<String>,
     },
     /// Ollama registry: `ollama://model:tag`
-    Ollama {
-        model: String,
-        tag: String,
-    },
+    Ollama { model: String, tag: String },
     /// Direct HTTPS URL with mandatory checksum
     Url {
         url: String,
@@ -204,7 +201,7 @@ impl ModelDownloader {
         metadata.insert("revision".to_string(), rev.to_string());
 
         let out_path = self.output_dir.join(&file);
-        let (sha256, size) = self.fetch_file(&url, &out_path, &self.hf_token)?;
+        let (sha256, size) = self.fetch_file(&url, &out_path, self.hf_token.as_ref())?;
 
         let ext = Path::new(&file)
             .extension()
@@ -265,11 +262,7 @@ impl ModelDownloader {
 
         let model_layer = layers
             .iter()
-            .find(|l| {
-                l["mediaType"]
-                    .as_str()
-                    .is_some_and(|m| m.contains("model"))
-            })
+            .find(|l| l["mediaType"].as_str().is_some_and(|m| m.contains("model")))
             .ok_or_else(|| {
                 VaultError::InvalidInput("No model layer in Ollama manifest".to_string())
             })?;
@@ -292,7 +285,7 @@ impl ModelDownloader {
         metadata.insert("tag".to_string(), tag.to_string());
         metadata.insert("digest".to_string(), digest.to_string());
 
-        let (sha256, size) = self.fetch_file(&blob_url, &out_path, &None)?;
+        let (sha256, size) = self.fetch_file(&blob_url, &out_path, None)?;
 
         Ok(DownloadResult {
             path: out_path,
@@ -329,7 +322,7 @@ impl ModelDownloader {
             .unwrap_or_else(|| "downloaded_model.bin".to_string());
 
         let out_path = self.output_dir.join(&filename);
-        let (sha256, size) = self.fetch_file(url, &out_path, &None)?;
+        let (sha256, size) = self.fetch_file(url, &out_path, None)?;
 
         // Verify SHA-256 if provided
         if let Some(expected) = expected_sha256 {
@@ -369,7 +362,7 @@ impl ModelDownloader {
         &self,
         url: &str,
         out_path: &Path,
-        auth_token: &Option<String>,
+        auth_token: Option<&String>,
     ) -> Result<(String, u64)> {
         use sha2::{Digest, Sha256};
 
@@ -402,8 +395,7 @@ impl ModelDownloader {
         let mut buf = vec![0u8; 8 * 1024 * 1024]; // 8 MiB buffer
 
         loop {
-            let n = std::io::Read::read(&mut resp, &mut buf)
-                .map_err(|e| VaultError::IoError(e))?;
+            let n = std::io::Read::read(&mut resp, &mut buf).map_err(VaultError::IoError)?;
             if n == 0 {
                 break;
             }
@@ -414,7 +406,10 @@ impl ModelDownloader {
             // Progress indicator
             if let Some(total) = total_size {
                 let pct = (downloaded as f64 / total as f64 * 100.0) as u32;
-                eprint!("\r  Downloading: {} / {} bytes ({}%)", downloaded, total, pct);
+                eprint!(
+                    "\r  Downloading: {} / {} bytes ({}%)",
+                    downloaded, total, pct
+                );
             } else {
                 eprint!("\r  Downloaded: {} bytes", downloaded);
             }
@@ -455,8 +450,7 @@ mod tests {
 
     #[test]
     fn test_parse_huggingface_with_file_and_rev() {
-        let src =
-            ModelSource::parse("hf://org/model/weights.safetensors@main").unwrap();
+        let src = ModelSource::parse("hf://org/model/weights.safetensors@main").unwrap();
         match src {
             ModelSource::HuggingFace {
                 repo_id,

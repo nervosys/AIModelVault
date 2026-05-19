@@ -111,7 +111,7 @@ pub fn register_ollama(opts: &OllamaOptions) -> Result<RegistrationResult> {
         .arg("-f")
         .arg(&modelfile_path)
         .output()
-        .map_err(|e| VaultError::IoError(e))?;
+        .map_err(VaultError::IoError)?;
 
     let success = output.status.success();
     let message = if success {
@@ -202,21 +202,30 @@ fn default_lm_studio_dir() -> Result<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         if let Ok(home) = std::env::var("USERPROFILE") {
-            return Ok(PathBuf::from(home).join(".cache").join("lm-studio").join("models"));
+            return Ok(PathBuf::from(home)
+                .join(".cache")
+                .join("lm-studio")
+                .join("models"));
         }
     }
 
     #[cfg(target_os = "macos")]
     {
         if let Ok(home) = std::env::var("HOME") {
-            return Ok(PathBuf::from(home).join(".cache").join("lm-studio").join("models"));
+            return Ok(PathBuf::from(home)
+                .join(".cache")
+                .join("lm-studio")
+                .join("models"));
         }
     }
 
     #[cfg(target_os = "linux")]
     {
         if let Ok(home) = std::env::var("HOME") {
-            return Ok(PathBuf::from(home).join(".cache").join("lm-studio").join("models"));
+            return Ok(PathBuf::from(home)
+                .join(".cache")
+                .join("lm-studio")
+                .join("models"));
         }
     }
 

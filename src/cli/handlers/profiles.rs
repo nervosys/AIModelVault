@@ -1,7 +1,7 @@
 //! CLI handler for config profiles (aim profile).
 
-use ai_model_vault::{ProfileStore, Result, VaultConfig};
 use ai_model_vault::profiles::Profile;
+use ai_model_vault::{ProfileStore, Result, VaultConfig};
 
 use crate::cli::args::ProfileCommands;
 
@@ -41,7 +41,11 @@ pub fn handle_profile(command: ProfileCommands, config: VaultConfig) -> Result<(
                 println!("No profiles.");
             } else {
                 for p in profiles {
-                    let marker = if active_name == Some(p.name.as_str()) { " (active)" } else { "" };
+                    let marker = if active_name == Some(p.name.as_str()) {
+                        " (active)"
+                    } else {
+                        ""
+                    };
                     println!("  {}{}", p.name, marker);
                     for (k, v) in &p.overrides {
                         println!("    {} = {}", k, v);

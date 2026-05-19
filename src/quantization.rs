@@ -132,9 +132,8 @@ impl QuantProfileStore {
     pub fn new(vault_path: &Path) -> Result<Self> {
         let path = vault_path.join(PROFILES_FILE);
         let profiles = if path.exists() {
-            let data = std::fs::read_to_string(&path).map_err(|e| {
-                VaultError::StorageError(format!("read quant profiles: {e}"))
-            })?;
+            let data = std::fs::read_to_string(&path)
+                .map_err(|e| VaultError::StorageError(format!("read quant profiles: {e}")))?;
             serde_json::from_str(&data).unwrap_or_default()
         } else {
             BTreeMap::new()
@@ -143,9 +142,8 @@ impl QuantProfileStore {
     }
 
     fn save(&self) -> Result<()> {
-        let data = serde_json::to_string_pretty(&self.profiles).map_err(|e| {
-            VaultError::StorageError(format!("serialize quant profiles: {e}"))
-        })?;
+        let data = serde_json::to_string_pretty(&self.profiles)
+            .map_err(|e| VaultError::StorageError(format!("serialize quant profiles: {e}")))?;
         std::fs::write(&self.path, data)
             .map_err(|e| VaultError::StorageError(format!("write quant profiles: {e}")))
     }

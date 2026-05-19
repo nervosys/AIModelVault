@@ -282,24 +282,20 @@ fn bench_validation(c: &mut Criterion) {
     let mut group = c.benchmark_group("validation");
 
     for size in [1024, 10 * 1024, 100 * 1024] {
-        group.bench_with_input(
-            BenchmarkId::new("create_probe", size),
-            &size,
-            |b, &size| {
-                b.iter_with_setup(
-                    || {
-                        let tmp = tempdir().unwrap();
-                        let store = ValidationStore::new(tmp.path()).unwrap();
-                        let model_file = tmp.path().join("model.bin");
-                        std::fs::write(&model_file, vec![0xABu8; size]).unwrap();
-                        (tmp, store, model_file)
-                    },
-                    |(_, store, model_file)| {
-                        store.create_integrity_probe("m", &model_file).unwrap();
-                    },
-                );
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("create_probe", size), &size, |b, &size| {
+            b.iter_with_setup(
+                || {
+                    let tmp = tempdir().unwrap();
+                    let store = ValidationStore::new(tmp.path()).unwrap();
+                    let model_file = tmp.path().join("model.bin");
+                    std::fs::write(&model_file, vec![0xABu8; size]).unwrap();
+                    (tmp, store, model_file)
+                },
+                |(_, store, model_file)| {
+                    store.create_integrity_probe("m", &model_file).unwrap();
+                },
+            );
+        });
     }
 
     group.bench_function("validate_100kb", |b| {
@@ -407,16 +403,12 @@ fn bench_scanning(c: &mut Criterion) {
     let mut group = c.benchmark_group("scanning");
 
     for size in [1024, 10 * 1024, 100 * 1024] {
-        group.bench_with_input(
-            BenchmarkId::new("scan_bytes", size),
-            &size,
-            |b, &size| {
-                let data = vec![0u8; size];
-                b.iter(|| {
-                    black_box(PickleScanner::scan_bytes(&data, "bench.pkl"));
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("scan_bytes", size), &size, |b, &size| {
+            let data = vec![0u8; size];
+            b.iter(|| {
+                black_box(PickleScanner::scan_bytes(&data, "bench.pkl"));
+            });
+        });
     }
 
     group.finish();
@@ -428,25 +420,21 @@ fn bench_diff(c: &mut Criterion) {
     let mut group = c.benchmark_group("diff");
 
     for size in [1024, 10 * 1024, 100 * 1024] {
-        group.bench_with_input(
-            BenchmarkId::new("diff_files", size),
-            &size,
-            |b, &size| {
-                b.iter_with_setup(
-                    || {
-                        let tmp = tempdir().unwrap();
-                        let a = tmp.path().join("a.bin");
-                        let b_file = tmp.path().join("b.bin");
-                        std::fs::write(&a, vec![0xABu8; size]).unwrap();
-                        std::fs::write(&b_file, vec![0xCDu8; size]).unwrap();
-                        (tmp, a, b_file)
-                    },
-                    |(_tmp, a, b_file)| {
-                        black_box(ModelDiffer::diff_files(&a, &b_file, "a", "b").unwrap());
-                    },
-                );
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("diff_files", size), &size, |b, &size| {
+            b.iter_with_setup(
+                || {
+                    let tmp = tempdir().unwrap();
+                    let a = tmp.path().join("a.bin");
+                    let b_file = tmp.path().join("b.bin");
+                    std::fs::write(&a, vec![0xABu8; size]).unwrap();
+                    std::fs::write(&b_file, vec![0xCDu8; size]).unwrap();
+                    (tmp, a, b_file)
+                },
+                |(_tmp, a, b_file)| {
+                    black_box(ModelDiffer::diff_files(&a, &b_file, "a", "b").unwrap());
+                },
+            );
+        });
     }
 
     group.finish();

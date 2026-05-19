@@ -1,11 +1,23 @@
-//! Benchmarks for v1.5.0 modules — quantization, evaluation, scheduler, multi-vault
+//! Benchmarks for v1.5.0 modules — quantization, evaluation, scheduler, multi-vault.
 
 use ai_model_vault::{
-    BackupFrequency, BackupManager, EvalStore, MetricResult, QuantMethod, QuantProfile,
-    QuantProfileStore, VaultRegistry,
+    BackupFrequency, BackupManager, BackupSchedule, EvalRun, EvalStore, MetricResult, QuantMethod,
+    QuantProfile, QuantProfileStore, VaultEntry, VaultRegistry,
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use std::collections::BTreeMap;
 use tempfile::tempdir;
+
+// ── Quantization profile store ───────────────────────────────────────────────
+
+fn make_profile(name: &str) -> QuantProfile {
+    QuantProfile {
+        name: name.to_string(),
+        method: QuantMethod::Q4KM,
+        description: Some("bench".into()),
+        metadata: BTreeMap::new(),
+    }
+}
 
 fn bench_quant_profile_store(c: &mut Criterion) {
     let mut group = c.benchmark_group("quant_profile_store");
@@ -17,14 +29,8 @@ fn bench_quant_profile_store(c: &mut Criterion) {
                 let store = QuantProfileStore::new(tmp.path()).unwrap();
                 (tmp, store)
             },
-            |(_tmp, store)| {
-                store
-                    .set(black_box(QuantProfile {
-                        name: "test".into(),
-                        method: QuantMethod::Q4KM,
-                        description: Some("bench".into()),
-                    }))
-                    .unwrap();
+            |(_tmp, mut store)| {
+                store.set(black_box(make_profile("test"))).unwrap();
             },
         );
     });
@@ -33,35 +39,51 @@ fn bench_quant_profile_store(c: &mut Criterion) {
         b.iter_with_setup(
             || {
                 let tmp = tempdir().unwrap();
-                let store = QuantProfileStore::new(tmp.path()).unwrap();
+                let mut store = QuantProfileStore::new(tmp.path()).unwrap();
                 for i in 0..10 {
-                    store
-                        .set(QuantProfile {
-                            name: format!("profile-{i}"),
-                            method: QuantMethod::Q4KM,
-                            description: None,
-                        })
-                        .unwrap();
+                    store.set(make_profile(&format!("profile-{i}"))).unwrap();
                 }
                 (tmp, store)
             },
             |(_tmp, store)| {
-                black_box(store.list().unwrap());
+                black_box(store.list());
             },
         );
     });
 
     group.bench_function("estimate_size", |b| {
         b.iter(|| {
-            black_box(ai_model_vault::estimate_quantized_size(
+            black_box(ai_model_vault::quantization::estimate_quantized_size(
                 1_000_000_000,
-                &QuantMethod::F32,
-                &QuantMethod::Q4KM,
+                QuantMethod::F32,
+                QuantMethod::Q4KM,
             ))
         });
     });
 
     group.finish();
+}
+
+// ── Evaluation store ─────────────────────────────────────────────────────────
+
+fn make_metric(name: &str, value: f64) -> MetricResult {
+    MetricResult {
+        name: name.into(),
+        value,
+        unit: "score".into(),
+        higher_is_better: true,
+    }
+}
+
+fn make_run(model: &str, version: u64, suite: &str, metrics: Vec<MetricResult>) -> EvalRun {
+    EvalRun {
+        suite: suite.into(),
+        model: model.into(),
+        version,
+        metrics,
+        timestamp: "2025-01-01T00:00:00Z".into(),
+        context: BTreeMap::new(),
+    }
 }
 
 fn bench_eval_store(c: &mut Criterion) {
@@ -74,21 +96,10 @@ fn bench_eval_store(c: &mut Criterion) {
                 let store = EvalStore::new(tmp.path()).unwrap();
                 (tmp, store)
             },
-            |(_tmp, store)| {
-                let metrics = vec![
-                    MetricResult {
-                        name: "accuracy".into(),
-                        value: 0.85,
-                        unit: "score".into(),
-                    },
-                    MetricResult {
-                        name: "f1".into(),
-                        value: 0.82,
-                        unit: "score".into(),
-                    },
-                ];
+            |(_tmp, mut store)| {
+                let metrics = vec![make_metric("accuracy", 0.85), make_metric("f1", 0.82)];
                 store
-                    .record(black_box("model"), black_box(1), "mmlu", metrics, true)
+                    .record(black_box(make_run("model", 1, "mmlu", metrics)))
                     .unwrap();
             },
         );
@@ -98,45 +109,52 @@ fn bench_eval_store(c: &mut Criterion) {
         b.iter_with_setup(
             || {
                 let tmp = tempdir().unwrap();
-                let store = EvalStore::new(tmp.path()).unwrap();
+                let mut store = EvalStore::new(tmp.path()).unwrap();
                 for i in 0..20 {
-                    let metrics = vec![MetricResult {
-                        name: "accuracy".into(),
-                        value: 0.8 + (i as f64 * 0.005),
-                        unit: "score".into(),
-                    }];
-                    store.record("model", i % 5, "mmlu", metrics, true).unwrap();
+                    let metrics = vec![make_metric("accuracy", 0.8 + (i as f64) * 0.005)];
+                    store
+                        .record(make_run("model", i % 5, "mmlu", metrics))
+                        .unwrap();
                 }
                 (tmp, store)
             },
             |(_tmp, store)| {
-                black_box(store.get_runs("model", None).unwrap());
+                black_box(store.get_runs("model", None));
             },
         );
     });
 
-    group.bench_function("suites", |b| {
+    group.bench_function("get_suite_runs", |b| {
         b.iter_with_setup(
             || {
                 let tmp = tempdir().unwrap();
-                let store = EvalStore::new(tmp.path()).unwrap();
+                let mut store = EvalStore::new(tmp.path()).unwrap();
                 for suite in &["mmlu", "hellaswag", "arc", "winogrande", "truthfulqa"] {
-                    let metrics = vec![MetricResult {
-                        name: "accuracy".into(),
-                        value: 0.85,
-                        unit: "score".into(),
-                    }];
-                    store.record("model", 1, suite, metrics, true).unwrap();
+                    let metrics = vec![make_metric("accuracy", 0.85)];
+                    store.record(make_run("model", 1, suite, metrics)).unwrap();
                 }
                 (tmp, store)
             },
             |(_tmp, store)| {
-                black_box(store.suites().unwrap());
+                black_box(store.get_suite_runs("model", "mmlu"));
             },
         );
     });
 
     group.finish();
+}
+
+// ── Backup manager ───────────────────────────────────────────────────────────
+
+fn make_schedule(name: &str, out: std::path::PathBuf) -> BackupSchedule {
+    BackupSchedule {
+        name: name.into(),
+        frequency: BackupFrequency::Daily,
+        max_backups: 7,
+        output_dir: out,
+        enabled: true,
+        created_at: "2025-01-01T00:00:00Z".into(),
+    }
 }
 
 fn bench_backup_manager(c: &mut Criterion) {
@@ -150,8 +168,8 @@ fn bench_backup_manager(c: &mut Criterion) {
                 let mgr = BackupManager::new(tmp.path()).unwrap();
                 (tmp, out, mgr)
             },
-            |(_tmp, out, mgr)| {
-                mgr.set_schedule("nightly", BackupFrequency::Daily, 7, out.path().to_path_buf())
+            |(_tmp, out, mut mgr)| {
+                mgr.set_schedule(make_schedule("nightly", out.path().to_path_buf()))
                     .unwrap();
             },
         );
@@ -162,25 +180,34 @@ fn bench_backup_manager(c: &mut Criterion) {
             || {
                 let tmp = tempdir().unwrap();
                 let out = tempdir().unwrap();
-                let mgr = BackupManager::new(tmp.path()).unwrap();
+                let mut mgr = BackupManager::new(tmp.path()).unwrap();
                 for i in 0..5 {
-                    mgr.set_schedule(
+                    mgr.set_schedule(make_schedule(
                         &format!("sched-{i}"),
-                        BackupFrequency::Daily,
-                        7,
                         out.path().to_path_buf(),
-                    )
+                    ))
                     .unwrap();
                 }
                 (tmp, out, mgr)
             },
             |(_tmp, _out, mgr)| {
-                black_box(mgr.list_schedules().unwrap());
+                black_box(mgr.list_schedules());
             },
         );
     });
 
     group.finish();
+}
+
+// ── Vault registry ───────────────────────────────────────────────────────────
+
+fn make_entry(name: &str) -> VaultEntry {
+    VaultEntry {
+        name: name.into(),
+        path: format!("/data/{name}").into(),
+        description: Some("bench".into()),
+        registered_at: "2025-01-01T00:00:00Z".into(),
+    }
 }
 
 fn bench_vault_registry(c: &mut Criterion) {
@@ -193,13 +220,8 @@ fn bench_vault_registry(c: &mut Criterion) {
                 let reg = VaultRegistry::new(tmp.path()).unwrap();
                 (tmp, reg)
             },
-            |(_tmp, reg)| {
-                reg.register(
-                    black_box("vault1"),
-                    "/data/vault1".into(),
-                    Some("test".into()),
-                )
-                .unwrap();
+            |(_tmp, mut reg)| {
+                reg.register(black_box(make_entry("vault1"))).unwrap();
             },
         );
     });
@@ -208,19 +230,14 @@ fn bench_vault_registry(c: &mut Criterion) {
         b.iter_with_setup(
             || {
                 let tmp = tempdir().unwrap();
-                let reg = VaultRegistry::new(tmp.path()).unwrap();
+                let mut reg = VaultRegistry::new(tmp.path()).unwrap();
                 for i in 0..10 {
-                    reg.register(
-                        &format!("vault-{i}"),
-                        format!("/data/vault-{i}").into(),
-                        None,
-                    )
-                    .unwrap();
+                    reg.register(make_entry(&format!("vault-{i}"))).unwrap();
                 }
                 (tmp, reg)
             },
             |(_tmp, reg)| {
-                black_box(reg.list().unwrap());
+                black_box(reg.list());
             },
         );
     });
@@ -229,11 +246,11 @@ fn bench_vault_registry(c: &mut Criterion) {
         b.iter_with_setup(
             || {
                 let tmp = tempdir().unwrap();
-                let reg = VaultRegistry::new(tmp.path()).unwrap();
-                reg.register("vault1", "/data/vault1".into(), None).unwrap();
+                let mut reg = VaultRegistry::new(tmp.path()).unwrap();
+                reg.register(make_entry("vault1")).unwrap();
                 (tmp, reg)
             },
-            |(_tmp, reg)| {
+            |(_tmp, mut reg)| {
                 reg.activate(black_box("vault1")).unwrap();
                 reg.deactivate().unwrap();
             },

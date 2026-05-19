@@ -110,9 +110,7 @@ impl EvalStore {
     pub fn get_runs(&self, model: &str, version: Option<u64>) -> Vec<&EvalRun> {
         self.runs
             .iter()
-            .filter(|r| {
-                r.model == model && version.map_or(true, |v| r.version == v)
-            })
+            .filter(|r| r.model == model && version.is_none_or(|v| r.version == v))
             .collect()
     }
 
@@ -133,12 +131,14 @@ impl EvalStore {
         version_b: u64,
         suite: &str,
     ) -> Option<EvalComparison> {
-        let run_a = self.runs.iter().find(|r| {
-            r.model == model_a && r.version == version_a && r.suite == suite
-        })?;
-        let run_b = self.runs.iter().find(|r| {
-            r.model == model_b && r.version == version_b && r.suite == suite
-        })?;
+        let run_a = self
+            .runs
+            .iter()
+            .find(|r| r.model == model_a && r.version == version_a && r.suite == suite)?;
+        let run_b = self
+            .runs
+            .iter()
+            .find(|r| r.model == model_b && r.version == version_b && r.suite == suite)?;
 
         let deltas: Vec<MetricDelta> = run_a
             .metrics
@@ -260,9 +260,7 @@ mod tests {
         let mut store = EvalStore::new(dir.path()).unwrap();
 
         store.record(make_run("m", 1, "mmlu", 50.0)).unwrap();
-        store
-            .record(make_run("m", 1, "hellaswag", 60.0))
-            .unwrap();
+        store.record(make_run("m", 1, "hellaswag", 60.0)).unwrap();
         store.record(make_run("m", 2, "mmlu", 55.0)).unwrap();
 
         let suites = store.suites();

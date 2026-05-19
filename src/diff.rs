@@ -101,10 +101,16 @@ impl ModelDiffer {
         let right_data = fs::read(right_path)?;
 
         let left_format = crate::formats::ModelFormat::from_extension(
-            left_path.extension().and_then(|e| e.to_str()).unwrap_or("bin"),
+            left_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("bin"),
         );
         let right_format = crate::formats::ModelFormat::from_extension(
-            right_path.extension().and_then(|e| e.to_str()).unwrap_or("bin"),
+            right_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("bin"),
         );
 
         let left_tensors = Self::parse_tensors(&left_data, &left_format);
@@ -149,6 +155,7 @@ impl ModelDiffer {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compute_diff(
         left_tensors: &TensorMap,
         right_tensors: &TensorMap,
@@ -267,8 +274,7 @@ impl ModelDiffer {
             return map;
         }
 
-        let header_size =
-            u64::from_le_bytes(data[0..8].try_into().unwrap_or_default()) as usize;
+        let header_size = u64::from_le_bytes(data[0..8].try_into().unwrap_or_default()) as usize;
 
         if data.len() < 8 + header_size || header_size > 100_000_000 {
             return map;
@@ -337,8 +343,7 @@ impl ModelDiffer {
             return map;
         }
 
-        let tensor_count =
-            u64::from_le_bytes(data[8..16].try_into().unwrap_or_default()) as usize;
+        let tensor_count = u64::from_le_bytes(data[8..16].try_into().unwrap_or_default()) as usize;
         let metadata_count =
             u64::from_le_bytes(data[16..24].try_into().unwrap_or_default()) as usize;
 
@@ -376,11 +381,8 @@ impl ModelDiff {
     pub fn display(&self) -> String {
         let mut out = String::new();
 
-        out.push_str(&format!(
-            "Model Diff: {} ↔ {}\n",
-            self.left, self.right
-        ));
-        out.push_str(&format!("──────────────────────────────────\n"));
+        out.push_str(&format!("Model Diff: {} ↔ {}\n", self.left, self.right));
+        out.push_str("──────────────────────────────────\n");
         out.push_str(&format!(
             "Size: {} → {} ({:+} bytes, {:+.1}%)\n",
             format_size(self.left_size),
@@ -472,10 +474,7 @@ mod tests {
             let mut info = serde_json::Map::new();
             info.insert("dtype".to_string(), serde_json::json!(dtype));
             info.insert("shape".to_string(), serde_json::json!(shape));
-            info.insert(
-                "data_offsets".to_string(),
-                serde_json::json!([0, 0]),
-            );
+            info.insert("data_offsets".to_string(), serde_json::json!([0, 0]));
             header.insert(name.to_string(), serde_json::Value::Object(info));
         }
         let json = serde_json::to_vec(&header).unwrap();
@@ -492,10 +491,8 @@ mod tests {
             ("layer.bias", "F32", &[768]),
         ]);
 
-        let diff = ModelDiffer::diff_bytes(
-            &data, &data, "v1", "v2", "safetensors", "safetensors",
-        )
-        .unwrap();
+        let diff = ModelDiffer::diff_bytes(&data, &data, "v1", "v2", "safetensors", "safetensors")
+            .unwrap();
 
         assert_eq!(diff.summary.added, 0);
         assert_eq!(diff.summary.removed, 0);
@@ -507,14 +504,11 @@ mod tests {
     #[test]
     fn test_diff_added_tensor() {
         let left = make_safetensors_header(&[("weight", "F32", &[768, 768])]);
-        let right = make_safetensors_header(&[
-            ("weight", "F32", &[768, 768]),
-            ("bias", "F32", &[768]),
-        ]);
+        let right =
+            make_safetensors_header(&[("weight", "F32", &[768, 768]), ("bias", "F32", &[768])]);
 
-        let diff =
-            ModelDiffer::diff_bytes(&left, &right, "v1", "v2", "safetensors", "safetensors")
-                .unwrap();
+        let diff = ModelDiffer::diff_bytes(&left, &right, "v1", "v2", "safetensors", "safetensors")
+            .unwrap();
 
         assert_eq!(diff.summary.added, 1);
         assert_eq!(diff.summary.removed, 0);
@@ -523,15 +517,12 @@ mod tests {
 
     #[test]
     fn test_diff_removed_tensor() {
-        let left = make_safetensors_header(&[
-            ("weight", "F32", &[768, 768]),
-            ("bias", "F32", &[768]),
-        ]);
+        let left =
+            make_safetensors_header(&[("weight", "F32", &[768, 768]), ("bias", "F32", &[768])]);
         let right = make_safetensors_header(&[("weight", "F32", &[768, 768])]);
 
-        let diff =
-            ModelDiffer::diff_bytes(&left, &right, "v1", "v2", "safetensors", "safetensors")
-                .unwrap();
+        let diff = ModelDiffer::diff_bytes(&left, &right, "v1", "v2", "safetensors", "safetensors")
+            .unwrap();
 
         assert_eq!(diff.summary.removed, 1);
         assert_eq!(diff.removed_tensors[0].name, "bias");
@@ -542,9 +533,8 @@ mod tests {
         let left = make_safetensors_header(&[("weight", "F32", &[768, 768])]);
         let right = make_safetensors_header(&[("weight", "F32", &[1024, 768])]);
 
-        let diff =
-            ModelDiffer::diff_bytes(&left, &right, "v1", "v2", "safetensors", "safetensors")
-                .unwrap();
+        let diff = ModelDiffer::diff_bytes(&left, &right, "v1", "v2", "safetensors", "safetensors")
+            .unwrap();
 
         assert_eq!(diff.summary.changed, 1);
         assert!(diff.changed_tensors[0].shape_changed);
@@ -558,9 +548,15 @@ mod tests {
             ("new_layer", "F32", &[256]),
         ]);
 
-        let diff =
-            ModelDiffer::diff_bytes(&left, &right, "model@v1", "model@v2", "safetensors", "safetensors")
-                .unwrap();
+        let diff = ModelDiffer::diff_bytes(
+            &left,
+            &right,
+            "model@v1",
+            "model@v2",
+            "safetensors",
+            "safetensors",
+        )
+        .unwrap();
 
         let display = diff.display();
         assert!(display.contains("model@v1"));

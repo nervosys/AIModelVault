@@ -274,7 +274,10 @@ fn demo_builtin_tools() -> Result<(), Box<dyn std::error::Error>> {
         &ctx,
     )?;
     println!("   Rule ID: {}", rule_result.data.get("rule_id").unwrap());
-    println!("   Executed: {}", rule_result.data.get("executed").unwrap());
+    println!("   Status:  {}", rule_result.data.get("status").unwrap());
+    if let Some(note) = rule_result.data.get("note") {
+        println!("   Note:    {}", note);
+    }
 
     Ok(())
 }

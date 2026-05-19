@@ -62,7 +62,11 @@ fn test_tag_search_by_multiple_criteria() {
     };
     let results = store.search(
         &query,
-        &["llama-7b".into(), "bert-base".into(), "whisper-small".into()],
+        &[
+            "llama-7b".into(),
+            "bert-base".into(),
+            "whisper-small".into(),
+        ],
     );
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].model, "llama-7b");
@@ -662,7 +666,12 @@ fn test_eval_multiple_suites() {
 
     for suite in &["mmlu", "arc", "winogrande", "truthfulqa"] {
         store
-            .record(make_eval_run("m", 1, suite, vec![metric("acc", 0.8, "score")]))
+            .record(make_eval_run(
+                "m",
+                1,
+                suite,
+                vec![metric("acc", 0.8, "score")],
+            ))
             .unwrap();
     }
 
@@ -691,8 +700,13 @@ fn test_scheduler_crud() {
     let out = tempdir().unwrap();
     let mut mgr = BackupManager::new(tmp.path()).unwrap();
 
-    mgr.set_schedule(make_schedule("nightly", BackupFrequency::Daily, 7, out.path().to_path_buf()))
-        .unwrap();
+    mgr.set_schedule(make_schedule(
+        "nightly",
+        BackupFrequency::Daily,
+        7,
+        out.path().to_path_buf(),
+    ))
+    .unwrap();
 
     let sched = mgr.get_schedule("nightly").unwrap();
     assert_eq!(sched.max_backups, 7);
@@ -913,9 +927,7 @@ fn test_license_scan_mit_license_file() {
     let report = LicenseScanner::scan_directory(tmp.path()).unwrap();
     // Should detect MIT or at least find something
     let display = report.display();
-    assert!(
-        !report.licenses.is_empty() || display.contains("MIT") || display.contains("Unknown")
-    );
+    assert!(!report.licenses.is_empty() || display.contains("MIT") || display.contains("Unknown"));
 }
 
 #[test]
@@ -983,7 +995,11 @@ fn test_tag_and_lineage_together() {
 
     let mut lineage = LineageGraph::new(tmp.path()).unwrap();
     lineage
-        .add_edge(make_edge("fine-tuned", &["base-model"], DerivationKind::FineTune))
+        .add_edge(make_edge(
+            "fine-tuned",
+            &["base-model"],
+            DerivationKind::FineTune,
+        ))
         .unwrap();
 
     let query = SearchQuery {

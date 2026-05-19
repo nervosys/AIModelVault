@@ -53,9 +53,8 @@ pub struct VaultRegistry {
 impl VaultRegistry {
     /// Open or create a vault registry in the given config directory.
     pub fn new(config_dir: &Path) -> Result<Self> {
-        std::fs::create_dir_all(config_dir).map_err(|e| {
-            VaultError::StorageError(format!("create config dir: {e}"))
-        })?;
+        std::fs::create_dir_all(config_dir)
+            .map_err(|e| VaultError::StorageError(format!("create config dir: {e}")))?;
 
         let path = config_dir.join(REGISTRY_FILE);
         let data = if path.exists() {

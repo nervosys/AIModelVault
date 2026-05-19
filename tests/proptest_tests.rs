@@ -113,22 +113,31 @@ proptest! {
 
 fn arb_model_version() -> impl Strategy<Value = ModelVersion> {
     (
-        1u32..10000,                          // version
-        "[a-f0-9]{8}",                        // checkpoint_id
-        prop::option::of(0u32..10000),        // parent_version
+        1u32..10000,                   // version
+        "[a-f0-9]{8}",                 // checkpoint_id
+        prop::option::of(0u32..10000), // parent_version
         prop_oneof![
             Just("safetensors".to_string()),
             Just("gguf".to_string()),
             Just("pt".to_string()),
             Just("onnx".to_string()),
-        ],                                     // format
-        0u64..1_000_000_000,                  // size_bytes
-        0u64..1_000_000_000,                  // compressed_size_bytes
-        "[a-f0-9]{64}",                       // checksum_sha256
-        "[a-z/]{1,32}",                       // file_path
+        ], // format
+        0u64..1_000_000_000,           // size_bytes
+        0u64..1_000_000_000,           // compressed_size_bytes
+        "[a-f0-9]{64}",                // checksum_sha256
+        "[a-z/]{1,32}",                // file_path
     )
         .prop_map(
-            |(version, checkpoint_id, parent_version, format, size_bytes, compressed_size_bytes, checksum_sha256, file_path)| {
+            |(
+                version,
+                checkpoint_id,
+                parent_version,
+                format,
+                size_bytes,
+                compressed_size_bytes,
+                checksum_sha256,
+                file_path,
+            )| {
                 ModelVersion {
                     version,
                     checkpoint_id,
