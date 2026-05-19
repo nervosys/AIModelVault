@@ -31,7 +31,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|c| c.as_array())
         .map(|a| a.len())
         .unwrap_or(0);
-    println!("   ✓ schema version: {}", schema.get("version").unwrap_or(&Value::Null));
+    println!(
+        "   ✓ schema version: {}",
+        schema.get("version").unwrap_or(&Value::Null)
+    );
     println!("   ✓ commands discovered: {}\n", commands);
 
     // ── Step 2 — Filter for read-only / safe commands ─────────────────────
@@ -43,8 +46,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .filter(|n| {
                 matches!(
                     *n,
-                    "list" | "versions" | "stats" | "compliance"
-                        | "search" | "lineage" | "introspect"
+                    "list"
+                        | "versions"
+                        | "stats"
+                        | "compliance"
+                        | "search"
+                        | "lineage"
+                        | "introspect"
                 )
             })
             .collect();
@@ -67,14 +75,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Step 4 — Demonstrate error-envelope handling ──────────────────────
     println!("4. Demonstrate stable error envelope on a missing model");
-    let out = aim_raw(&["get", "nonexistent-model", "/tmp/out.bin", "--format", "json"])?;
+    let out = aim_raw(&[
+        "get",
+        "nonexistent-model",
+        "/tmp/out.bin",
+        "--format",
+        "json",
+    ])?;
     let code = out.status.code().unwrap_or(-1);
     let stderr = String::from_utf8_lossy(&out.stderr);
-    println!("   ✓ exit code: {} (2 = not-found per stability contract)", code);
+    println!(
+        "   ✓ exit code: {} (2 = not-found per stability contract)",
+        code
+    );
     if let Ok(env) = serde_json::from_str::<Value>(stderr.trim()) {
         println!("   ✓ error envelope: {}", env);
     } else {
-        println!("   · stderr (first line): {}", stderr.lines().next().unwrap_or(""));
+        println!(
+            "   · stderr (first line): {}",
+            stderr.lines().next().unwrap_or("")
+        );
     }
     println!();
 

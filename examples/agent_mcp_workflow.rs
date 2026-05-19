@@ -46,11 +46,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_parameter("tags", "array", "Tags to attach", false),
         |params, _ctx| {
             let name = require_str(&params, "name")?;
-            let size = params.get("size_bytes").and_then(|v| v.as_u64()).unwrap_or(0);
+            let size = params
+                .get("size_bytes")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
             let tags: Vec<String> = params
                 .get("tags")
                 .and_then(|v| v.as_array())
-                .map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|s| s.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
 
             // Pretend SHA-256 — in a real tool, hash the bytes.
@@ -59,7 +66,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             STORE.with(|s| {
                 s.borrow_mut().insert(
                     name.to_string(),
-                    ModelRecord { size_bytes: size, tags: tags.clone(), sha256: sha.clone() },
+                    ModelRecord {
+                        size_bytes: size,
+                        tags: tags.clone(),
+                        sha256: sha.clone(),
+                    },
                 );
             });
 
@@ -83,15 +94,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let models: Vec<Value> = STORE.with(|s| {
                 s.borrow()
                     .iter()
-                    .map(|(name, rec)| json!({
-                        "name": name,
-                        "size_bytes": rec.size_bytes,
-                        "sha256": rec.sha256,
-                        "tags": rec.tags,
-                    }))
+                    .map(|(name, rec)| {
+                        json!({
+                            "name": name,
+                            "size_bytes": rec.size_bytes,
+                            "sha256": rec.sha256,
+                            "tags": rec.tags,
+                        })
+                    })
                     .collect()
             });
-            Ok(ToolResult::success(json!({ "models": models, "count": models.len() })))
+            Ok(ToolResult::success(
+                json!({ "models": models, "count": models.len() }),
+            ))
         },
     )?;
 
@@ -115,7 +130,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     )?;
 
-    println!("1. Registered {} MCP tools on the server:", server.list_tools().len());
+    println!(
+        "1. Registered {} MCP tools on the server:",
+        server.list_tools().len()
+    );
     for t in server.list_tools() {
         println!("   · {:<14} — {}", t.name, t.description);
     }
@@ -127,17 +145,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ctx = ToolContext::new();
 
     let plan: Vec<(&str, Value)> = vec![
-        ("vault.store", json!({
-            "name": "llama-3-8b-finetuned",
-            "size_bytes": 16_384_000_000_u64,
-            "tags": ["production", "llm", "fp16"],
-        })),
-        ("vault.store", json!({
-            "name": "llama-3-8b-experimental",
-            "size_bytes": 16_384_000_000_u64,
-            "tags": ["experimental", "llm", "fp16"],
-        })),
-        ("vault.list",   json!({})),
+        (
+            "vault.store",
+            json!({
+                "name": "llama-3-8b-finetuned",
+                "size_bytes": 16_384_000_000_u64,
+                "tags": ["production", "llm", "fp16"],
+            }),
+        ),
+        (
+            "vault.store",
+            json!({
+                "name": "llama-3-8b-experimental",
+                "size_bytes": 16_384_000_000_u64,
+                "tags": ["experimental", "llm", "fp16"],
+            }),
+        ),
+        ("vault.list", json!({})),
         ("vault.search", json!({ "tag": "production" })),
     ];
 
@@ -148,7 +172,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if result.success {
             println!("       ✓ {}", compact(&result.data));
         } else {
-            println!("       ✗ {}", result.error.as_deref().unwrap_or("unknown error"));
+            println!(
+                "       ✗ {}",
+                result.error.as_deref().unwrap_or("unknown error")
+            );
         }
     }
     println!();
