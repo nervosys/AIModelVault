@@ -338,6 +338,243 @@
           {"name": "Qdrant", "feature": "vector-db", "strengths": ["Vector similarity", "Filtering"], "weaknesses": ["External service"]},
           {"name": "LanceDB", "feature": "vector-db", "strengths": ["Columnar vectors", "Embedded"], "weaknesses": ["Newer ecosystem"]}
         ]
+      },
+      {
+        "@id": "aimv:ModelDownload",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelDownload",
+        "rdfs:comment": "Pull models from remote registries or URLs with cryptographic integrity verification.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:sources": ["huggingface", "ollama", "url"],
+        "aimv:operations": ["pull", "store_after_pull"],
+        "aimv:integrity": "SHA-256 checksum verification with optional --sha256 pin",
+        "aimv:auth": "Bearer token (for HuggingFace private repos)",
+        "aimv:cli": "aim pull <SOURCE> [-o DIR] [--sha256 HASH] [--token TOKEN] [--store] [--name NAME]"
+      },
+      {
+        "@id": "aimv:ModelSigning",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelSigning",
+        "rdfs:comment": "Sign and verify model artifacts with HMAC-SHA256 detached signatures (.sig files) for provenance.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:algorithm": "HMAC-SHA256",
+        "aimv:operations": ["sign", "verify"],
+        "aimv:signatureFile": ".sig",
+        "aimv:cli": ["aim sign <NAME> [--version V] [--key KEY] [--identity ID]", "aim verify <NAME> --signature <SIG>"]
+      },
+      {
+        "@id": "aimv:PickleScanner",
+        "@type": "rdfs:Class",
+        "rdfs:label": "PickleScanner",
+        "rdfs:comment": "Detect dangerous opcodes and execution patterns in pickle / PyTorch model files.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:detectsOpcodes": ["REDUCE", "GLOBAL", "INST", "OBJ", "NEWOBJ", "BUILD", "STACK_GLOBAL"],
+        "aimv:detectsPatterns": ["os.system", "subprocess", "eval", "exec", "__import__", "pickle.loads"],
+        "aimv:operations": ["scan_file", "scan_version"],
+        "aimv:cli": "aim scan [<NAME>] [--file PATH] [--version V] [--format text|json]"
+      },
+      {
+        "@id": "aimv:ModelDiffer",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelDiffer",
+        "rdfs:comment": "Compare two model artifacts at the tensor level with format-aware strategies.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:strategies": ["SafeTensors tensor-by-tensor", "GGUF metadata + tensor", "Generic byte-level"],
+        "aimv:operations": ["diff"],
+        "aimv:cli": "aim diff <LEFT> <RIGHT> [--format text|json]"
+      },
+      {
+        "@id": "aimv:EngineInterop",
+        "@type": "rdfs:Class",
+        "rdfs:label": "EngineInterop",
+        "rdfs:comment": "Register models with local inference engines for serving.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:engines": ["ollama", "lm-studio"],
+        "aimv:operations": ["register", "create_modelfile"],
+        "aimv:cli": "aim register <NAME> --engine <ollama|lm-studio> [--alias NAME] [--system-prompt TEXT]"
+      },
+      {
+        "@id": "aimv:Benchmarks",
+        "@type": "rdfs:Class",
+        "rdfs:label": "Benchmarks",
+        "rdfs:comment": "Persist and query benchmark scores per model version.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:operations": ["add", "show"],
+        "aimv:cli": ["aim benchmark add", "aim benchmark show"]
+      },
+      {
+        "@id": "aimv:LicenseScanner",
+        "@type": "rdfs:Class",
+        "rdfs:label": "LicenseScanner",
+        "rdfs:comment": "Detect licenses from model cards, config.json, GGUF metadata, and LICENSE files; normalize to SPDX identifiers.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:sources": ["model card", "config.json", "GGUF metadata", "LICENSE file", "README"],
+        "aimv:normalization": "SPDX",
+        "aimv:operations": ["scan_path"],
+        "aimv:cli": "aim license-scan <PATH> [--format text|json]"
+      },
+      {
+        "@id": "aimv:ModelTags",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelTags",
+        "rdfs:comment": "Tag models with labels and key-value annotations; search the vault by name, tag, or annotation.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:operations": ["add", "remove", "list", "annotate", "search"],
+        "aimv:cli": ["aim tag add", "aim tag remove", "aim tag list", "aim tag annotate", "aim search <QUERY> [--tag TAG]"]
+      },
+      {
+        "@id": "aimv:VaultBundle",
+        "@type": "rdfs:Class",
+        "rdfs:label": "VaultBundle",
+        "rdfs:comment": "Portable tar.gz vault bundle for offline export/import or migration.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:format": "tar.gz",
+        "aimv:operations": ["export", "import", "selective_export"],
+        "aimv:cli": ["aim vault-export <OUTPUT>", "aim vault-import <ARCHIVE> [TARGET]"]
+      },
+      {
+        "@id": "aimv:GarbageCollector",
+        "@type": "rdfs:Class",
+        "rdfs:label": "GarbageCollector",
+        "rdfs:comment": "Reclaim space by removing orphaned blobs and temp files; supports dry-run.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:operations": ["scan_orphans", "clean_temp", "reclaim"],
+        "aimv:cli": "aim gc [--dry-run]"
+      },
+      {
+        "@id": "aimv:TUIDashboard",
+        "@type": "rdfs:Class",
+        "rdfs:label": "TUIDashboard",
+        "rdfs:comment": "Interactive terminal UI for browsing vault contents.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:cli": "aim browse",
+        "aimv:framework": "ratatui"
+      },
+      {
+        "@id": "aimv:WebhookSystem",
+        "@type": "rdfs:Class",
+        "rdfs:label": "WebhookSystem",
+        "rdfs:comment": "HTTP notification system integrated with the event subscriber bus.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:operations": ["add", "remove", "list", "test"],
+        "aimv:hmac_signing": true,
+        "aimv:cli": ["aim webhook add --url <URL> [--secret SECRET]", "aim webhook test <ID>"]
+      },
+      {
+        "@id": "aimv:AccessControl",
+        "@type": "rdfs:Class",
+        "rdfs:label": "AccessControl",
+        "rdfs:comment": "Role-based ACL per principal with read/write/admin roles.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:roles": ["reader", "writer", "admin"],
+        "aimv:operations": ["grant", "revoke", "list", "check"],
+        "aimv:cli": ["aim acl grant <PRINCIPAL> --role <ROLE>", "aim acl revoke", "aim acl list", "aim acl check"]
+      },
+      {
+        "@id": "aimv:KMSIntegration",
+        "@type": "rdfs:Class",
+        "rdfs:label": "KMSIntegration",
+        "rdfs:comment": "Fetch passphrases and keys from external secrets managers.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:providers": ["env", "aws-secrets-manager", "azure-key-vault", "hashicorp-vault"],
+        "aimv:operations": ["fetch_secret"]
+      },
+      {
+        "@id": "aimv:ModelValidation",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ModelValidation",
+        "rdfs:comment": "Integrity validation of model versions via SHA-256 checksum probes.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:operations": ["validate", "validate_all"],
+        "aimv:cli": "aim validate <NAME> [--version V]"
+      },
+      {
+        "@id": "aimv:RetentionPolicy",
+        "@type": "rdfs:Class",
+        "rdfs:label": "RetentionPolicy",
+        "rdfs:comment": "Per-model retention rules: maximum versions, maximum age, and minimum-to-keep.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:parameters": ["max_versions", "max_age_days", "keep_minimum"],
+        "aimv:operations": ["set", "remove", "list", "apply", "apply_all"],
+        "aimv:dryRun": true,
+        "aimv:cli": ["aim policy set", "aim policy apply [--dry-run]", "aim policy apply-all"]
+      },
+      {
+        "@id": "aimv:LineageGraph",
+        "@type": "rdfs:Class",
+        "rdfs:label": "LineageGraph",
+        "rdfs:comment": "Cross-model lineage as a directed acyclic graph capturing derivation chains across distinct model names.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:edgeKinds": ["fine-tune", "distill", "quantize", "convert", "merge", "lora"],
+        "aimv:operations": ["add_edge", "show", "ancestors", "descendants"],
+        "aimv:cli": ["aim lineage-graph add --child <C> --parents <P>... --kind <KIND>", "aim lineage-graph ancestors <MODEL>"]
+      },
+      {
+        "@id": "aimv:PluginSystem",
+        "@type": "rdfs:Class",
+        "rdfs:label": "PluginSystem",
+        "rdfs:comment": "Discover, install, and uninstall plugins described by JSON manifests.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:manifestFormat": "JSON",
+        "aimv:operations": ["discover", "install", "uninstall", "list", "info"],
+        "aimv:cli": ["aim plugin discover", "aim plugin install <PATH>", "aim plugin info <ID>"]
+      },
+      {
+        "@id": "aimv:ConfigProfiles",
+        "@type": "rdfs:Class",
+        "rdfs:label": "ConfigProfiles",
+        "rdfs:comment": "Named configuration profiles with overrides and an activate/deactivate switch.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:operations": ["create", "remove", "list", "activate", "deactivate", "show"],
+        "aimv:cli": ["aim profile create <NAME>", "aim profile activate <NAME>"]
+      },
+      {
+        "@id": "aimv:QuantizationPipeline",
+        "@type": "rdfs:Class",
+        "rdfs:label": "QuantizationPipeline",
+        "rdfs:comment": "Quantization pipeline with named profiles and size-estimation utilities.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:methods": ["f32", "f16", "q8_0", "q5_k_m", "q4_k_m", "q4_0"],
+        "aimv:operations": ["set_profile", "list_profiles", "estimate_size"],
+        "aimv:cli": ["aim quantize set <MODEL> --method <METHOD>", "aim quantize estimate <MODEL> --method <METHOD>"]
+      },
+      {
+        "@id": "aimv:EvaluationHarness",
+        "@type": "rdfs:Class",
+        "rdfs:label": "EvaluationHarness",
+        "rdfs:comment": "Record, list, and compare model evaluation runs across suites and versions.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:operations": ["record", "list", "compare", "suites"],
+        "aimv:knownSuites": ["mmlu", "hellaswag", "arc", "winogrande", "truthfulqa", "gsm8k", "humaneval"],
+        "aimv:cli": ["aim eval record", "aim eval compare --versions <V1,V2>"]
+      },
+      {
+        "@id": "aimv:BackupScheduler",
+        "@type": "rdfs:Class",
+        "rdfs:label": "BackupScheduler",
+        "rdfs:comment": "Schedule automated vault backups with rotation by frequency and maximum retained backups.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:frequencies": ["daily", "weekly", "monthly", "custom"],
+        "aimv:operations": ["schedule", "list", "run", "history"],
+        "aimv:cli": ["aim backup schedule", "aim backup run [VAULT]"]
+      },
+      {
+        "@id": "aimv:VaultRegistry",
+        "@type": "rdfs:Class",
+        "rdfs:label": "VaultRegistry",
+        "rdfs:comment": "Registry of multiple vaults with an active-vault concept for session-wide switching.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:operations": ["register", "unregister", "list", "activate", "active"],
+        "aimv:cli": ["aim vaults register <NAME> <PATH>", "aim vaults activate <NAME>"]
+      },
+      {
+        "@id": "aimv:Telemetry",
+        "@type": "rdfs:Class",
+        "rdfs:label": "Telemetry",
+        "rdfs:comment": "Anonymous, opt-in telemetry that honours DO_NOT_TRACK and AIM_TELEMETRY_DISABLED.",
+        "skos:broader": "aimv:CoreConcept",
+        "aimv:optIn": true,
+        "aimv:environmentVariables": ["AIM_TELEMETRY_ENABLED", "AIM_TELEMETRY_DISABLED", "DO_NOT_TRACK"]
       }
     ]
   },

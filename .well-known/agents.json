@@ -4,8 +4,8 @@
   "project": {
     "id": "ai-model-vault",
     "name": "AI Model Vault",
-    "version": "1.5.0",
-    "description": "Encrypted AI/ML model management system with versioning, format conversion, compliance validation, RAG, MCP tools, federated sync, quantization, evaluation, backup scheduling, and multi-vault management.",
+    "version": "1.6.0",
+    "description": "Encrypted AI/ML model management system with versioning, 23+ format conversion, compliance validation (FIPS 140-3, CMMC 2.0, MITRE ATT&CK), RAG with MCP tools, federation, blockchain audit, model download (HuggingFace/Ollama/URL), HMAC signing & verification, pickle safety scanning, tensor-level diffing, engine interop (Ollama/LM Studio), license scanning, model tags & search, vault export/import, garbage collection, TUI dashboard, webhooks, role-based ACL, KMS integration, model validation, retention policies, cross-model lineage DAG, plugin system, config profiles, quantization pipeline, evaluation harness, backup scheduling, and multi-vault management.",
     "homepage": "https://github.com/nervosys/AIModelVault",
     "documentation": "https://github.com/nervosys/AIModelVault/tree/master/docs",
     "license": "AGPL-3.0-or-later",
@@ -58,10 +58,10 @@
     },
     {
       "type": "mcp",
-      "description": "Model Context Protocol server with 4 built-in tools and extensible tool registry.",
+      "description": "Model Context Protocol server with built-in tools spanning vault lifecycle, model conversion, signing, scanning, diffing, quantization, evaluation, backup, multi-vault, RAG, ACL, policies, lineage-graph, plugins, profiles, webhooks, GC, validation, and license scanning. Extensible via ToolRegistry.",
       "protocol_version": "2024-11-05",
       "manifest": ".well-known/mcp-manifest.json",
-      "builtin_tools": ["search_documents", "add_document", "chunk_text", "execute_rule"],
+      "builtin_tools": ["search_documents", "add_document", "chunk_text", "execute_rule", "vault_init", "vault_store", "vault_get", "vault_list", "vault_versions", "vault_lineage", "vault_stats", "model_convert", "model_analyze", "model_deduplicate", "model_sign", "model_verify", "model_scan", "model_diff", "model_validate", "model_pull", "license_scan", "tag_add", "tag_remove", "tag_list", "model_search", "quant_set", "quant_estimate", "quant_list", "eval_record", "eval_list", "eval_compare", "backup_schedule", "backup_run", "backup_history", "vaults_register", "vaults_activate", "vaults_list", "policy_set", "policy_apply", "lineage_graph_add", "lineage_graph_show", "plugin_install", "plugin_list", "profile_create", "profile_activate", "webhook_add", "webhook_test", "acl_grant", "acl_check", "gc_run", "compliance_check", "cloud_push", "cloud_pull", "cloud_list"],
       "extensible": true
     },
     {
@@ -179,12 +179,98 @@
     "multi_vault": {
       "description": "Multi-vault registry for managing and switching between multiple vaults",
       "commands": ["aim vaults register", "aim vaults unregister", "aim vaults list", "aim vaults activate", "aim vaults active"]
+    },
+    "model_download": {
+      "description": "Download models from HuggingFace Hub, Ollama registry, or arbitrary URLs with SHA-256 verification",
+      "commands": ["aim pull"],
+      "sources": ["huggingface", "ollama", "url"],
+      "integrity": "SHA-256 verification"
+    },
+    "model_signing": {
+      "description": "HMAC-SHA256 signatures with detached .sig files for provenance",
+      "commands": ["aim sign", "aim verify"],
+      "algorithm": "HMAC-SHA256"
+    },
+    "safety_scanning": {
+      "description": "Detect dangerous pickle opcodes and patterns in PyTorch/pickle files",
+      "commands": ["aim scan"],
+      "detects": ["REDUCE", "GLOBAL", "INST", "OBJ", "NEWOBJ", "BUILD", "eval/exec patterns"]
+    },
+    "model_diffing": {
+      "description": "Compare model versions at the tensor level (SafeTensors, GGUF, generic byte-level)",
+      "commands": ["aim diff"]
+    },
+    "engine_interop": {
+      "description": "Register models with local inference engines",
+      "commands": ["aim register"],
+      "engines": ["ollama", "lm-studio"]
+    },
+    "benchmarks": {
+      "description": "Store and query benchmark results per model version",
+      "commands": ["aim benchmark add", "aim benchmark show"]
+    },
+    "license_scanning": {
+      "description": "Detect licenses from model cards, config.json, GGUF metadata, LICENSE files (SPDX-normalized)",
+      "commands": ["aim license-scan"]
+    },
+    "tags_and_search": {
+      "description": "Tag models with labels and annotations, search by name/tags/annotations",
+      "commands": ["aim tag add", "aim tag remove", "aim tag list", "aim tag annotate", "aim search"]
+    },
+    "vault_bundle": {
+      "description": "Portable tar.gz vault bundles with selective model export",
+      "commands": ["aim vault-export", "aim vault-import"]
+    },
+    "garbage_collection": {
+      "description": "Orphaned blob detection, temp file cleanup, and space reclaim with dry-run support",
+      "commands": ["aim gc"]
+    },
+    "tui_dashboard": {
+      "description": "Terminal UI dashboard for browsing vault contents",
+      "commands": ["aim browse"]
+    },
+    "webhooks": {
+      "description": "HTTP notification system integrated with the EventSubscriber bus",
+      "commands": ["aim webhook add", "aim webhook remove", "aim webhook list", "aim webhook test"]
+    },
+    "access_control": {
+      "description": "Role-based access control (Reader/Writer/Admin) per principal",
+      "commands": ["aim acl grant", "aim acl revoke", "aim acl list", "aim acl check"],
+      "roles": ["reader", "writer", "admin"]
+    },
+    "kms_integration": {
+      "description": "Fetch secrets from external secrets managers",
+      "providers": ["env", "aws-secrets-manager", "azure-key-vault", "hashicorp-vault"]
+    },
+    "model_validation": {
+      "description": "Integrity probes with SHA-256 checksums per model version",
+      "commands": ["aim validate"]
+    },
+    "retention_policies": {
+      "description": "Configurable max versions/age/minimum with dry-run enforcement",
+      "commands": ["aim policy set", "aim policy remove", "aim policy list", "aim policy apply", "aim policy apply-all"]
+    },
+    "lineage_graph": {
+      "description": "Cross-model lineage as a directed acyclic graph tracking derivation chains",
+      "commands": ["aim lineage-graph add", "aim lineage-graph show", "aim lineage-graph ancestors", "aim lineage-graph descendants"]
+    },
+    "plugin_system": {
+      "description": "Discover, install, uninstall plugins with JSON manifests",
+      "commands": ["aim plugin discover", "aim plugin install", "aim plugin uninstall", "aim plugin list", "aim plugin info"]
+    },
+    "config_profiles": {
+      "description": "Named configuration profiles with activate/deactivate switching",
+      "commands": ["aim profile create", "aim profile remove", "aim profile list", "aim profile activate", "aim profile deactivate", "aim profile show"]
+    },
+    "telemetry": {
+      "description": "Anonymous, opt-in telemetry honouring DO_NOT_TRACK and AIM_TELEMETRY_DISABLED",
+      "environment": ["AIM_TELEMETRY_ENABLED", "AIM_TELEMETRY_DISABLED", "DO_NOT_TRACK"]
     }
   },
 
   "taxonomy": {
     "domain": "MLOps / AI Infrastructure",
-    "subdomain": ["Model Management", "Model Security", "Model Versioning", "Format Conversion", "Compliance", "RAG", "Edge Deployment"],
+    "subdomain": ["Model Management", "Model Security", "Model Versioning", "Format Conversion", "Compliance", "RAG", "Edge Deployment", "Quantization", "Model Evaluation", "Backup & Recovery", "Multi-Vault Operations", "Model Provenance", "Supply-Chain Security"],
     "related_projects": ["MLflow", "DVC", "Weights & Biases", "Hugging Face Hub", "ONNX Runtime", "llama.cpp"],
     "use_cases": [
       "Secure model storage for regulated industries (defense, healthcare, finance)",

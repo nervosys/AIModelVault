@@ -1,6 +1,34 @@
 # AGENTS.md — AI Agent Discovery Guide
 
 > Machine-readable project context for AI agents, LLM assistants, and automated tools.
+> AI Model Vault is **designed agent-first** — every capability is reachable from CLI, REST/GraphQL, and MCP, all derived from a single introspectable schema.
+
+## Bootstrap in three commands
+
+```bash
+# 1. Get the full CLI schema (commands, flags, types, examples)
+aim introspect --format json
+
+# 2. List the 86 MCP tools (JSON Schema inputs)
+cat .well-known/mcp-manifest.json | jq '.tools[] | {name, description}'
+
+# 3. List the 53 REST endpoints
+cat .well-known/openapi.yaml | grep -E '^  /api/v1/'
+```
+
+That is the minimum surface needed to plan a task. Everything else in this file is reference material.
+
+## Stability contract
+
+| Guarantee         | Detail                                                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| JSON output       | Every read subcommand accepts `--format json`. Schemas evolve with semver; breaking changes bump the major version of `ai-model-vault`. |
+| Exit codes        | `0` success · `1` user error · `2` not found · `3` integrity / verification failure · `4` permission denied                             |
+| Idempotent reads  | `list`, `get`, `search`, `versions`, `lineage`, `stats`, `compliance`, `introspect`, every `*/show` and `*/list` are side-effect free   |
+| Destructive gates | `delete`, `policy apply`, `gc`, `vault-import` either require explicit names or accept `--dry-run`                                      |
+| Error envelope    | Errors emit JSON `{ "code": "...", "message": "...", "hint": "..." }` on stderr; never bare strings                                     |
+| No surprise I/O   | The CLI never makes network calls except `aim pull`, `aim cloud *`, and opt-in telemetry (off by default; honors `DO_NOT_TRACK=1`)      |
+| URI scheme        | `aimv://vault/model@version` resolves through any of the three surfaces                                                                 |
 
 ## Project Identity
 

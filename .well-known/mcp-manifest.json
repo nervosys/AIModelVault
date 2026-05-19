@@ -1,8 +1,8 @@
 {
   "$schema": "https://modelcontextprotocol.io/schema/tools.json",
   "name": "ai-model-vault",
-  "version": "1.5.0",
-  "description": "MCP tool manifest for AI Model Vault — encrypted AI/ML model management with versioning, conversion, compliance, RAG, quantization, evaluation, backup scheduling, and multi-vault management.",
+  "version": "1.6.0",
+  "description": "MCP tool manifest for AI Model Vault — encrypted AI/ML model management with versioning, conversion, compliance, RAG, signing, scanning, diffing, license scanning, tagging, quantization, evaluation, backup scheduling, multi-vault, policies, plugins, profiles, webhooks, ACL, validation, GC, and lineage-graph tools.",
   "protocol_version": "2024-11-05",
   "capabilities": {
     "tools": true,
@@ -386,6 +386,698 @@
           }
         },
         "required": ["path", "query"]
+      }
+    },
+    {
+      "name": "model_pull",
+      "description": "Download a model from HuggingFace, Ollama, or a URL. Optionally verify SHA-256 and store in the vault.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": {"type": "string", "description": "huggingface://owner/repo, ollama://name, or https://url"},
+          "output_dir": {"type": "string", "description": "Directory to download into"},
+          "sha256": {"type": "string", "description": "Expected SHA-256 of the downloaded artifact"},
+          "token": {"type": "string", "description": "Bearer token for private HuggingFace repos"},
+          "store": {"type": "boolean", "description": "Also store the downloaded model in the vault"},
+          "name": {"type": "string", "description": "Vault model name when --store is used"}
+        },
+        "required": ["source"]
+      }
+    },
+    {
+      "name": "model_sign",
+      "description": "Generate an HMAC-SHA256 signature for a stored model or arbitrary file. Writes a detached .sig file.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "description": "Vault model name"},
+          "version": {"type": "number", "description": "Specific version (defaults to latest)"},
+          "key": {"type": "string", "description": "HMAC key (or via KMS)"},
+          "identity": {"type": "string", "description": "Signer identity recorded in the signature"},
+          "file": {"type": "string", "description": "Alternate file path to sign instead of vault content"}
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "model_verify",
+      "description": "Verify an HMAC-SHA256 signature against a model or file.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "description": "Vault model name"},
+          "signature": {"type": "string", "description": "Path to .sig file"},
+          "key": {"type": "string", "description": "HMAC key"},
+          "file": {"type": "string", "description": "Alternate file path to verify"}
+        },
+        "required": ["name", "signature"]
+      }
+    },
+    {
+      "name": "model_scan",
+      "description": "Scan a pickle / PyTorch file for dangerous opcodes (REDUCE, GLOBAL, INST, BUILD) and exploit patterns (os.system, eval, exec).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "description": "Vault model name (optional if file is provided)"},
+          "file": {"type": "string", "description": "External file path to scan"},
+          "version": {"type": "number", "description": "Specific version to scan"},
+          "format": {"type": "string", "enum": ["text", "json"], "default": "text"}
+        }
+      }
+    },
+    {
+      "name": "model_diff",
+      "description": "Diff two models at the tensor level. Inputs may be file paths or `name@version` references.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "left": {"type": "string", "description": "File path or name@version"},
+          "right": {"type": "string", "description": "File path or name@version"},
+          "format": {"type": "string", "enum": ["text", "json"], "default": "text"}
+        },
+        "required": ["left", "right"]
+      }
+    },
+    {
+      "name": "model_validate",
+      "description": "Validate the SHA-256 integrity of one or all versions of a model.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "version": {"type": "number"}
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "model_register",
+      "description": "Register a model with a local inference engine (Ollama or LM Studio).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "description": "Vault model name"},
+          "engine": {"type": "string", "enum": ["ollama", "lm-studio"]},
+          "version": {"type": "number"},
+          "alias": {"type": "string"},
+          "system_prompt": {"type": "string"}
+        },
+        "required": ["name", "engine"]
+      }
+    },
+    {
+      "name": "license_scan",
+      "description": "Detect licenses from model cards, config.json, GGUF metadata, or LICENSE files. Returns SPDX identifiers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "Directory or file to scan"},
+          "format": {"type": "string", "enum": ["text", "json"], "default": "text"}
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "tag_add",
+      "description": "Add one or more tags to a model.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "tags": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["model", "tags"]
+      }
+    },
+    {
+      "name": "tag_remove",
+      "description": "Remove tags from a model.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "tags": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["model", "tags"]
+      }
+    },
+    {
+      "name": "tag_list",
+      "description": "List all tags on a model.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"model": {"type": "string"}},
+        "required": ["model"]
+      }
+    },
+    {
+      "name": "tag_annotate",
+      "description": "Attach a key-value annotation to a model.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "key": {"type": "string"},
+          "value": {"type": "string"}
+        },
+        "required": ["model", "key", "value"]
+      }
+    },
+    {
+      "name": "model_search",
+      "description": "Search vault models by name substring, tag, and/or annotation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {"type": "string"},
+          "tag": {"type": "string"},
+          "format": {"type": "string", "enum": ["text", "json"], "default": "text"}
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "vault_export",
+      "description": "Export the active vault as a portable tar.gz bundle.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"output": {"type": "string"}},
+        "required": ["output"]
+      }
+    },
+    {
+      "name": "vault_import",
+      "description": "Import a vault bundle (tar.gz) into the target directory.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "archive": {"type": "string"},
+          "target": {"type": "string"}
+        },
+        "required": ["archive"]
+      }
+    },
+    {
+      "name": "gc_run",
+      "description": "Run garbage collection: prune orphaned blobs and stale temp files. Use dry_run to preview.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"dry_run": {"type": "boolean", "default": false}}
+      }
+    },
+    {
+      "name": "webhook_add",
+      "description": "Register a webhook target with optional HMAC secret.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {"type": "string", "format": "uri"},
+          "secret": {"type": "string"}
+        },
+        "required": ["url"]
+      }
+    },
+    {
+      "name": "webhook_remove",
+      "description": "Remove a webhook target by ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "webhook_list",
+      "description": "List all registered webhooks.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "webhook_test",
+      "description": "Send a test payload to a webhook to validate connectivity.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "acl_grant",
+      "description": "Grant a role (reader/writer/admin) to a principal.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "principal": {"type": "string"},
+          "role": {"type": "string", "enum": ["reader", "writer", "admin"]}
+        },
+        "required": ["principal", "role"]
+      }
+    },
+    {
+      "name": "acl_revoke",
+      "description": "Revoke all access for a principal.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"principal": {"type": "string"}},
+        "required": ["principal"]
+      }
+    },
+    {
+      "name": "acl_list",
+      "description": "List all ACL entries.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "acl_check",
+      "description": "Check whether a principal has a given role.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "principal": {"type": "string"},
+          "role": {"type": "string", "enum": ["reader", "writer", "admin"]}
+        },
+        "required": ["principal", "role"]
+      }
+    },
+    {
+      "name": "policy_set",
+      "description": "Define a retention policy on a model (max versions, max age, keep minimum).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "max_versions": {"type": "number"},
+          "max_age_days": {"type": "number"},
+          "keep_minimum": {"type": "number"}
+        },
+        "required": ["model"]
+      }
+    },
+    {
+      "name": "policy_remove",
+      "description": "Remove the retention policy for a model.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"model": {"type": "string"}},
+        "required": ["model"]
+      }
+    },
+    {
+      "name": "policy_list",
+      "description": "List all retention policies.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "policy_apply",
+      "description": "Apply the retention policy for a single model (dry-run supported).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "dry_run": {"type": "boolean", "default": false}
+        },
+        "required": ["model"]
+      }
+    },
+    {
+      "name": "policy_apply_all",
+      "description": "Apply retention policies for all models with a policy.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"dry_run": {"type": "boolean", "default": false}}
+      }
+    },
+    {
+      "name": "lineage_graph_add",
+      "description": "Record a derivation edge in the cross-model lineage DAG.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "child": {"type": "string"},
+          "parents": {"type": "array", "items": {"type": "string"}},
+          "kind": {"type": "string", "enum": ["fine-tune", "distill", "quantize", "convert", "merge", "lora"]}
+        },
+        "required": ["child", "parents", "kind"]
+      }
+    },
+    {
+      "name": "lineage_graph_show",
+      "description": "Return the full cross-model lineage graph.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "lineage_graph_ancestors",
+      "description": "List ancestors of a model in the lineage DAG.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"model": {"type": "string"}},
+        "required": ["model"]
+      }
+    },
+    {
+      "name": "lineage_graph_descendants",
+      "description": "List descendants of a model in the lineage DAG.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"model": {"type": "string"}},
+        "required": ["model"]
+      }
+    },
+    {
+      "name": "plugin_discover",
+      "description": "Scan for installable plugins on the local filesystem.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "plugin_install",
+      "description": "Install a plugin from a JSON manifest path.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"path": {"type": "string"}},
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "plugin_uninstall",
+      "description": "Uninstall a plugin by ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "plugin_list",
+      "description": "List installed plugins.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "plugin_info",
+      "description": "Show details for an installed plugin.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"]
+      }
+    },
+    {
+      "name": "profile_create",
+      "description": "Create a configuration profile with optional overrides.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "overrides": {"type": "object", "additionalProperties": {"type": "string"}}
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "profile_remove",
+      "description": "Remove a configuration profile.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "profile_list",
+      "description": "List all configuration profiles.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "profile_activate",
+      "description": "Activate a configuration profile by name.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "profile_deactivate",
+      "description": "Clear the active configuration profile.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "profile_show",
+      "description": "Show the active configuration profile.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "quant_set",
+      "description": "Set or update a quantization profile for a model version.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "version": {"type": "number"},
+          "method": {"type": "string", "enum": ["f32", "f16", "q8_0", "q5_k_m", "q4_k_m", "q4_0"]},
+          "bits": {"type": "number"}
+        },
+        "required": ["model", "method"]
+      }
+    },
+    {
+      "name": "quant_remove",
+      "description": "Remove a quantization profile.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "version": {"type": "number"}
+        },
+        "required": ["model"]
+      }
+    },
+    {
+      "name": "quant_list",
+      "description": "List quantization profiles (optionally filtered by model).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"model": {"type": "string"}}
+      }
+    },
+    {
+      "name": "quant_estimate",
+      "description": "Estimate the byte size after quantizing a model with a given method.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "method": {"type": "string", "enum": ["f32", "f16", "q8_0", "q5_k_m", "q4_k_m", "q4_0"]}
+        },
+        "required": ["model", "method"]
+      }
+    },
+    {
+      "name": "eval_record",
+      "description": "Record an evaluation run with one or more metrics.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "version": {"type": "number"},
+          "suite": {"type": "string"},
+          "metric": {"type": "string"},
+          "score": {"type": "number"}
+        },
+        "required": ["model", "suite", "metric", "score"]
+      }
+    },
+    {
+      "name": "eval_list",
+      "description": "List evaluation runs for a model, optionally filtered by version or suite.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "version": {"type": "number"},
+          "suite": {"type": "string"},
+          "format": {"type": "string", "enum": ["text", "json"], "default": "text"}
+        },
+        "required": ["model"]
+      }
+    },
+    {
+      "name": "eval_compare",
+      "description": "Compare two or more versions of a model across recorded evaluation runs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "versions": {"type": "array", "items": {"type": "number"}},
+          "format": {"type": "string", "enum": ["text", "json"], "default": "text"}
+        },
+        "required": ["model", "versions"]
+      }
+    },
+    {
+      "name": "eval_suites",
+      "description": "List known evaluation suites (mmlu, hellaswag, arc, …).",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "backup_schedule",
+      "description": "Schedule a recurring vault backup (daily, weekly, monthly, or custom).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "vault": {"type": "string"},
+          "interval": {"type": "string", "enum": ["daily", "weekly", "monthly", "custom"]},
+          "hour": {"type": "number"}
+        },
+        "required": ["vault", "interval"]
+      }
+    },
+    {
+      "name": "backup_list",
+      "description": "List all backup schedules.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "backup_run",
+      "description": "Run an immediate backup of a vault (or all scheduled vaults if vault is omitted).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"vault": {"type": "string"}}
+      }
+    },
+    {
+      "name": "backup_history",
+      "description": "Show backup history, optionally filtered by vault.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "vault": {"type": "string"},
+          "format": {"type": "string", "enum": ["text", "json"], "default": "text"}
+        }
+      }
+    },
+    {
+      "name": "vaults_register",
+      "description": "Register a vault by name and path in the multi-vault registry.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "path": {"type": "string"}
+        },
+        "required": ["name", "path"]
+      }
+    },
+    {
+      "name": "vaults_unregister",
+      "description": "Unregister a vault by name.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "vaults_list",
+      "description": "List all registered vaults.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "vaults_activate",
+      "description": "Switch the active vault.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "vaults_active",
+      "description": "Show the currently active vault.",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "benchmark_add",
+      "description": "Record a benchmark score for a model version.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "version": {"type": "number"},
+          "benchmark": {"type": "string"},
+          "score": {"type": "number"},
+          "unit": {"type": "string"}
+        },
+        "required": ["name", "version", "benchmark", "score", "unit"]
+      }
+    },
+    {
+      "name": "benchmark_show",
+      "description": "Show benchmark scores for a model.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "version": {"type": "number"},
+          "format": {"type": "string", "enum": ["text", "json"], "default": "text"}
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "card_create",
+      "description": "Create a model card for a stored model.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "template": {"type": "string"}
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "card_show",
+      "description": "Retrieve a model card.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "format": {"type": "string", "enum": ["json", "yaml", "markdown"], "default": "json"}
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "card_validate",
+      "description": "Validate a model card against the schema.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "cloud_list",
+      "description": "List models stored on a cloud provider.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {"type": "string", "enum": ["s3", "azure", "gcs"]},
+          "bucket": {"type": "string"}
+        },
+        "required": ["provider", "bucket"]
+      }
+    },
+    {
+      "name": "introspect",
+      "description": "Return the full CLI schema (commands, options, examples) for agent bootstrapping.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "format": {"type": "string", "enum": ["json", "yaml", "jsonld"], "default": "json"},
+          "compact": {"type": "boolean", "default": false}
+        }
       }
     }
   ],

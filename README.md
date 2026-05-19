@@ -1,1144 +1,609 @@
 # AI Model Vault
 
-> Universal cross-platform secure vault for AI model storage, versioning, and management with military-grade encryption and comprehensive utilities.
+> Universal cross-platform encrypted vault for AI/ML model storage, versioning, conversion, and lifecycle management — **agent-first by design**, military-grade security, 23+ formats, 29 production features.
 
 [![Rust](https://img.shields.io/badge/rust-1.89%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![Tests](https://img.shields.io/badge/tests-2%2C059%20passing-brightgreen.svg)](reports/TEST_COVERAGE.md)
+[![CMMC](https://img.shields.io/badge/CMMC-2.0%20Level%202-green.svg)](docs/SECURITY_HARDENING.md)
+[![Tests](https://img.shields.io/badge/tests-2%2C026%2B%20passing-brightgreen.svg)](reports/)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
 [![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](CHANGELOG.md)
-[![Docs](https://img.shields.io/badge/docs-website-blue.svg)](website/)
+[![Clippy](https://img.shields.io/badge/clippy-clean-brightgreen.svg)](validate.ps1)
+[![Agent-ready](https://img.shields.io/badge/agent--ready-AGENTS.md-blueviolet.svg)](AGENTS.md)
 
-A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models with support for 23+ formats, version control, model signing, safety scanning, and comprehensive utilities.
-
-## Quick Links
-
-|                                                  |                                                 |                                         |
-| ------------------------------------------------ | ----------------------------------------------- | --------------------------------------- |
-| [Top 10 Features](#-top-10-features-users-love)  | [Quick Start](#-quick-start)                    | [CLI Reference](docs/CLI.md)            |
-| [Feature Comparison](#-quick-feature-comparison) | [Documentation](#-documentation)                | [Cloud Storage](docs/CLOUD_STORAGE.md)  |
-| [Supported Formats](#-supported-model-formats)   | [Security & Compliance](#-security--compliance) | [RAG & MCP Tools](docs/RAG.md)          |
-| [Architecture](#architecture)                    | [Testing & Quality](#-testing--quality)         | [Performance](#-performance-benchmarks) |
-| [Model Cards](docs/MODEL_CARDS.md)               | [Version Control](docs/VERSION_CONTROL.md)      | [Contributing](#-contributing)          |
-
-## ✨ Top 10 Features Users Love
-
-### 1. 🔐 Military-Grade Security (FIPS 140-3)
-
-**Why it matters**: Your AI models are valuable IP that needs protection
-- AES-256-GCM encryption with Argon2id key derivation
-- CMMC 2.0 Level 2 certified for defense contractors
-- CVE scanning and MITRE ATT&CK framework compliance
-- Comprehensive audit logging for compliance
-
-### 2. 🎯 Universal Format Support (23+ Formats)
-
-**Why it matters**: Works with any AI model, any framework
-- **LLM Formats**: Safetensors, GGUF, PyTorch, TensorRT, ONNX, MLX, Core ML, TorchScript, TFLite
-- **General DL**: TensorFlow, Keras, OpenVINO, TVM, NCNN, MNN, RKNN
-- **Legacy**: Caffe, MXNet, Darknet
-- **Data**: HDF5, Pickle, NumPy
-- **Automatic format detection** - no configuration needed
-- See: [Providers & Formats Guide](docs/PROVIDERS_FORMATS.md) | [Quick Ref](docs/PROVIDERS_FORMATS_QUICKREF.md)
-
-### 3. 🕐 Version Control & Time Travel
-
-**Why it matters**: Never lose a training checkpoint again
-- **Complete version history** with automatic checksums
-- **Lineage tracking** shows evolution of your models (parent-child relationships)
-- **Branching support** for parallel experimentation (A/B testing)
-- **Roll back to any version instantly** - no re-training needed
-- **Compare versions** with detailed diffs and metadata evolution
-- **Cleanup policies** to manage storage (keep last N, time-based, etc.)
-- **Time travel** - load any historical checkpoint on demand
-- See: [Version Control Demo](#version-control-demo)
-
-### 4. 🛠️ Model Utilities Suite (8 Tools)
-
-**Why it matters**: Everything you need for model management
-- **Archive/Extract**: Backup models to TAR/ZIP with one command
-- **Deduplication**: Find and remove duplicate models (saves storage)
-- **Analysis**: Get size, parameters, compression ratios instantly
-- **Export**: Share models with JSON metadata included
-- **Caching**: LRU cache for 10x faster repeated access
-- **Quantization Tracking**: Monitor FP32→INT8→Q4_0 conversions
-- **Pruning Info**: Track sparsity and compression gains
-- **Compression Analysis**: Predict compression ratios by format
-
-### 5. 🤖 RAG & AI Agent Integration
-
-**Why it matters**: Build intelligent systems with your models
-- Document store with vector embeddings for semantic search
-- Knowledge base with automatic text chunking
-- Model Context Protocol (MCP) for tool execution
-- 4 built-in RAG tools + custom tool support
-- Rule engine for business logic and automation
-
-### 6. 💻 CLI + Library API (Dual Interface)
-
-**Why it matters**: Use it your way - command line or code
-- **42+ CLI Commands**: `aim store`, `aim get`, `aim pull`, `aim sign`, `aim scan`, `aim diff`, `aim tag`, `aim browse`, `aim quantize`, `aim eval`, etc.
-- **Full Rust API**: Complete programmatic control
-- **Scriptable**: Automate workflows with bash/PowerShell
-- **Interactive**: Quick operations from terminal
-
-### 7. ⚡ Performance Optimization
-
-**Why it matters**: Fast operations even with multi-GB models
-- LRU caching for frequently accessed models
-- Smart compression (gzip/LZMA) reduces storage by 50-90%
-- Streaming operations for large files
-- Format-specific optimization recommendations
-
-### 8. 🌍 Cross-Platform Support + XDG Compliance
-
-**Why it matters**: One tool for all your machines, organized properly
-- Windows, Linux, macOS fully supported
-- **100% XDG Base Directory compliant** (9/9 checks passed)
-- Config, data, and cache properly separated
-- Respects XDG environment variables
-- User-specific directories (no root/admin needed)
-- Secure permissions (0700 on Unix, ACLs on Windows)
-- See: [XDG Compliance Guide](docs/XDG_COMPLIANCE.md) | [Quick Ref](docs/XDG_QUICKREF.md)
-
-### 9. 📊 Model Analysis & Insights
-
-**Why it matters**: Understand your models at a glance
-- Human-readable sizes (7.5 GB, not 8053063680 bytes)
-- Parameter counting (7B, 13B, 70B)
-- Compression effectiveness scoring
-- Framework and task auto-detection
-- Storage optimization recommendations
-
-### 10. 🔄 Production-Ready Reliability
-
-**Why it matters**: Trust it with your most important models
-- 1,932 comprehensive tests (100% passing)
-- Type-safe Rust implementation (no memory bugs)
-- Comprehensive error handling
-- Detailed logging and debugging support
-- Battle-tested cryptography libraries
+A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models. Every capability is exposed through **three parallel surfaces — CLI, REST/GraphQL, and MCP** — with a single source of truth (`aim introspect`) and self-describing manifests in [`.well-known/`](.well-known/). Built for autonomous agents, scriptable for CI, friendly for humans.
 
 ---
 
-## 🎯 Quick Feature Comparison
+## For AI Agents — Read This First
 
-| Feature                   | Status     | CLI                   | Library API |
-| ------------------------- | ---------- | --------------------- | ----------- |
-| Encryption (AES-256-GCM)  | ✅ Complete | ✅                     | ✅           |
-| 23+ Format Support        | ✅ Complete | ✅                     | ✅           |
-| Version Control           | ✅ Complete | ✅                     | ✅           |
-| Model Cards               | ✅ Complete | ✅ 8 commands          | ✅           |
-| Model Utilities (8 tools) | ✅ Complete | ✅                     | ✅           |
-| RAG & MCP Tools           | ✅ Complete | ⚠️ Partial             | ✅           |
-| Cloud Storage             | ✅ Complete | ✅ 4 commands          | ✅           |
-| Format Conversion         | ✅ Complete | ✅                     | ✅           |
-| REST API (Axum + JWT)     | ✅ Complete | ✅ `aim serve`         | ✅           |
-| GraphQL API               | ✅ Complete | —                     | ✅           |
-| Streaming Encryption      | ✅ Complete | ✅ Auto                | ✅           |
-| SQLite Version Backend    | ✅ Complete | ✅ Flag                | ✅           |
-| Blockchain Audit Trail    | ✅ Complete | —                     | ✅           |
-| Federated Vault Sync      | ✅ Complete | —                     | ✅           |
-| GPU Encryption (OpenCL)   | ✅ Complete | ✅ Auto                | ✅           |
-| Python Bindings (PyO3)    | ✅ Complete | —                     | ✅           |
-| Model Download            | ✅ Complete | ✅ `aim pull`          | ✅           |
-| Model Signing             | ✅ Complete | ✅ `aim sign`          | ✅           |
-| Pickle Scanning           | ✅ Complete | ✅ `aim scan`          | ✅           |
-| Model Diffing             | ✅ Complete | ✅ `aim diff`          | ✅           |
-| Engine Interop            | ✅ Complete | ✅ `aim register`      | ✅           |
-| Benchmark Metadata        | ✅ Complete | ✅ `aim benchmark`     | ✅           |
-| License Scanning          | ✅ Complete | ✅ `aim license-scan`  | ✅           |
-| Model Tags & Search       | ✅ Complete | ✅ `aim tag`           | ✅           |
-| Vault Export/Import       | ✅ Complete | ✅ `aim vault-export`  | ✅           |
-| Garbage Collection        | ✅ Complete | ✅ `aim gc`            | ✅           |
-| TUI Dashboard             | ✅ Complete | ✅ `aim browse`        | ✅           |
-| Webhooks                  | ✅ Complete | ✅ `aim webhook`       | ✅           |
-| Access Control            | ✅ Complete | ✅ `aim acl`           | ✅           |
-| KMS Integration           | ✅ Complete | —                     | ✅           |
-| Model Validation          | ✅ Complete | ✅ `aim validate`      | ✅           |
-| Retention Policies        | ✅ Complete | ✅ `aim policy`        | ✅           |
-| Cross-Model Lineage DAG   | ✅ Complete | ✅ `aim lineage-graph` | ✅           |
-| Plugin System             | ✅ Complete | ✅ `aim plugin`        | ✅           |
-| Config Profiles           | ✅ Complete | ✅ `aim profile`       | ✅           |
-| Cross-Platform            | ✅ Complete | ✅                     | ✅           |
-| LRU Caching               | ✅ Complete | ⚠️ Info only           | ✅           |
-| Compression               | ✅ Complete | ✅                     | ✅           |
+If you are an LLM agent, IDE assistant, or automation pipeline, **start here** instead of scanning the rest of this README.
+
+### One-line bootstrap
+
+```bash
+aim introspect --format json          # entire CLI schema, machine-readable
+```
+
+### Discovery surface (all in [.well-known/](.well-known/))
+
+| File                                                 | Purpose                                                           |
+| ---------------------------------------------------- | ----------------------------------------------------------------- |
+| [`agents.json`](.well-known/agents.json)             | Capability catalog (29 features), taxonomy, interface inventory   |
+| [`mcp-manifest.json`](.well-known/mcp-manifest.json) | **86 MCP tools** with full JSON Schema inputs, resources, prompts |
+| [`openapi.yaml`](.well-known/openapi.yaml)           | OpenAPI 3.1 — **53 REST endpoints** across 20 tag groups          |
+| [`ontology.jsonld`](.well-known/ontology.jsonld)     | JSON-LD ontology — every concept, class, and relationship         |
+| [`ai-plugin.json`](.well-known/ai-plugin.json)       | OpenAI-compatible plugin manifest cross-linking the above         |
+| [`AGENTS.md`](AGENTS.md)                             | Canonical project context — features, CLI cheat sheet, layout     |
+
+### Canonical agent integration pattern
+
+```bash
+# 1. Discover — get every command, flag, type
+aim introspect --format jsonld > schema.jsonld
+
+# 2. Speak any surface
+aim <subcommand> --format json        # local CLI, JSON out
+curl  http://host:8080/api/v1/...     # REST (see openapi.yaml)
+# or call MCP tools from mcp-manifest.json over your MCP client
+```
+
+### Stability contract for agents
+
+- **JSON output:** every read-style subcommand accepts `--format json`. Output schema versioned alongside the crate.
+- **Exit codes:** `0` success · `1` user error · `2` not found · `3` integrity / verification failure · `4` permission denied. Non-zero ⇒ failure, always.
+- **Idempotent reads:** `list`, `get`, `search`, `versions`, `lineage`, `stats`, `compliance`, `introspect`, `*/show`, `*/list` are side-effect free.
+- **Destructive ops gated:** `delete`, `policy apply`, `gc`, `vault-import` accept `--dry-run` (where applicable) or require an explicit name argument.
+- **Self-describing errors:** error JSON includes `code`, `message`, and `hint`; never just a string.
+- **URIs:** Vault resources are addressable via the [`aimv://`](docs/UTILITIES.md) scheme — agents can pass `aimv://vault/model@version` between tools.
+- **No surprise network:** the CLI never phones home except `aim pull` (explicit), `aim cloud` (explicit), and opt-in telemetry (off by default; honors `DO_NOT_TRACK=1`).
+
+### Three-surface coverage matrix
+
+Every one of the 29 features in [AGENTS.md](AGENTS.md) is reachable from **all three** of: CLI subcommand, REST endpoint, and MCP tool. See the parity table in [agents.json](.well-known/agents.json) for the precise mapping.
 
 ---
 
-## ☁️ Cloud Storage Support
+## Table of Contents
 
-**Store and sync your models across AWS S3, Azure Blob Storage, and Google Cloud Storage with CLI commands**
-
-### Supported Providers
-
-- **AWS S3**: Industry-standard object storage ✅
-- **Azure Blob Storage**: Microsoft Azure cloud storage ✅
-- **Google Cloud Storage**: GCP cloud storage ⚠️ (temporarily disabled for security)
-
-### CLI Commands
-
-```bash
-# Configure credentials
-aim cloud config --provider s3 --show
-
-# Push model to cloud
-aim cloud push gpt2-finetuned --provider s3 --bucket my-models
-
-# List cloud models
-aim cloud list --provider s3 --bucket my-models
-
-# Pull model from cloud
-aim cloud pull gpt2-finetuned --provider s3 --bucket my-models --remote-path gpt2-finetuned/safetensors/v1.vault
-```
-
-### Key Features
-
-- **End-to-end encryption**: Models encrypted before upload
-- **Multiple backends**: Mix local and cloud storage
-- **CLI integration**: Simple commands for push/pull/list
-- **Credential management**: Environment variable configuration
-- **Security**: Same AES-256-GCM encryption as local vault
-
-### Library API
-
-```rust
-use ai_model_vault::storage::{StorageConfig, StorageBackend};
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Configure S3 backend
-    let config = StorageConfig::S3 {
-        bucket: "my-models".to_string(),
-        region: "us-east-1".to_string(),
-        prefix: Some("production".to_string()),
-    };
-    
-    let backend = config.create_backend().await?;
-    
-    // Upload encrypted model
-    let model_data = std::fs::read("model.bin")?;
-    backend.upload("gpt-neo/v1.0", &model_data).await?;
-    
-    println!("✅ Model uploaded to S3!");
-    Ok(())
-}
-```
-
-### Build with Cloud Support
-
-```bash
-# All cloud providers
-cargo build --release --features cloud
-
-# Specific providers
-cargo build --release --features s3
-cargo build --release --features azure
-cargo build --release --features gcs
-```
-
-📖 **[Complete Cloud Storage Guide](docs/CLOUD_STORAGE.md)** | **[Cloud CLI Guide](docs/CLOUD_CLI.md)**
+| For Agents                                                       | For Humans                                          | Operations                                     |
+| ---------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------- |
+| [AGENTS.md](AGENTS.md) — canonical context                       | [Quick Start](#quick-start)                         | [Security & Compliance](#security--compliance) |
+| [`.well-known/`](.well-known/) — discovery manifests             | [Installation](#installation)                       | [Build & Validate](#build--validate)           |
+| [`aim introspect`](#for-ai-agents--read-this-first) — CLI schema | [CLI Reference](docs/CLI.md)                        | [Architecture](#architecture)                  |
+| [MCP tools](docs/MCP_TOOLS.md) — 86 tools                        | [Rust API Quickstart](#rust-library-api-quickstart) | [Performance](docs/PERFORMANCE.md)             |
+| [OpenAPI 3.1](.well-known/openapi.yaml) — 53 endpoints           | [Demos](#interactive-demos)                         | [Contributing](CONTRIBUTING.md)                |
 
 ---
 
-## 📝 Model Cards
+## Why AI Model Vault?
 
-**Industry-standard model documentation following Google's Model Cards and HuggingFace specifications**
-
-### Why Model Cards?
-
-Model cards provide transparent, standardized documentation for AI models including:
-- **Intended use** and limitations
-- **Training data** and evaluation metrics
-- **Ethical considerations** and fairness analysis
-- **Environmental impact** tracking
-- **Risk assessment** and mitigation strategies
-
-### Key Features
-
-- **8 comprehensive sections**: Details, use, training, evaluation, ethics, caveats
-- **Multiple export formats**: JSON, YAML, Markdown (HuggingFace-compatible)
-- **Fairness analysis**: Performance by demographic groups
-- **Environmental tracking**: Carbon emissions (kg CO2e), energy (kWh)
-- **Industry standards**: Google, HuggingFace, Partnership on AI
-
-### Quick Example
-
-```rust
-use ai_model_vault::model_card::*;
-
-// Create model details
-let details = ModelDetails {
-    name: "ChatBot-7B".to_string(),
-    version: "1.0.0".to_string(),
-    model_type: "Large Language Model".to_string(),
-    architecture: "Transformer".to_string(),
-    size: "7B parameters".to_string(),
-    // ... more fields
-};
-
-// Define intended use
-let intended_use = IntendedUse {
-    primary_uses: vec!["Customer support".to_string()],
-    out_of_scope_uses: vec!["Medical diagnosis".to_string()],
-    // ...
-};
-
-// Create card with evaluation and ethics
-let card = ModelCard::new(details, intended_use)
-    .with_evaluation(evaluation)
-    .with_ethical_considerations(ethical);
-
-// Export to formats
-let json = card.to_json()?;              // API integration
-let yaml = card.to_yaml()?;              // Configuration
-let markdown = card.to_markdown();       // HuggingFace Hub
-```
-
-### Real-World Examples
-
-**LLM Documentation**:
-
-```rust
-// Track environmental impact
-let environmental = EnvironmentalImpact {
-    hardware: "8x A100 GPUs".to_string(),
-    hours: 240.0,
-    carbon_emitted: Some(156.8),   // kg CO2e
-    energy_consumed: Some(1920.0), // kWh
-};
-```
-
-**Medical AI (High-Risk)**:
-
-```rust
-// Clear warnings for clinical use
-let intended_use = IntendedUse {
-    out_of_scope_uses: vec![
-        "❌ NOT for clinical diagnosis - Not FDA approved".to_string(),
-    ],
-    // ...
-};
-
-let ethical = EthicalConsiderations {
-    human_oversight: Some(
-        "MANDATORY: Board-certified physician review required".to_string()
-    ),
-    // ...
-};
-```
-
-**Fairness Analysis**:
-
-```rust
-// Performance by demographic groups
-performance_by_group: {
-    "gender": {
-        "male": 0.831,
-        "female": 0.817,
-        "non-binary": 0.809,
-    },
-    "age": {
-        "18-30": 0.92,
-        "31-50": 0.90,
-        "51+": 0.87,
-    }
-}
-```
-
-### Integration with Vault
-
-```rust
-// Store model card with model
-let card_json = card.to_json()?;
-let metadata = ModelMetadata::new("my-model".to_string(), format)
-    .add_custom_field("model_card".to_string(), card_json);
-
-vault.store_model("my-model", &model_data, &metadata, None)?;
-
-// Retrieve and display
-let retrieved = vault.get_version("my-model", None).unwrap();
-if let Some(card_json) = retrieved.metadata.get("model_card") {
-    let card = ModelCard::from_json(card_json)?;
-    println!("{}", card.to_markdown());
-}
-```
-
-### Run the Demo
-
-```bash
-cargo run --example model_card_demo --release
-```
-
-Demonstrates:
-
-1. **LLM card**: Complete documentation with metrics
-2. **Medical imaging**: Clinical warnings and fairness
-3. **Environmental impact**: Carbon tracking for large models
-4. **Export formats**: JSON/YAML/Markdown
-5. **Fairness analysis**: Demographic performance evaluation
-
-📖 **[Complete Model Cards Guide](docs/MODEL_CARDS.md)** | **[Quick Reference](docs/MODEL_CARDS_QUICKREF.md)**
+- **Agent-first** — three coequal surfaces (CLI / REST+GraphQL / MCP), one schema, self-describing via `introspect` and `.well-known/`
+- **Secure by default** — AES-256-GCM with Argon2id KDF, FIPS 140-3 / CMMC 2.0 L2 / MITRE ATT&CK aligned
+- **Format-agnostic** — auto-detect and convert across 23+ formats (Safetensors, GGUF, ONNX, PyTorch, TensorRT, Core ML, MLX, …)
+- **Provenance built-in** — SHA-256 checksums, HMAC signatures, blockchain audit trail, license & pickle scanning
+- **Operational** — version control, retention policies, garbage collection, multi-vault, profiles, plugins, scheduled backups
+- **Integrated** — REST + GraphQL APIs, 86 MCP tools, Python bindings, Ollama / LM Studio interop, HuggingFace / Ollama / URL pull
+- **Quality** — 2,026+ tests, 0 clippy warnings, fuzz targets, property-based tests, criterion benchmarks
 
 ---
 
-## 🔥 Additional Capabilities
+## Quick Start
 
-### Security & Compliance
+### Install
 
-- **FIPS 140-3**: Approved cryptographic module
-- **CMMC 2.0 Level 2**: 17 security controls implemented
-- **MITRE ATT&CK**: Defense against T1552, T1486, T1078, T1005
-- **Audit Logging**: Complete security event tracking
-
-### Model Download & Provenance
-
-- **Multi-source download**: Pull models from HuggingFace Hub, Ollama registry, or arbitrary URLs
-- **SHA-256 verification**: Streaming hash verification during download
-- **HMAC-SHA256 signing**: Generate detached `.sig` files for model provenance
-- **Signature verification**: Verify model integrity and signer identity
-
-### Safety & Compliance Scanning
-
-- **Pickle scanning**: Detect dangerous opcodes (`REDUCE`, `GLOBAL`, `INST`, etc.) and patterns (`os.system`, `subprocess`, `eval`)
-- **License scanning**: Detect licenses from model cards, `config.json`, GGUF metadata, and LICENSE files
-- **SPDX normalization**: Standard license identifiers with compatibility warnings
-
-### Model Diffing & Benchmarks
-
-- **Tensor-level diffing**: Compare SafeTensors and GGUF models at the tensor level
-- **Generic fallback**: Binary diff for any model format
-- **Benchmark metadata**: Store and query benchmark results (MMLU, HellaSwag, etc.) per model version
-
-### Engine Interop
-
-- **Ollama integration**: Generate Modelfiles and register models with `ollama create`
-- **LM Studio integration**: Copy models to LM Studio's models directory
-- **Cross-platform**: Auto-detects default paths on Windows, Linux, macOS
-
-### Architecture v2 (Advanced)
-
-- **Trait-based DI**: `CryptoProvider`, `BlobStore`, `VersionRepo`, `AuditSink` traits for swappable backends
-- **VaultBuilder**: Fluent builder pattern with `.config()`, `.sqlite_versions()`, `.subscriber()`
-- **Event System**: `EventBus` with `VaultEvent` dispatching, `AuditLogSubscriber`, `MetricsSubscriber`
-- **Streaming Encryption**: Chunked AES-256-GCM for large models (constant 8 MiB memory)
-- **SQLite Version Backend**: ACID-compliant version storage with auto-migration from JSON
-- **REST API**: 41 Axum endpoints with JWT auth + RBAC, OpenAPI 3.1 spec, web dashboard
-- **GraphQL API**: async-graphql 7.0 with queries, mutations, and playground
-- **Blockchain Audit**: Append-only audit trail with Merkle tree proofs
-- **Federation**: Vector clock sync across vault peers
-- **GPU Encryption**: OpenCL-accelerated AES-256-CTR with automatic CPU fallback
-- **`aimv://` URIs**: Agent-addressable URI scheme for vault resources
-
-### Quantization, Evaluation & Operations (v1.5.0)
-
-- **Quantization Pipeline**: Profile-based quantization management with method selection (Q4_0, Q4_K_M, Q5_K_M, Q8_0, F16, F32) and size estimation
-- **Evaluation Harness**: Record, compare, and query model evaluation results across suites and metrics
-- **Backup Scheduling**: Configurable vault backup schedules with daily/weekly/monthly/custom intervals
-- **Multi-Vault Management**: Manage multiple named vaults from a single installation with activate/switch
-
-### Test Coverage, Benchmarks & Documentation (v1.6.0)
-
-- **Integration Tests**: 51 cross-module integration tests covering all v1.3–v1.5 modules
-- **Property-Based Tests**: 11 proptest strategies for crypto, format detection, versioning, and hashing
-- **Fuzz Targets**: 8 total fuzz targets including pickle scanner, diff engine, model card parser
-- **Feature Benchmarks**: Criterion benchmarks for tags, ACL, lineage, plugins, profiles, policies, validation, webhooks, signing, scanning, diff, license scanning
-- **CI Benchmark Tracking**: Automated regression detection with benchmark-action/github-action-benchmark
-- **API Reference**: Auto-generated Rustdoc integrated into mkdocs site
-
-## Security Standards Compliance
-
-### FIPS 140-3
-
-- AES-256-GCM encryption for data at rest
-- Argon2id for key derivation (64MB memory, 3 iterations)
-- Secure random number generation
-- Cryptographic module validation
-
-### CVE Protection
-
-- Regular dependency scanning
-- Automated vulnerability assessments
-- Security patch management
-
-### MITRE ATT&CK Framework
-
-- Defense against credential access (T1552)
-- Data encryption for impact mitigation (T1486)
-- Access control and auditing
-- Secure key management
-
-### CMMC 2.0 Level 2
-
-- Access control (AC)
-- Identification and authentication (IA)
-- System and communications protection (SC)
-- Audit and accountability (AU)
-
-## Architecture
-
-```shell
-AI Model Vault/
-├── src/
-│   ├── cli/               # CLI dispatcher + command handlers
-│   ├── crypto/            # AES-256-GCM, Argon2id, streaming encryption
-│   ├── rag/               # RAG system (7 submodules)
-│   ├── api.rs             # REST API (Axum) + GraphQL (async-graphql)
-│   ├── vault.rs           # Core vault logic + VaultBuilder
-│   ├── traits.rs          # Core traits, event system, URI parser, metrics
-│   ├── storage.rs         # Encrypted storage backends
-│   ├── version.rs         # Version control (JSON backend)
-│   ├── version_sqlite.rs  # Version control (SQLite backend)
-│   ├── formats.rs         # 23+ format detection
-│   ├── conversion.rs      # Format conversion pipeline (10 converters)
-│   ├── model_card.rs      # Model Cards (Google/HuggingFace standard)
-│   ├── blockchain.rs      # Blockchain audit trail with Merkle proofs
-│   ├── federation.rs      # Federated vault sync with vector clocks
-│   ├── compliance.rs      # FIPS/CMMC/MITRE compliance checks
-│   ├── audit.rs           # Security audit logging
-│   ├── telemetry.rs       # Anonymous usage telemetry (opt-in)
-│   ├── config.rs          # XDG-compliant configuration
-│   ├── utils.rs           # Model utilities (8 tools)
-│   ├── download.rs        # Model download (HuggingFace, Ollama, URLs)
-│   ├── signing.rs         # HMAC-SHA256 model signing & verification
-│   ├── scanning.rs        # Pickle safety scanning
-│   ├── diff.rs            # Model diffing (tensor-level comparison)
-│   ├── interop.rs         # Ollama & LM Studio registration
-│   ├── benchmark.rs       # Benchmark metadata storage
-│   ├── license_scan.rs    # License detection & SPDX normalization
-│   ├── tags.rs            # Model tagging and search
-│   ├── vault_bundle.rs    # Vault export/import bundles
-│   ├── gc.rs              # Garbage collection
-│   ├── tui.rs             # Terminal UI dashboard
-│   ├── webhooks.rs        # Webhook notification system
-│   ├── access_control.rs  # Role-based access control
-│   ├── kms.rs             # External secrets manager integration
-│   ├── validation.rs      # Model integrity validation
-│   ├── policies.rs        # Retention policy enforcement
-│   ├── lineage_graph.rs   # Cross-model lineage DAG
-│   ├── plugins.rs         # Plugin system
-│   ├── profiles.rs        # Configuration profiles
-│   ├── quantization.rs    # Quantization pipeline & profile store
-│   ├── evaluation.rs      # Model evaluation harness
-│   ├── scheduler.rs       # Vault backup scheduling
-│   ├── multi_vault.rs     # Multi-vault registry & switching
-│   └── python.rs          # Python bindings (PyO3)
-├── tests/                 # 1,932 comprehensive tests
-├── docs/                  # Documentation
-├── website/               # Next.js documentation site
-├── deploy/                # Dockerfile & Helm chart
-├── examples/              # 11 usage examples
-├── scripts/               # Coverage analysis & utility scripts
-└── benches/               # Performance benchmarks
-```
-
-## 🚀 Quick Start
-
-### Interactive Demos
-
-Run interactive demonstrations to see AI Model Vault in action:
-
-```powershell
-# Windows - Quick 2-minute demo
-.\docs\demo.ps1 -Quick
-
-# Windows - Full demo with all features
-.\docs\demo.ps1 -Full
-
-# Windows - Specific feature demos
-.\docs\demo.ps1 -HuggingFace
-.\docs\demo.ps1 -Security
+```bash
+# From source
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
+cargo build --release --features full
+# Binary at target/release/aim (~17 MB, LTO + stripped)
 ```
 
 ```bash
-# Linux/macOS - Quick 2-minute demo
-./docs/demo.sh --quick
-
-# Linux/macOS - Full demo with all features
-./docs/demo.sh --full
-
-# Linux/macOS - Specific feature demos
-./docs/demo.sh --huggingface
-./docs/demo.sh --security
+# Or via cargo
+cargo install ai-model-vault --features full
 ```
 
-See **[DEMO_GUIDE.md](docs/DEMO_GUIDE.md)** for complete demo documentation.
-
-### PyTorch Integration Demo
-
-Demonstrate AI Model Vault integration with PyTorch using `uv` for fast dependency management:
-
-```powershell
-# Windows - Install dependencies and run demo
-.\docs\setup_pytorch.ps1 -Install -Run
-
-# Or step by step
-.\docs\setup_pytorch.ps1 -Install  # Install PyTorch with uv
-.\docs\setup_pytorch.ps1 -Run      # Run the demo
-```
+### 30-second walkthrough
 
 ```bash
-# Linux/macOS - Install dependencies and run demo
-./docs/setup_pytorch.sh --install --run
+# 1. Initialize an encrypted vault
+aim init
 
-# Or step by step
-./docs/setup_pytorch.sh --install  # Install PyTorch with uv
-./docs/setup_pytorch.sh --run      # Run the demo
+# 2. Store a model (auto-detects format)
+aim store llama-7b ./model.safetensors \
+  --description "Fine-tuned Llama 7B" --framework pytorch --task text-generation
+
+# 3. Pull from HuggingFace, Ollama, or a URL
+aim pull hf:mistralai/Mistral-7B-v0.1 --store --name mistral-7b
+aim pull ollama:llama3 --store --name llama3
+
+# 4. Convert SafeTensors → GGUF Q4_K_M for edge deployment
+aim convert llama-7b --to-format gguf --quantization q4_k_m --validate
+
+# 5. Sign, scan, and tag
+aim sign llama-7b --identity "trainer@company.com"
+aim scan llama-7b
+aim tag add llama-7b production fine-tuned
+
+# 6. Check security & compliance
+aim compliance --verbose
+
+# 7. Browse the vault interactively
+aim browse
 ```
 
-The PyTorch demo showcases:
+---
 
-- ✅ Saving PyTorch models to the vault
-- ✅ Loading and versioning checkpoints
-- ✅ Fine-tuning workflow with lineage tracking
-- ✅ Quantization pipeline (FP32 → INT8)
-- ✅ Model comparison and rollback
+## Feature Matrix
 
-**Note**: The demo works even without PyTorch installed using mock operations.
+All features below are fully implemented, tested, and exposed via both CLI and library API unless noted.
 
-### Version Control Demo
+### Storage & Encryption
 
-Explore the comprehensive version control system:
+| Feature                 | CLI           | Notes                                                      |
+| ----------------------- | ------------- | ---------------------------------------------------------- |
+| AES-256-GCM encryption  | (default)     | Argon2id KDF (64 MB / 3 iterations / 32-byte salt)         |
+| Streaming encryption    | (auto)        | Constant 8 MiB memory for multi-GB models                  |
+| GPU encryption (OpenCL) | (auto)        | AES-256-CTR with CPU fallback (`--features gpu`)           |
+| KMS integration         | —             | Env, AWS Secrets Manager, Azure Key Vault, HashiCorp Vault |
+| 23+ model formats       | (auto-detect) | See [Supported Formats](#supported-model-formats)          |
+| Cloud storage           | `aim cloud`   | AWS S3, Azure Blob, GCS                                    |
 
-```bash
-# Run version control demonstration
-cargo run --example version_control_demo --release
+### Version Control & Lineage
 
-# Shows:
-# - Version creation and storage
-# - Branching and parallel development
-# - Lineage/generation tracking (parent-child relationships)
-# - Time travel and rollback capabilities
-# - Version comparison and metadata diffs
-# - Cleanup and retention policies
-# - Checksum verification for integrity
-# - Complete real-world training workflow
+| Feature                 | CLI                     | Notes                                           |
+| ----------------------- | ----------------------- | ----------------------------------------------- |
+| Sequential versioning   | `aim versions`          | Unique checkpoint IDs per version               |
+| Parent lineage          | `aim lineage`           | Parent-child genealogy with branching           |
+| Cross-model lineage DAG | `aim lineage-graph`     | Ancestors / descendants of derived models       |
+| Instant rollback        | `aim get -v N`          | Time-travel to any historical checkpoint        |
+| Retention policies      | `aim policy`            | Max versions / age / minimum keep, with dry-run |
+| SQLite version backend  | `AIM_SQLITE_VERSIONS=1` | ACID-compliant, auto-migrates from JSON         |
+
+### Conversion & Quantization
+
+| Feature                  | CLI                | Notes                                                 |
+| ------------------------ | ------------------ | ----------------------------------------------------- |
+| Format conversion (10×)  | `aim convert`      | PyTorch ↔ SafeTensors, → ONNX/TorchScript/Core ML/MLX |
+| GGUF quantization        | `--quantization …` | Q4_0, Q4_K_M, Q5_K_M, Q8_0, F16, F32                  |
+| Quantization profiles    | `aim quantize`     | Per-model method selection, size estimation           |
+| ONNX → TensorRT/OpenVINO | `aim convert`      | Edge & GPU deployment paths                           |
+
+### Safety, Signing & Validation
+
+| Feature              | CLI                 | Notes                                                |
+| -------------------- | ------------------- | ---------------------------------------------------- |
+| HMAC-SHA256 signing  | `aim sign / verify` | Detached `.sig` files for provenance                 |
+| Pickle scanner       | `aim scan`          | Detects `REDUCE`, `GLOBAL`, `os.system`, `eval`, …   |
+| License scanner      | `aim license-scan`  | Model cards, `config.json`, GGUF meta, LICENSE; SPDX |
+| Integrity validation | `aim validate`      | SHA-256 integrity probe per version                  |
+| Tensor-level diff    | `aim diff`          | SafeTensors / GGUF / generic binary fallback         |
+
+### Provenance, Audit & Compliance
+
+| Feature            | CLI              | Notes                                             |
+| ------------------ | ---------------- | ------------------------------------------------- |
+| Audit log          | (automatic)      | Every operation; structured, append-only          |
+| Blockchain audit   | —                | Merkle-tree-proofed append-only chain             |
+| Model cards        | (via API)        | Google / HuggingFace standard, JSON/YAML/Markdown |
+| Compliance check   | `aim compliance` | FIPS 140-3, CMMC 2.0 L2, MITRE ATT&CK             |
+| Benchmark metadata | `aim benchmark`  | MMLU, HellaSwag, etc., per model version          |
+| Evaluation harness | `aim eval`       | Record, compare, query across suites and metrics  |
+
+### Discovery, Operations & Lifecycle
+
+| Feature               | CLI                      | Notes                                    |
+| --------------------- | ------------------------ | ---------------------------------------- |
+| Tags & search         | `aim tag` / `aim search` | Labels + key-value annotations           |
+| Garbage collection    | `aim gc`                 | Orphan blobs, temp files; `--dry-run`    |
+| Vault export / import | `aim vault-export`       | Portable `.tar.gz` bundles               |
+| Multi-vault registry  | `aim vaults`             | Register, switch active vault            |
+| Backup scheduling     | `aim backup`             | Daily / weekly / monthly / custom        |
+| Config profiles       | `aim profile`            | Named overrides, activate / deactivate   |
+| Plugin system         | `aim plugin`             | Discover, install JSON-manifest plugins  |
+| TUI dashboard         | `aim browse`             | Terminal UI vault browser                |
+| Webhooks              | `aim webhook`            | HTTP notifications via `EventSubscriber` |
+| Access control (RBAC) | `aim acl`                | Reader / Writer / Admin per principal    |
+
+### Integration & APIs
+
+| Feature              | Surface               | Notes                                              |
+| -------------------- | --------------------- | -------------------------------------------------- |
+| REST API             | `aim serve`           | Axum + JWT + 41 endpoints, OpenAPI 3.1             |
+| GraphQL API          | `aim serve --graphql` | `async-graphql` with playground                    |
+| MCP tools            | library               | 4 built-in tools + custom registration             |
+| Python bindings      | `pip install` (PyO3)  | `--features python`                                |
+| Engine interop       | `aim register`        | Ollama (`ollama create`) + LM Studio               |
+| Model download       | `aim pull`            | HuggingFace, Ollama, URLs (+ SHA-256 verification) |
+| Federation           | library               | Vector-clock peer sync                             |
+| RAG / Knowledge base | `aim database`        | SQLite / Sled / Qdrant backends                    |
+| `aimv://` URI scheme | library               | Agent-addressable vault resources                  |
+| Agent introspection  | `aim introspect`      | JSON / YAML / JSON-LD CLI schema                   |
+
+> Full machine-readable surface (29 features, all CLI subcommands, ontology, OpenAPI, MCP manifest) is in [`.well-known/`](.well-known/) and [`AGENTS.md`](AGENTS.md).
+
+---
+
+## Supported Model Formats
+
+| Category    | Formats                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **LLM**     | SafeTensors, GGUF, PyTorch (.pt/.pth/.bin), TensorRT (.plan), ONNX, MLX (.npz), CoreML (.mlmodel), TorchScript, TFLite |
+| **General** | TensorFlow (.pb), Keras (.h5/.keras), OpenVINO (.xml+.bin), TVM (.so), NCNN (.param+.bin), MNN (.mnn), RKNN (.rknn)    |
+| **Legacy**  | Caffe (.caffemodel), MXNet (.params), Darknet (.weights)                                                               |
+| **Data**    | HDF5 (.h5/.hdf5), Pickle (.pkl), NumPy (.npy/.npz)                                                                     |
+
+**Conversion paths**
+
+```
+PyTorch     → SafeTensors, ONNX, TorchScript, CoreML, MLX
+SafeTensors → GGUF (q4_0, q4_k_m, q5_k_m, q8_0, f16, f32)
+ONNX        → TensorRT, OpenVINO, TFLite
+TensorFlow  → TFLite
 ```
 
-**Key Capabilities:**
-- 📝 **Sequential Versioning** - v1, v2, v3 with unique checkpoint IDs
-- 🌳 **Branching** - Parallel experimentation (A/B testing, multi-task)
-- 📜 **Lineage Tracking** - Complete parent-child genealogy
-- ⏰ **Time Travel** - Instant rollback to any version
-- 📊 **Version Comparison** - Side-by-side metadata and size diffs
-- 🧹 **Cleanup Policies** - Keep last N, time-based, generation-based
-- 🔐 **Checksum Verification** - SHA-256 integrity checking
-- 📈 **Metadata Evolution** - Track training parameters across versions
+See [docs/PROVIDERS_FORMATS.md](docs/PROVIDERS_FORMATS.md) and [FORMATS.md](FORMATS.md) for full details.
 
-**Use Cases:**
-- Training checkpoint management
-- Experiment tracking and comparison
-- Production model rollback
-- Regulatory compliance (audited checkpoints)
-- Quantization variant tracking (Q4, Q5, Q8)
-- Fine-tuning lineage documentation
+---
 
-### Model Providers & Formats Demo
+## Installation
 
-Explore comprehensive support for 23+ model formats and providers:
-
-```bash
-# Run providers and formats demonstration
-cargo run --example providers_formats_demo --release
-
-# Shows:
-# - All 23+ supported formats (LLM, CV, mobile, edge)
-# - Model provider ecosystem (HuggingFace, Ollama, LM Studio, etc.)
-# - Format conversion paths and workflows
-# - Deployment target recommendations
-# - Quantization guide and best practices
-# - Real-world use cases and examples
-```
-
-**Supported Providers:**
-- 🤗 **HuggingFace Hub** - Safetensors format
-- 🦙 **Ollama** - GGUF quantized models
-- 🎙️ **LM Studio** - GGUF with multiple quants
-- 🚀 **llama.cpp** - GGUF Q4/Q5/Q8 quantization
-- 🖼️ **Stable Diffusion** - Safetensors for image generation
-- ⚡ **TensorRT** - NVIDIA GPU optimization
-- 🍎 **Apple MLX** - Apple Silicon native
-- 📱 **Mobile** - Core ML (iOS), TFLite (Android)
-- 🔧 **Edge** - OpenVINO, NCNN, MNN, RKNN
-
-**Format Categories:**
-- LLM-Centric: Safetensors, GGUF, PyTorch, TensorRT, ONNX, MLX, Core ML, TorchScript, TFLite
-- General DL: TensorFlow, Keras, OpenVINO, TVM, NCNN, MNN, RKNN
-- Legacy: Caffe, MXNet, Darknet
-- Data: HDF5, Pickle, NumPy
-
-**Documentation:**
-- 📖 [Complete Providers & Formats Guide](docs/PROVIDERS_FORMATS.md) - Full documentation
-- 📋 [Quick Reference](docs/PROVIDERS_FORMATS_QUICKREF.md) - Cheat sheet
-
-### XDG Compliance Demo
-
-See how AI Model Vault follows XDG Base Directory standards:
-
-```bash
-# Run XDG compliance demonstration
-cargo run --example xdg_demo --release
-
-# Shows:
-# - Current XDG environment variables
-# - Platform-specific directory paths (AIMV organized structure)
-# - Directory creation and permissions
-# - File organization structure
-# - Cross-platform behavior
-# - Compliance checklist (100% - 9/9 passed)
-```
-
-**AIMV Directory Structure:**
-- ✅ Config in `~/.config/ai/models/` (Linux) or equivalent
-- ✅ Data in `~/.local/share/ai/models/` (Linux) or equivalent  
-- ✅ Cache in `~/.cache/ai/models/` (Linux) or equivalent
-- ✅ Backends in `~/.config/ai/backends/` - Cloud storage configs
-- ✅ Utilities in `~/.config/ai/utilities/` - Utility configurations
-- ✅ Databases in `~/.config/ai/databases/` - Knowledge bases & training data
-- ✅ Respects XDG_CONFIG_HOME, XDG_DATA_HOME, XDG_CACHE_HOME
-- ✅ Secure permissions (0700 on Unix, ACLs on Windows)
-- ✅ Cross-platform (Linux, macOS, Windows)
-
-**Documentation:**
-- 📖 [Complete XDG Guide](docs/XDG_COMPLIANCE.md) - Full documentation
-- 📋 [Quick Reference](docs/XDG_QUICKREF.md) - Cheat sheet
-- 📝 [AIMV Path Update](reports/AIMV_PATH_UPDATE.md) - New structure guide
-
-### Installation
-
-#### From crates.io (when published)
-
-```bash
-cargo install ai-model-vault
-```
-
-#### From source
+### From source (recommended for now)
 
 ```bash
 git clone https://github.com/nervosys/AIModelVault.git
 cd AIModelVault
+
+# Default build (Safetensors + ndarray + SQLite)
 cargo build --release
+
+# Full feature set
+cargo build --release --features full,graphql
+
+# Or use the helpers
+./build.sh release           # Linux/macOS
+.\build.ps1 release          # Windows
 ```
 
-#### Using build scripts
+The release binary lives at `target/release/aim` (~17 MB, LTO + stripped).
 
-```bash
-# Windows
-.\build.ps1 release
+### Cargo feature flags
 
-# Unix/Linux/macOS
-./build.sh release
-```
+| Feature        | Description                          |
+| -------------- | ------------------------------------ |
+| `default`      | SafeTensors + ndarray + SQLite       |
+| `full`         | All non-system features              |
+| `sqlite`       | SQLite RAG backend                   |
+| `kv-store`     | Sled KV backend                      |
+| `vector-db`    | Qdrant vector database               |
+| `s3`           | AWS S3 cloud storage                 |
+| `azure`        | Azure Blob storage                   |
+| `cloud`        | All cloud backends                   |
+| `api`          | REST API (Axum + JWT)                |
+| `graphql`      | GraphQL API                          |
+| `gpu`          | GPU-accelerated encryption (OpenCL)  |
+| `python`       | Python bindings (PyO3)               |
+| `hdf5-support` | HDF5 format support (system library) |
 
-#### Optional: HDF5 Support
+### Optional system dependencies
 
-HDF5 format support requires the HDF5 library. See [HDF5 Support Guide](docs/HDF5_SUPPORT.md) for installation instructions.
+- **HDF5** — required for `hdf5-support`. See [docs/HDF5_SUPPORT.md](docs/HDF5_SUPPORT.md).
+- **OpenCL** — required for `gpu`. Any vendor SDK (NVIDIA / AMD / Intel) works.
+- **HashiCorp Vault / AWS / Azure** — only if you use the corresponding KMS / cloud features.
 
-```bash
-# Build with HDF5 support (requires HDF5 installed)
-cargo build --release --features hdf5-support
-```
+---
 
-### Command Line Interface
-
-```bash
-# Initialize a vault
-aim init
-
-# Store a model with metadata
-aim store llama-7b ./model.safetensors \
-  --format safetensors \
-  --description "Fine-tuned Llama 7B" \
-  --framework "PyTorch 2.1" \
-  --task "text-generation"
-
-# List all models
-aim list
-
-# Retrieve a model (latest version)
-aim get llama-7b ./output.safetensors
-
-# Get specific version
-aim get llama-7b ./output.safetensors --version 2
-
-# Show version history
-aim versions llama-7b
-
-# View vault statistics
-aim stats
-
-# Check compliance status
-aim compliance
-
-# Download models from HuggingFace, Ollama, or URLs
-aim pull hf:mistralai/Mistral-7B-v0.1 -o ./models
-aim pull ollama:llama3 -o ./models
-aim pull https://example.com/model.gguf -o ./models --sha256 <HASH>
-
-# Sign and verify models
-aim sign my-model --identity "trainer@company.com"
-aim verify my-model --signature my-model.sig
-
-# Scan pickle files for safety
-aim scan my-model
-aim scan --file ./suspicious-model.pkl
-
-# Compare model versions
-aim diff my-model@1 my-model@2
-aim diff ./model-a.safetensors ./model-b.safetensors
-
-# Register with inference engines
-aim register my-model --engine ollama --alias my-llm
-aim register my-model --engine lm-studio
-
-# Store and query benchmark metadata
-aim benchmark add my-model --version 1 --benchmark mmlu --score 72.5 --unit percent
-aim benchmark show my-model
-
-# Scan for licenses
-aim license-scan ./models/my-model/
-```
-
-### Rust Library
-
-#### Basic Usage
+## Rust Library API Quickstart
 
 ```rust
 use ai_model_vault::{Vault, VaultConfig};
 use ai_model_vault::formats::{ModelFormat, ModelMetadata};
 
-// Create and unlock vault
 let mut vault = Vault::new(None)?;
 vault.unlock(b"your-secure-passphrase".to_vec())?;
 
-// Store a model
+// Store
 let data = std::fs::read("model.safetensors")?;
-let metadata = ModelMetadata::new("llama-7b".to_string(), ModelFormat::Safetensors)
-    .with_description("Fine-tuned Llama 7B".to_string())
-    .with_framework("PyTorch".to_string())
-    .with_task("text-generation".to_string())
+let metadata = ModelMetadata::new("llama-7b".into(), ModelFormat::Safetensors)
+    .with_description("Fine-tuned Llama 7B".into())
+    .with_framework("PyTorch".into())
+    .with_task("text-generation".into())
     .with_parameters(7_000_000_000);
-
 let version = vault.store_model("llama-7b", data, metadata, None)?;
-println!("Stored version {}", version.version);
 
-// Retrieve model (latest version)
-let data = vault.get_model("llama-7b", None)?;
+// Retrieve specific version
+let v2 = vault.get_model("llama-7b", Some(2))?;
 
-// Get specific version
-let data_v2 = vault.get_model("llama-7b", Some(2))?;
-
-// List all versions
-let versions = vault.list_versions("llama-7b");
-for v in versions {
-    println!("Version {}: {} bytes", v.version, v.original_size);
+// List history
+for v in vault.list_versions("llama-7b") {
+    println!("v{}: {} bytes", v.version, v.original_size);
 }
 ```
 
-#### Advanced: Model Utilities
+### Trait-based dependency injection (advanced)
 
 ```rust
-use ai_model_vault::{
-    ModelArchive, ModelAnalyzer, ModelDeduplicator, 
-    RetrievalOptimizer, QuantizationInfo
-};
+use ai_model_vault::{VaultBuilder, AuditLogSubscriber, MetricsSubscriber};
 
-// Archive multiple models
-let models = vec![
-    ("model1.pt".to_string(), model1_data),
-    ("model2.onnx".to_string(), model2_data),
-];
-ModelArchive::create_zip(models, Path::new("backup.zip"))?;
-
-// Set up caching for fast retrieval
-let mut cache = RetrievalOptimizer::new(1024 * 1024 * 1024); // 1GB cache
-cache.cache_model("llama-7b".to_string(), model_data.clone())?;
-
-// Fast cache retrieval
-if let Some(cached_data) = cache.get_cached("llama-7b") {
-    // Use cached data - much faster than disk read
-}
-
-// Analyze model
-let analysis = ModelAnalyzer::analyze(&model_data, &metadata);
-println!("Size: {}", ModelAnalyzer::format_size(analysis.size_bytes));
-println!("Parameters: {}", 
-    ModelAnalyzer::format_parameters(
-        analysis.estimated_parameters.unwrap()
-    )
-);
-
-// Find duplicates
-let all_models = vec![
-    ("model1".to_string(), data1),
-    ("model2".to_string(), data2),
-    ("model3".to_string(), data1), // Duplicate!
-];
-let duplicates = ModelDeduplicator::find_duplicates(all_models);
-
-// Quantization analysis
-let savings = QuantizationInfo::memory_savings(
-    4_000_000_000, // FP32 size
-    1_000_000_000  // INT8 size
-);
-println!("Saved {:.1}%", savings.saved_percent); // 75%
+let vault = VaultBuilder::new()
+    .config(VaultConfig::default())
+    .sqlite_versions(true)
+    .subscriber(Box::new(AuditLogSubscriber::default()))
+    .subscriber(Box::new(MetricsSubscriber::default()))
+    .build()?;
 ```
 
-#### MCP & Tools Integration
+`CryptoProvider`, `BlobStore`, `VersionRepo`, `AuditSink`, and `EventSubscriber` are all swappable traits. See [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md).
+
+### MCP / RAG tools
 
 ```rust
 use ai_model_vault::rag::*;
 
-// Create MCP server with built-in RAG tools
 let mut server = MCPServer::new();
 server.register_builtin_tools()?;
 
-// Create execution context
 let ctx = ToolContext::new()
-    .with_knowledge_base("research_kb".to_string())
-    .with_data("user_id".to_string(), "researcher_1".to_string());
+    .with_knowledge_base("research_kb".into())
+    .with_data("user_id".into(), "researcher_1".into());
 
-// Search documents using MCP tool
-let result = server.execute_tool(
-    "search_documents",
-    serde_json::json!({
-        "query": "machine learning algorithms",
-        "top_k": 5,
-        "threshold": 0.7
-    }),
-    &ctx
-)?;
-
-// Add custom tool
-let custom_tool = MCPTool::new(
-    "analyze_sentiment".to_string(),
-    "Analyze text sentiment".to_string(),
-)
-.add_parameter("text", "string", "Text to analyze", true);
-
-server.register_tool(custom_tool, |params, ctx| {
-    let text = params.get("text").and_then(|v| v.as_str()).unwrap();
-    let sentiment = if text.contains("good") { "positive" } else { "neutral" };
-    
-    Ok(ToolResult::success(serde_json::json!({
-        "sentiment": sentiment,
-        "confidence": 0.85
-    })))
-})?;
-
-// Execute custom tool
-let result = server.execute_tool(
-    "analyze_sentiment",
-    serde_json::json!({"text": "This is a good model"}),
-    &ctx
-)?;
+let result = server.execute_tool("search_documents", &ctx, /* args */ ..)?;
 ```
 
-## 📚 Documentation
+Built-in tools: `search_documents`, `add_document`, `chunk_text`, `execute_rule`. Custom tools via `MCPServer::register_tool(tool, executor_fn)`.
 
-| Document                                         | Description                            |
-| ------------------------------------------------ | -------------------------------------- |
-| [Quick Start Guide](docs/QUICKSTART.md)          | Get started in 5 minutes               |
-| [Architecture](docs/ARCHITECTURE.md)             | System design and components           |
-| [CLI Reference](docs/CLI.md)                     | Complete command-line documentation    |
-| [Formats Guide](FORMATS.md)                      | Supported model formats (23+)          |
-| [Providers & Formats](docs/PROVIDERS_FORMATS.md) | Provider ecosystem and format details  |
-| [Version Control](docs/VERSION_CONTROL.md)       | Complete version control guide         |
-| [Cloud Storage](docs/CLOUD_STORAGE.md)           | S3, Azure, GCS integration             |
-| [Utilities Guide](docs/UTILITIES.md)             | Model utilities and advanced features  |
-| [RAG Guide](docs/RAG.md)                         | RAG and rule-based systems             |
-| [MCP Tools Guide](docs/MCP_TOOLS.md)             | Model Context Protocol and tools       |
-| [Model Cards Guide](docs/MODEL_CARDS.md)         | Model card documentation standard      |
-| [XDG Compliance](docs/XDG_COMPLIANCE.md)         | Directory structure and organization   |
-| [Development Guide](DEVELOPMENT.md)              | For contributors and developers        |
-| [Security Policy](SECURITY.md)                   | Security standards and reporting       |
-| [Roadmap](ROADMAP.md)                            | Full development roadmap               |
-| [Test Coverage](reports/TEST_COVERAGE.md)        | Test suite documentation (1,865 tests) |
-| [Python Bindings](docs/PYTHON_BINDINGS.md)       | PyO3 native bindings & pure-Python API |
-| [Changelog](CHANGELOG.md)                        | Version history and changes            |
-| [Documentation Website](website/)                | Next.js documentation site             |
+---
 
-## 🔐 Security & Compliance
-
-### Encryption Architecture
-
-```
-User Passphrase
-      ↓
-  Argon2id KDF (64MB memory, 3 iterations)
-      ↓
-  256-bit AES Key
-      ↓
-  AES-256-GCM Encryption (96-bit nonce, 128-bit auth tag)
-      ↓
-  Encrypted Model Data (stored on disk)
-```
-
-### Compliance Standards
-
-| Standard             | Controls                       | Status      |
-| -------------------- | ------------------------------ | ----------- |
-| **FIPS 140-3**       | AES-256-GCM, SHA-256, Argon2id | ✅ Compliant |
-| **CMMC 2.0 Level 2** | 17 security controls           | ✅ Certified |
-| **MITRE ATT&CK**     | T1552, T1486, T1078, T1005     | ✅ Mitigated |
-| **CVE Scanning**     | Automated dependency checks    | ✅ Active    |
-
-### Security Documentation
-
-- **[SECURITY_STATUS.md](reports/SECURITY_STATUS.md)** - 🟢 Production-ready status report (2025-01-04)
-- **[SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)** - Complete security audit
-- **[docs/SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md)** - Production deployment guide
-- **[SECURITY.md](SECURITY.md)** - Security policy and vulnerability reporting
-
-## 🎯 Supported Model Formats
-
-### LLM & Transformer Formats
-- **Safetensors** (.safetensors) - HuggingFace standard
-- **GGUF** (.gguf) - Quantized LLMs (llama.cpp, Ollama)
-- **PyTorch** (.pt, .pth, .bin) - PyTorch state dicts
-- **ONNX** (.onnx) - Cross-platform inference
-- **TensorRT** (.plan) - NVIDIA optimized engines
-
-### Framework Formats
-- **TensorFlow** (.pb) - TensorFlow SavedModel
-- **Keras** (.h5, .keras) - Keras models
-- **TorchScript** (.pt) - PyTorch serialization
-- **TFLite** (.tflite) - Mobile deployment
-
-### Specialized Formats
-- **MLX** (.npz) - Apple Silicon optimized
-- **Core ML** (.mlmodel) - iOS/macOS
-- **OpenVINO** (.xml + .bin) - Intel optimization
-- **NCNN, MNN, RKNN** - Mobile/edge formats
-
-[See complete format list →](FORMATS.md)
-
-## ⚡ Performance Benchmarks
-
-Key benchmarks from [docs/PERFORMANCE.md](docs/PERFORMANCE.md) (Criterion 0.5, Windows x86_64, `--release`):
-
-| Operation               | Size/Endpoint | Median  | Notes                              |
-| ----------------------- | ------------- | ------- | ---------------------------------- |
-| AES-256-GCM encrypt     | 1 KB          | ~1 µs   | ~1 GB/s throughput                 |
-| AES-256-GCM encrypt     | 1 MB          | ~3.5 ms | ~300 MB/s throughput               |
-| Argon2id key derivation | —             | ~353 ms | Intentionally slow (64 MB, 3 iter) |
-| SHA-256 hash            | 1 MB          | ~571 µs |                                    |
-| Vault store (E2E)       | 1 KB          | ~46 ms  | Dominated by Argon2id              |
-| Vault retrieve (E2E)    | 1 KB          | ~25 ms  | Dominated by Argon2id              |
-| Format detection        | —             | ~462 ns | `from_extension()`                 |
-| Model card → JSON       | —             | ~4.4 µs | `to_json()`                        |
-| Model card → Markdown   | —             | ~1.5 µs | `to_markdown()`                    |
-| REST `/health`          | GET           | ~90 ms  | Includes per-request vault setup   |
-| REST `/auth/token`      | POST          | ~311 ms | JWT generation                     |
-| REST `/models`          | GET           | ~195 ms | List models                        |
+## Cloud Storage
 
 ```bash
-cargo bench                                    # All benchmarks
-cargo bench --bench crypto_bench               # Crypto suite
-cargo bench --bench vault_bench                # Vault operations
-cargo bench --bench api_bench --features api   # API endpoints (9 benchmarks)
+# Push, list, pull
+aim cloud push  llama-7b --provider s3 --bucket my-models
+aim cloud list  --provider s3 --bucket my-models
+aim cloud pull  llama-7b --provider s3 --bucket my-models --remote-path llama-7b/safetensors/v1.vault
 ```
 
-## 🧪 Testing & Quality
+| Provider             | Status                                       |
+| -------------------- | -------------------------------------------- |
+| AWS S3               | ✅ `--features s3`                            |
+| Azure Blob           | ✅ `--features azure`                         |
+| Google Cloud Storage | ⚠️ Temporarily disabled (rebuild in progress) |
+
+Models are AES-256-GCM encrypted **before** upload; the cloud only ever sees ciphertext. Credentials come from standard env vars (`AWS_*`, `AZURE_STORAGE_*`, `GOOGLE_APPLICATION_CREDENTIALS`).
+
+Full guide: [docs/CLOUD_STORAGE.md](docs/CLOUD_STORAGE.md) · CLI: [docs/CLOUD_CLI.md](docs/CLOUD_CLI.md).
+
+---
+
+## Security & Compliance
+
+| Layer            | Implementation                                           |
+| ---------------- | -------------------------------------------------------- |
+| Symmetric crypto | AES-256-GCM (12-byte nonce, 16-byte auth tag)            |
+| Key derivation   | Argon2id (64 MB memory, 3 iterations, 32-byte salt)      |
+| Integrity        | SHA-256 checksums on every operation                     |
+| Memory hygiene   | `zeroize` on key material                                |
+| Audit trail      | Append-only with optional Merkle-tree blockchain proofs  |
+| Permissions      | `0700` directories / `0600` files (Unix), ACLs (Windows) |
+| Signing          | HMAC-SHA256 with detached `.sig`                         |
+| Scanning         | Pickle opcode scanner + license/SPDX scanner             |
+| Access control   | Per-principal RBAC (Reader / Writer / Admin)             |
+
+### Standards
+
+| Standard         | Status                                        |
+| ---------------- | --------------------------------------------- |
+| **FIPS 140-3**   | Compliant — AES-256-GCM, SHA-256, Argon2id    |
+| **CMMC 2.0 L2**  | 17 controls implemented (AC, AU, IA, SC)      |
+| **MITRE ATT&CK** | Mitigates T1552, T1486, T1078, T1005          |
+| **OWASP Top 10** | Reviewed; no known issues in first-party code |
+
+### Dependency security
+
+Current status of [`cargo audit`](https://github.com/rustsec/rustsec) on `master`:
+
+- ✅ `rustls-webpki` 0.103.13 in the primary `reqwest` / `hyper-rustls` path (RUSTSEC-2026-0098/0099/0104 patched)
+- ⚠️ A handful of advisories remain in **transitive** dependencies (`aws-smithy-http-client` 1.1.12 → old `rustls` 0.21; sled, hdf5, azure SDK unmaintained helpers). All are documented and tracked in [`deny.toml`](deny.toml) with justification; `cargo deny check` passes.
+
+These will clear automatically once AWS SDK upgrades to a Smithy client that uses `hyper-rustls` ≥ 0.27. No first-party code is affected.
+
+Reporting vulnerabilities: **security@nervosys.ai** — do **not** open public issues. See [SECURITY.md](SECURITY.md).
+
+---
+
+## Build & Validate
 
 ```bash
-# Run all tests (1,865 tests)
-cargo test
+# Full validation pipeline (fmt + clippy + build + test + doc)
+.\validate.ps1          # Windows
+./validate.sh           # Linux/macOS
 
-# Run specific test suites
-cargo test --test crypto_tests      # Cryptography (14 tests)
-cargo test --test format_tests      # Format detection (15 tests)
-cargo test --test utils_tests       # Utilities (38 tests)
-cargo test --test integration_tests # Integration (8 tests)
-cargo test --test cli_tests         # CLI (17 tests)
-cargo test --test vault_builder_tests # VaultBuilder + metrics (30 tests)
-cargo test --test conversion_tests  # Format conversion (31 tests)
-cargo test --test api_tests         # REST API integration (22 tests)
-
-# Security audit
-cargo audit
-
-# Performance benchmarks (all 3 suites)
-cargo bench
-
-# Individual benchmark suites
-cargo bench --bench crypto_bench              # AES-256-GCM, Argon2id, hashing
-cargo bench --bench vault_bench               # Store/retrieve/list operations
-cargo bench --bench api_bench --features api  # REST API endpoint latency
+# Individually
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --features full,graphql
+cargo doc --no-deps --all-features
 ```
 
-**Test Coverage**: 1,865 tests, all passing ✅
-- Library unit tests: 679
-- Coverage & edge case tests: 873
-- Conversion tests: 31
-- Crypto tests: 14
-- Format tests: 15
-- Integration tests: 8
-- CLI tests: 63
-- VaultBuilder tests: 30
-- Config/error tests: 22
-- Model card tests: 52 (48 + 4 integration)
-- RAG tests: 38 (includes 23 MCP tests)
-- Utilities tests: 38
-- Doc tests: 2
+Current `master` status:
 
-## 🤝 Contributing
+- ✅ `cargo fmt` clean
+- ✅ `cargo clippy` — 0 warnings
+- ✅ `cargo build --features full,graphql` — clean
+- ✅ `cargo test` — **2,026+ tests passing** across 18 suites
+- ✅ `cargo doc` — no warnings
+- ✅ `cargo deny check` — pass
 
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+### Quality engineering
 
-### Development Setup
+- 51 cross-module integration tests
+- 11 property-based test strategies (proptest)
+- 8 fuzz targets (pickle scanner, diff engine, model card parser, …)
+- Criterion benchmarks with CI regression tracking (`benches/`)
+
+---
+
+## Interactive Demos
 
 ```bash
-# Clone repository
-git clone https://github.com/nervosys/AIModelVault.git
-cd AIModelVault
+# Quick 2-minute tour
+.\docs\demo.ps1 -Quick           # Windows
+./docs/demo.sh   --quick          # Linux/macOS
 
-# Build and test
-cargo build
-cargo test
-
-# Format and lint
-cargo fmt
-cargo clippy
-
-# Run examples
-cargo run --example basic_usage                # Core vault operations
-cargo run --example api_demo --features api   # REST API server + client
-cargo run --example security_demo             # Compliance & audit
-cargo run --example rag_demo                  # RAG document store
-cargo run --example model_card_demo           # Model card creation
-cargo run --example version_control_demo      # Version control
-cargo run --example providers_formats_demo    # Format detection
-cargo run --example utilities_demo            # Model utilities
-cargo run --example xdg_demo                  # XDG directory layout
-cargo run --example huggingface_demo          # HuggingFace integration
-cargo run --example mcp_tools_demo            # MCP tool usage
+# Specific feature demos
+.\docs\demo.ps1 -HuggingFace
+.\docs\demo.ps1 -Security
 ```
 
-## 📄 License
+### Cargo examples
 
-This project is dual-licensed:
+```bash
+cargo run --example basic_usage             # End-to-end vault flow
+cargo run --example version_control_demo    # Versioning, lineage, rollback
+cargo run --example providers_formats_demo  # 23+ formats walkthrough
+cargo run --example signing_demo            # HMAC signing & verification
+cargo run --example scanning_demo           # Pickle safety scanning
+cargo run --example diff_demo               # Tensor-level diffing
+cargo run --example download_demo           # HF / Ollama / URL pull
+cargo run --example interop_demo            # Ollama + LM Studio registration
+cargo run --example benchmark_demo          # Benchmark metadata
+cargo run --example license_scan_demo       # License detection
+cargo run --example model_card_demo         # Model cards (Google/HF)
+cargo run --example mcp_tools_demo          # MCP tool usage
+cargo run --example rag_demo                # RAG with knowledge base
+cargo run --example security_demo           # Compliance + audit
+cargo run --example utilities_demo          # Archive / analyze / dedupe
+cargo run --example xdg_demo                # XDG paths
+cargo run --example api_demo                # REST + GraphQL
+cargo run --example huggingface_demo        # HF integration
+```
 
-- **AGPL-3.0-or-later** — Free for open-source use. Any modified version or network-facing service using this software must release its source under the AGPL. See [LICENSE](LICENSE)
-- **Commercial License** — For proprietary, SaaS, or closed-source use without AGPL obligations. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or contact **licensing@nervosys.ai**
+Full demo guide: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md).
 
-All contributions require a Contributor License Agreement (CLA). See [CLA.md](CLA.md).
+### Environment variables
 
-## 🔒 Security
+| Variable                                                     | Purpose                            |
+| ------------------------------------------------------------ | ---------------------------------- |
+| `aimodelvault_PASSPHRASE`                                    | Vault passphrase (CI / automation) |
+| `aimodelvault_VAULT`                                         | Default vault name                 |
+| `aimodelvault_CONFIG`                                        | Custom config path                 |
+| `AIM_SQLITE_VERSIONS`                                        | Use SQLite version backend         |
+| `AIM_TELEMETRY_DISABLED=1` / `DO_NOT_TRACK=1`                | Disable anonymous telemetry        |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | AWS S3 credentials                 |
+| `AZURE_STORAGE_ACCOUNT` / `AZURE_STORAGE_KEY`                | Azure credentials                  |
+| `GOOGLE_APPLICATION_CREDENTIALS` / `GCP_PROJECT`             | GCS credentials                    |
 
-For security vulnerabilities, please email: **security@nervosys.ai**
+---
 
-Do NOT open public issues for security concerns.
+## Architecture
 
-See [SECURITY.md](SECURITY.md) for our security policy.
+```text
+src/
+├── lib.rs / main.rs           # Library root + CLI entry
+├── cli/                       # CLI dispatcher + per-command handlers
+├── crypto/                    # AES-256-GCM, Argon2id, streaming
+├── rag/                       # 7 RAG submodules (docs, KB, MCP, rules…)
+├── vault.rs                   # Core vault logic + VaultBuilder
+├── traits.rs                  # CryptoProvider, BlobStore, EventBus, URI parser
+├── storage.rs                 # Local + S3/Azure/GCS backends
+├── version.rs / version_sqlite.rs  # Version control (JSON + SQLite backends)
+├── formats.rs                 # 23+ format detection
+├── conversion.rs              # 10 format converters
+├── model_card.rs              # Google / HuggingFace model cards
+├── api.rs                     # REST (Axum) + GraphQL (async-graphql)
+├── blockchain.rs              # Append-only audit chain with Merkle proofs
+├── federation.rs              # Vector-clock peer sync
+├── compliance.rs / audit.rs   # FIPS / CMMC / MITRE checks + audit log
+├── download.rs                # HuggingFace / Ollama / URL pull (+ SHA-256)
+├── signing.rs                 # HMAC-SHA256 signing
+├── scanning.rs                # Pickle opcode scanner
+├── diff.rs                    # Tensor-level diffing
+├── interop.rs                 # Ollama + LM Studio
+├── benchmark.rs / evaluation.rs  # Benchmark + eval metadata
+├── license_scan.rs            # License detection + SPDX
+├── tags.rs                    # Tags + key-value annotations
+├── vault_bundle.rs            # Export / import bundles
+├── gc.rs                      # Garbage collection
+├── tui.rs                     # Terminal UI dashboard
+├── webhooks.rs                # HTTP notification system
+├── access_control.rs          # RBAC
+├── kms.rs                     # AWS / Azure / HashiCorp / env
+├── validation.rs              # Integrity probes
+├── policies.rs                # Retention policies
+├── lineage_graph.rs           # Cross-model DAG
+├── plugins.rs                 # Plugin discovery + install
+├── profiles.rs                # Config profiles
+├── quantization.rs            # Quantization profile store
+├── scheduler.rs               # Backup scheduling
+├── multi_vault.rs             # Multi-vault registry
+├── telemetry.rs               # Anonymous opt-in usage
+├── config.rs                  # XDG-compliant config
+└── python.rs                  # PyO3 bindings
+```
 
-## 📞 Support & Community
+Deep dives: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md).
 
-- 📖 [Documentation](website/) | [Online](https://aimodelvault.nervosys.ai)
+---
+
+## Documentation
+
+| Topic                                   | Document                                                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| CLI reference                           | [docs/CLI.md](docs/CLI.md)                                                                                         |
+| Cloud storage                           | [docs/CLOUD_STORAGE.md](docs/CLOUD_STORAGE.md) · [docs/CLOUD_CLI.md](docs/CLOUD_CLI.md)                            |
+| RAG & MCP                               | [docs/RAG.md](docs/RAG.md) · [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md) · [docs/MCP_QUICKREF.md](docs/MCP_QUICKREF.md) |
+| Model cards                             | [docs/MODEL_CARDS.md](docs/MODEL_CARDS.md) · [docs/MODEL_CARDS_QUICKREF.md](docs/MODEL_CARDS_QUICKREF.md)          |
+| Version control                         | [docs/VERSION_CONTROL.md](docs/VERSION_CONTROL.md)                                                                 |
+| Model download                          | [docs/MODEL_DOWNLOAD.md](docs/MODEL_DOWNLOAD.md)                                                                   |
+| Model signing                           | [docs/MODEL_SIGNING.md](docs/MODEL_SIGNING.md)                                                                     |
+| Safety scanning                         | [docs/SAFETY_SCANNING.md](docs/SAFETY_SCANNING.md)                                                                 |
+| Model diffing                           | [docs/MODEL_DIFFING.md](docs/MODEL_DIFFING.md)                                                                     |
+| License scanning                        | [docs/LICENSE_SCANNING.md](docs/LICENSE_SCANNING.md)                                                               |
+| Engine interop (Ollama, LM Studio)      | [docs/ENGINE_INTEROP.md](docs/ENGINE_INTEROP.md)                                                                   |
+| Quantization                            | [docs/QUANTIZATION.md](docs/QUANTIZATION.md)                                                                       |
+| Evaluation harness                      | [docs/EVALUATION.md](docs/EVALUATION.md)                                                                           |
+| Backup scheduling                       | [docs/BACKUP_SCHEDULING.md](docs/BACKUP_SCHEDULING.md)                                                             |
+| Multi-vault                             | [docs/MULTI_VAULT.md](docs/MULTI_VAULT.md)                                                                         |
+| Python bindings                         | [docs/PYTHON_BINDINGS.md](docs/PYTHON_BINDINGS.md)                                                                 |
+| GPU acceleration                        | [docs/GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md)                                                               |
+| Security hardening                      | [docs/SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md) · [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)        |
+| XDG compliance                          | [docs/XDG_COMPLIANCE.md](docs/XDG_COMPLIANCE.md) · [docs/XDG_QUICKREF.md](docs/XDG_QUICKREF.md)                    |
+| Architecture                            | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md)                  |
+| Performance benchmarks                  | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) · [docs/BENCHMARKS.md](docs/BENCHMARKS.md)                              |
+| Agent discovery (JSON-LD, MCP, OpenAPI) | [AGENTS.md](AGENTS.md) · [`.well-known/`](.well-known/)                                                            |
+| Roadmap                                 | [ROADMAP.md](ROADMAP.md)                                                                                           |
+| Changelog                               | [CHANGELOG.md](CHANGELOG.md)                                                                                       |
+
+---
+
+## Contributing
+
+Pull requests welcome. Please:
+
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md).
+2. Sign the [CLA](CLA.md) — required for all PRs.
+3. Run `./validate.ps1` (or `./validate.sh`) before submitting. PRs must pass fmt, clippy, tests, and docs.
+
+---
+
+## License
+
+Dual-licensed:
+
+- **AGPL-3.0-or-later** — free for open-source use. Any modified version or network-facing service must release its source under the AGPL. See [LICENSE](LICENSE).
+- **Commercial License** — for proprietary, SaaS, or closed-source use without AGPL obligations. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or email **licensing@nervosys.ai**.
+
+---
+
+## Support
+
+- 📖 [Documentation site](https://aimodelvault.nervosys.ai) · [Local website/](website/)
 - 💬 [GitHub Discussions](https://github.com/nervosys/AIModelVault/discussions)
-- 🐛 [Issue Tracker](https://github.com/nervosys/AIModelVault/issues)
-- 📧 Email: dev@nervosys.ai
+- 🐛 [Issue tracker](https://github.com/nervosys/AIModelVault/issues)
+- 📧 General: dev@nervosys.ai · Security: security@nervosys.ai · Licensing: licensing@nervosys.ai
 
 ---
 

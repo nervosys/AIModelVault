@@ -1211,6 +1211,356 @@ paths:
         '200':
           description: Vault activated
 
+  /api/v1/models/{name}/sign:
+    post:
+      summary: Generate an HMAC-SHA256 signature for a model
+      tags: [Signing]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type: integer
+                identity:
+                  type: string
+                key:
+                  type: string
+                  description: HMAC key (or resolved via KMS)
+      responses:
+        '200':
+          description: Signature generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signature_path:
+                    type: string
+                  algorithm:
+                    type: string
+                    example: HMAC-SHA256
+
+  /api/v1/models/{name}/verify:
+    post:
+      summary: Verify a model signature
+      tags: [Signing]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [signature_path]
+              properties:
+                signature_path:
+                  type: string
+                key:
+                  type: string
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+
+  /api/v1/models/{name}/scan:
+    post:
+      summary: Scan a model for unsafe pickle opcodes / patterns
+      tags: [Safety]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type: integer
+      responses:
+        '200':
+          description: Scan report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  safe:
+                    type: boolean
+                  findings:
+                    type: array
+                    items:
+                      type: object
+
+  /api/v1/models/diff:
+    post:
+      summary: Diff two model artifacts at the tensor level
+      tags: [Diffing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [left, right]
+              properties:
+                left:
+                  type: string
+                  description: File path or name@version
+                right:
+                  type: string
+                  description: File path or name@version
+      responses:
+        '200':
+          description: Diff report
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/models/pull:
+    post:
+      summary: Download a model from HuggingFace, Ollama, or a URL
+      tags: [Download]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source]
+              properties:
+                source:
+                  type: string
+                  description: huggingface://owner/repo, ollama://name, or https URL
+                sha256:
+                  type: string
+                token:
+                  type: string
+                store:
+                  type: boolean
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Download report
+
+  /api/v1/license-scan:
+    post:
+      summary: Scan a path for model licenses; returns SPDX identifiers
+      tags: [License]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+      responses:
+        '200':
+          description: License findings
+
+  /api/v1/models/{name}/card/validate:
+    post:
+      summary: Validate a model card against the schema
+      tags: [Cards]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validation result
+
+  /api/v1/models/{name}/card/generate:
+    post:
+      summary: Auto-generate a model card from existing metadata
+      tags: [Cards]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Generated card
+
+  /api/v1/models/{name}/benchmarks:
+    get:
+      summary: Show benchmark scores for a model
+      tags: [Benchmarks]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Benchmark scores
+    post:
+      summary: Record a benchmark score
+      tags: [Benchmarks]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, benchmark, score, unit]
+              properties:
+                version:
+                  type: integer
+                benchmark:
+                  type: string
+                score:
+                  type: number
+                unit:
+                  type: string
+      responses:
+        '201':
+          description: Benchmark recorded
+
+  /api/v1/models/{name}/register:
+    post:
+      summary: Register a model with a local inference engine (Ollama or LM Studio)
+      tags: [Interop]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [engine]
+              properties:
+                engine:
+                  type: string
+                  enum: [ollama, lm-studio]
+                alias:
+                  type: string
+                system_prompt:
+                  type: string
+      responses:
+        '200':
+          description: Registered
+
+  /api/v1/vault/export:
+    post:
+      summary: Export the active vault as a tar.gz bundle
+      tags: [Bundle]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [output]
+              properties:
+                output:
+                  type: string
+      responses:
+        '200':
+          description: Bundle written
+
+  /api/v1/vault/import:
+    post:
+      summary: Import a vault bundle (tar.gz)
+      tags: [Bundle]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [archive]
+              properties:
+                archive:
+                  type: string
+                target:
+                  type: string
+      responses:
+        '200':
+          description: Bundle imported
+
+  /api/v1/telemetry/status:
+    get:
+      summary: Show telemetry configuration status
+      tags: [Telemetry]
+      responses:
+        '200':
+          description: Telemetry status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                  do_not_track:
+                    type: boolean
+
+  /api/v1/introspect:
+    get:
+      summary: Return the CLI schema for agent bootstrapping
+      tags: [Discovery]
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, yaml, jsonld]
+            default: json
+        - name: compact
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: CLI schema
+
 tags:
   - name: Auth
     description: Authentication and token management
