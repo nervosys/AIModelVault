@@ -94,3 +94,17 @@ videos/
 reports/*.txt
 reports/XDG_DEMO_COMPLETE.md
 
+# Defensive: never commit anything that may embed local username/paths
+**/target/
+fuzz/target/
+fuzz/artifacts/
+fuzz/corpus/
+fuzz/coverage/
+*.dump
+*.dmp
+**/.cargo-ok
+
+# OS / editor noise
+*.bak
+*.orig
+*.rej

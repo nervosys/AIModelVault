@@ -6,7 +6,7 @@
 
 ## Summary
 
-Successfully implemented comprehensive MCP (Model Context Protocol) support and tool execution framework for NeuronVault, providing a standardized interface for AI agents and applications to interact with RAG systems and execute custom operations.
+Successfully implemented comprehensive MCP (Model Context Protocol) support and tool execution framework for AI Model Vault, providing a standardized interface for AI agents and applications to interact with RAG systems and execute custom operations.
 
 ## What Was Delivered
 

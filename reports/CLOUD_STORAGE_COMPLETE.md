@@ -396,7 +396,7 @@ aim sync --remote <name> --direction push|pull|both
 
 ## 🏆 Summary
 
-NeuronVault now supports **cloud storage** with three major providers:
+AI Model Vault now supports **cloud storage** with three major providers:
 
 - ✅ **AWS S3**: Industry leader, most mature
 - ✅ **Azure Blob Storage**: Microsoft ecosystem
