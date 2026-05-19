@@ -18,6 +18,18 @@ cat .well-known/openapi.yaml | grep -E '^  /api/v1/'
 
 That is the minimum surface needed to plan a task. Everything else in this file is reference material.
 
+## Worked examples for agents
+
+Three runnable Rust examples cover the three canonical integration patterns:
+
+| Example                                                                  | Pattern                  | Shows                                                                                    |
+| ------------------------------------------------------------------------ | ------------------------ | ---------------------------------------------------------------------------------------- |
+| [`examples/agent_bootstrap.rs`](examples/agent_bootstrap.rs)             | Out-of-process via CLI   | Shell out to `aim introspect`, parse the schema, invoke a subcommand, handle the error envelope. |
+| [`examples/agent_mcp_workflow.rs`](examples/agent_mcp_workflow.rs)       | In-process via MCP       | Register vault-backed `MCPTool`s, drive them in an agent loop with JSON parameters.       |
+| [`examples/agent_pipeline.rs`](examples/agent_pipeline.rs)               | Direct Rust API pipeline | End-to-end: scan → store → tag → search → sign → verify, emitting an audit envelope.    |
+
+Run any of them with `cargo run --example <name>`.
+
 ## Stability contract
 
 | Guarantee         | Detail                                                                                                                                  |
