@@ -313,9 +313,10 @@ pub enum Commands {
         #[arg(short, long)]
         version: Option<u32>,
 
-        /// Path to signing key pair (generated if not found)
+        /// Signing key pair: a file path (generated if not found), or a KMS URI
+        /// such as `azure-kv://my-vault/hmac-key` (see docs/KMS.md)
         #[arg(short, long)]
-        key: Option<PathBuf>,
+        key: Option<String>,
 
         /// Signer identity (e.g. email or name)
         #[arg(short, long)]
@@ -339,9 +340,10 @@ pub enum Commands {
         #[arg(short, long)]
         signature: PathBuf,
 
-        /// Path to public key file (optional if secret key available)
+        /// Verification key: a file path or a KMS URI (see docs/KMS.md).
+        /// Omit to check the file hash only.
         #[arg(short, long)]
-        key: Option<PathBuf>,
+        key: Option<String>,
 
         /// Verify a file on disk instead of a vault model
         #[arg(long)]

@@ -183,7 +183,40 @@ pub fn openapi_spec() -> serde_json::Value {
                         }
                     },
                     "responses": {
-                        "200": { "description": "Conversion result" }
+                        "200": {
+                            "description": "Conversion result. Check `converted` before using `data_base64`: when false, no conversion was performed, `data_base64` is absent, and `plan` describes the external tooling required.",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "converted": {
+                                                "type": "boolean",
+                                                "description": "True when data_base64 holds real target-format bytes."
+                                            },
+                                            "data_base64": {
+                                                "type": "string",
+                                                "description": "Converted model bytes. Absent when converted is false."
+                                            },
+                                            "plan": {
+                                                "type": "object",
+                                                "description": "Steps to perform this conversion with external tooling. Present only when converted is false."
+                                            },
+                                            "source_format": { "type": "string" },
+                                            "target_format": { "type": "string" },
+                                            "conversion_path": {
+                                                "type": "array",
+                                                "items": { "type": "string" }
+                                            },
+                                            "input_size": { "type": "integer" },
+                                            "output_size": { "type": "integer" },
+                                            "validation": { "type": "object", "nullable": true }
+                                        },
+                                        "required": ["converted", "source_format", "target_format", "conversion_path", "input_size", "output_size"]
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },

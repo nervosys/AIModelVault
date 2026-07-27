@@ -134,7 +134,7 @@ impl PolicyStore {
 
         let mut versions: Vec<ModelVersion> =
             vc.list_versions(model).into_iter().cloned().collect();
-        versions.sort_by(|a, b| b.version.cmp(&a.version)); // newest first
+        versions.sort_by_key(|v| std::cmp::Reverse(v.version)); // newest first
 
         let versions_before = versions.len();
         let mut to_remove: Vec<u32> = Vec::new();

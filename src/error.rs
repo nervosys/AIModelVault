@@ -339,7 +339,7 @@ mod tests {
         assert!(CryptoError::Other("oth".into()).to_string().contains("oth"));
 
         // StorageError Display
-        let io = StorageError::Io(std::io::Error::new(std::io::ErrorKind::Other, "io"));
+        let io = StorageError::Io(std::io::Error::other("io"));
         assert!(io.to_string().contains("io"));
         assert!(StorageError::Serialization("ser".into())
             .to_string()

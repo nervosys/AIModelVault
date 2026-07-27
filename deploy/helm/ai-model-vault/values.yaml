@@ -4,7 +4,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/nervosys/ai-model-vault
-  tag: "1.2.1"
+  tag: "1.7.0"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

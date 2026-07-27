@@ -408,8 +408,28 @@ class TestPackageInit:
     """Tests for aimodelvault package initialization."""
 
     def test_version_is_set(self):
+        """The package version must be a release version, not a hardcoded literal.
+
+        Asserting a specific string here is what let the package drift to 1.3.0
+        while the test still expected 1.2.1 — check the shape instead.
+        """
+        import re
         import aimodelvault
-        assert aimodelvault.__version__ == "1.2.1"
+        assert re.fullmatch(r"\d+\.\d+\.\d+", aimodelvault.__version__), (
+            f"unexpected version format: {aimodelvault.__version__!r}"
+        )
+
+    def test_version_matches_crate(self):
+        """The Python package and the Rust crate ship as one release."""
+        import re
+        from pathlib import Path
+        import aimodelvault
+
+        cargo = Path(__file__).resolve().parent.parent / "Cargo.toml"
+        crate_version = re.search(
+            r'^version = "([^"]+)"', cargo.read_text(encoding="utf-8"), re.MULTILINE
+        ).group(1)
+        assert aimodelvault.__version__ == crate_version
 
     def test_native_flag_exists(self):
         import aimodelvault

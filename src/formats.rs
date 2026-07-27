@@ -121,6 +121,53 @@ impl ModelFormat {
         }
     }
 
+    /// Every non-`Custom` variant, for reverse lookups.
+    const ALL: [ModelFormat; 22] = [
+        ModelFormat::Safetensors,
+        ModelFormat::GGUF,
+        ModelFormat::PyTorch,
+        ModelFormat::TensorRT,
+        ModelFormat::ONNX,
+        ModelFormat::MLX,
+        ModelFormat::CoreML,
+        ModelFormat::TorchScript,
+        ModelFormat::TFLite,
+        ModelFormat::TensorFlow,
+        ModelFormat::Keras,
+        ModelFormat::OpenVINO,
+        ModelFormat::TVM,
+        ModelFormat::NCNN,
+        ModelFormat::MNN,
+        ModelFormat::RKNN,
+        ModelFormat::Caffe,
+        ModelFormat::MXNet,
+        ModelFormat::Darknet,
+        ModelFormat::HDF5,
+        ModelFormat::Pickle,
+        ModelFormat::NumPy,
+    ];
+
+    /// Parse a format from its display [`name`](Self::name), case- and
+    /// space-insensitively (`"Core ML"`, `"coreml"`, `"CORE ML"` all match).
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        let norm = |s: &str| s.to_lowercase().replace([' ', '-', '_'], "");
+        let target = norm(name);
+        Self::ALL.into_iter().find(|f| norm(f.name()) == target)
+    }
+
+    /// Parse a format string that may be either a display name or a file
+    /// extension.
+    ///
+    /// Version records persist `format.name()` (e.g. `"PyTorch"`), which
+    /// [`from_extension`](Self::from_extension) does not recognise — it would
+    /// silently yield `Custom("pytorch")` and break conversion-path lookup and
+    /// tensor-level diffing. Use this whenever the input came from storage.
+    #[must_use]
+    pub fn from_stored(value: &str) -> Self {
+        Self::from_name(value).unwrap_or_else(|| Self::from_extension(value))
+    }
+
     /// Get format name
     pub fn name(&self) -> &str {
         match self {
@@ -466,5 +513,52 @@ mod tests {
         assert_eq!(ModelFormat::Darknet.extension(), "weights");
         assert_eq!(ModelFormat::Pickle.extension(), "pkl");
         assert_eq!(ModelFormat::MLX.extension(), "npz");
+    }
+
+    #[test]
+    fn test_from_name_roundtrip_for_every_variant() {
+        // Version records persist `name()`, so every name must parse back to the
+        // same variant — otherwise stored formats silently degrade to Custom.
+        for fmt in ModelFormat::ALL {
+            assert_eq!(
+                ModelFormat::from_name(fmt.name()),
+                Some(fmt.clone()),
+                "name() -> from_name() must round-trip for {:?}",
+                fmt
+            );
+        }
+    }
+
+    #[test]
+    fn test_from_name_is_case_and_space_insensitive() {
+        assert_eq!(ModelFormat::from_name("core ml"), Some(ModelFormat::CoreML));
+        assert_eq!(ModelFormat::from_name("CoreML"), Some(ModelFormat::CoreML));
+        assert_eq!(ModelFormat::from_name("CORE-ML"), Some(ModelFormat::CoreML));
+        assert_eq!(
+            ModelFormat::from_name("tensorflow lite"),
+            Some(ModelFormat::TFLite)
+        );
+        assert_eq!(ModelFormat::from_name("not a format"), None);
+    }
+
+    #[test]
+    fn test_from_stored_accepts_names_and_extensions() {
+        // The shape actually written into version records.
+        assert_eq!(ModelFormat::from_stored("PyTorch"), ModelFormat::PyTorch);
+        assert_eq!(
+            ModelFormat::from_stored("Safetensors"),
+            ModelFormat::Safetensors
+        );
+        assert_eq!(ModelFormat::from_stored("ONNX"), ModelFormat::ONNX);
+        // Still accepts plain extensions.
+        assert_eq!(ModelFormat::from_stored("pt"), ModelFormat::PyTorch);
+        assert_eq!(ModelFormat::from_stored("onnx"), ModelFormat::ONNX);
+    }
+
+    #[test]
+    fn test_from_extension_alone_cannot_parse_stored_names() {
+        // Documents the trap `from_stored` exists to avoid: this is what the
+        // convert and diff paths used to do with a stored format string.
+        assert_ne!(ModelFormat::from_extension("PyTorch"), ModelFormat::PyTorch);
     }
 }

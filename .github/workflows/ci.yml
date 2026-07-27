@@ -55,10 +55,51 @@ jobs:
       run: cargo test --features "full,graphql" --verbose
 
     - name: Run clippy
-      run: cargo clippy --features "full,graphql" -- -D warnings
+      run: cargo clippy --features "full,graphql" --all-targets -- -D warnings
 
     - name: Check formatting
       run: cargo fmt -- --check
+
+  feature-matrix:
+    name: Feature Combinations
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # `full,graphql` is covered by the Test Suite job. These are the
+        # combinations it does NOT build — they regressed unnoticed before.
+        features: ["", "s3", "azure", "cloud", "api", "database", "python"]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
+
+    # pyo3's build script needs an interpreter to link against.
+    - name: Install Python
+      if: matrix.features == 'python'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-features-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Clippy (${{ matrix.features && matrix.features || 'default' }})
+      run: |
+        if [ -z "${{ matrix.features }}" ]; then
+          cargo clippy --all-targets -- -D warnings
+        else
+          cargo clippy --features "${{ matrix.features }}" --all-targets -- -D warnings
+        fi
 
   msrv:
     name: MSRV (1.89)

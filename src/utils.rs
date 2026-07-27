@@ -556,6 +556,9 @@ impl ModelDeduplicator {
 }
 
 #[cfg(test)]
+// Exact float comparison is intentional here: these assert on literal
+// constants that round-trip bit-for-bit, not on computed results.
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -807,9 +810,12 @@ mod tests {
     fn test_pruning_methods() {
         assert_eq!(PruningMethod::Magnitude, PruningMethod::Magnitude);
         assert_ne!(PruningMethod::Structured, PruningMethod::Unstructured);
-        let _grad = PruningMethod::GradientBased;
-        let _layer = PruningMethod::LayerWise;
-        let _custom = PruningMethod::Custom("test".into());
+        // Construct the remaining variants to keep them exercised.
+        assert_ne!(PruningMethod::GradientBased, PruningMethod::LayerWise);
+        assert_eq!(
+            PruningMethod::Custom("test".into()),
+            PruningMethod::Custom("test".into())
+        );
     }
 
     #[test]

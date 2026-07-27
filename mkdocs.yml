@@ -117,6 +117,10 @@ nav:
       - Vulnerability Fixes: VULNERABILITY_FIXES.md
       - Safety Scanning: SAFETY_SCANNING.md
       - License Scanning: LICENSE_SCANNING.md
+      - Access Control: ACCESS_CONTROL.md
+      - External KMS: KMS.md
+      - Model Validation: VALIDATION.md
+      - Blockchain Audit: BLOCKCHAIN_AUDIT.md
   - AI & RAG:
       - RAG System: RAG.md
       - RAG Quick Ref: RAG_QUICKREF.md
@@ -138,6 +142,16 @@ nav:
       - Evaluation Harness: EVALUATION.md
       - Backup Scheduling: BACKUP_SCHEDULING.md
       - Multi-Vault Management: MULTI_VAULT.md
+      - Retention Policies: POLICIES.md
+      - Garbage Collection: GARBAGE_COLLECTION.md
+      - Vault Export/Import: VAULT_BUNDLE.md
+      - Tags & Search: TAGS.md
+      - Config Profiles: PROFILES.md
+      - Webhooks: WEBHOOKS.md
+      - Plugins: PLUGINS.md
+      - Lineage Graph: LINEAGE_GRAPH.md
+      - TUI Dashboard: TUI.md
+      - Federation: FEDERATION.md
   - Performance:
       - Performance: PERFORMANCE.md
       - GPU Acceleration: GPU_ACCELERATION.md
@@ -153,5 +167,6 @@ nav:
       - Python Bindings: PYTHON_BINDINGS.md
       - PyTorch & UV Guide: PYTORCH_UV_GUIDE.md
       - UV Integration: UV_INTEGRATION.md
+      - Telemetry: TELEMETRY.md
       - Executive Summary: EXECUTIVE_SUMMARY.md
   - API Reference: api/ai_model_vault/index.html

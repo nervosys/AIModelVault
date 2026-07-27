@@ -96,8 +96,17 @@ impl ConversionOptions {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConversionResult {
     /// The converted model data.
+    ///
+    /// Empty when [`Self::plan`] is set — a plan is not a model file.
     #[serde(skip)]
     pub data: Vec<u8>,
+    /// Set when the conversion could not be performed natively and instead
+    /// produced instructions for external tooling.
+    ///
+    /// When this is `Some`, no conversion happened: `data` is empty and the
+    /// caller must run the described steps to obtain the target format.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan: Option<serde_json::Value>,
     /// Source format.
     pub source_format: ModelFormat,
     /// Target format.
@@ -113,6 +122,16 @@ pub struct ConversionResult {
 }
 
 impl ConversionResult {
+    /// True when no conversion was performed and [`Self::plan`] holds
+    /// instructions for external tooling instead.
+    ///
+    /// Callers that write `data` to a file must check this first — otherwise
+    /// they produce a file with the target extension and the wrong contents.
+    #[must_use]
+    pub fn is_plan(&self) -> bool {
+        self.plan.is_some()
+    }
+
     /// Compression ratio (output / input).
     #[must_use]
     pub fn compression_ratio(&self) -> f64 {
@@ -190,6 +209,17 @@ pub trait Converter: Send + Sync {
 
     /// Target format this converter produces.
     fn target_format(&self) -> ModelFormat;
+
+    /// Whether this converter emits a JSON *plan* describing how to perform the
+    /// conversion with external tooling, rather than target-format bytes.
+    ///
+    /// Converters that need a Python runtime (PyTorch → ONNX, ONNX → TensorRT,
+    /// ONNX → Core ML, SafeTensors → GGUF) return `true`. Callers must not treat
+    /// their output as a model file — [`ConversionResult::plan`] carries it
+    /// instead, and [`ConversionResult::data`] is left empty.
+    fn produces_plan(&self) -> bool {
+        false
+    }
 
     /// Perform the conversion.
     fn convert(
@@ -342,6 +372,7 @@ impl ConversionPipeline {
         if from == to {
             return Ok(ConversionResult {
                 data: data.to_vec(),
+                plan: None,
                 source_format: from.clone(),
                 target_format: to.clone(),
                 conversion_path: vec![from.clone()],
@@ -361,6 +392,9 @@ impl ConversionPipeline {
 
         let total_steps = path.len() - 1;
         let mut current_data = data.to_vec();
+        // Set as soon as any step emits a plan; the whole conversion is then a
+        // plan, because later steps have no real bytes to work from.
+        let mut plan: Option<serde_json::Value> = None;
 
         for (i, window) in path.windows(2).enumerate() {
             let (src, dst) = (&window[0], &window[1]);
@@ -387,6 +421,16 @@ impl ConversionPipeline {
 
             current_data = converter.convert(&current_data, options, progress)?;
 
+            if converter.produces_plan() {
+                plan = Some(
+                    serde_json::from_slice(&current_data)
+                        .unwrap_or_else(|_| serde_json::json!({ "converter": converter.name() })),
+                );
+                // Stop here: downstream steps cannot operate on a plan, and the
+                // caller must run the external tooling before continuing.
+                break;
+            }
+
             // Intermediate validation
             if options.validate && i < total_steps - 1 {
                 let report = converter.validate(data, &current_data, options);
@@ -406,6 +450,21 @@ impl ConversionPipeline {
             }
         }
 
+        // A plan is not target-format bytes: report it as such and hand back no
+        // data, so no caller can write it out as a model file.
+        if plan.is_some() {
+            return Ok(ConversionResult {
+                input_size: data.len() as u64,
+                output_size: 0,
+                data: Vec::new(),
+                plan,
+                source_format: from.clone(),
+                target_format: to.clone(),
+                conversion_path: path,
+                validation: None,
+            });
+        }
+
         // Final validation
         let validation = if options.validate {
             let final_idx = self
@@ -422,6 +481,7 @@ impl ConversionPipeline {
             input_size: data.len() as u64,
             output_size: current_data.len() as u64,
             data: current_data,
+            plan: None,
             source_format: from.clone(),
             target_format: to.clone(),
             conversion_path: path,
@@ -997,11 +1057,7 @@ fn build_pytorch_pickle(tensors: &[ConvTensorEntry]) -> Result<Vec<u8>> {
             })?;
 
         let data_len = tensor.data_end - tensor.data_start;
-        let numel = if elem_size > 0 {
-            data_len / elem_size
-        } else {
-            data_len
-        };
+        let numel = data_len.checked_div(elem_size).unwrap_or(data_len);
 
         // Key: tensor name
         write_short_binunicode(&mut pkl, &tensor.name);
@@ -1417,6 +1473,10 @@ impl Converter for PyTorchToOnnxConverter {
     fn name(&self) -> &str {
         "PyTorch → ONNX (shim)"
     }
+
+    fn produces_plan(&self) -> bool {
+        true
+    }
     fn source_format(&self) -> ModelFormat {
         ModelFormat::PyTorch
     }
@@ -1459,6 +1519,10 @@ pub struct OnnxToTensorRtConverter;
 impl Converter for OnnxToTensorRtConverter {
     fn name(&self) -> &str {
         "ONNX → TensorRT (shim)"
+    }
+
+    fn produces_plan(&self) -> bool {
+        true
     }
     fn source_format(&self) -> ModelFormat {
         ModelFormat::ONNX
@@ -1505,6 +1569,10 @@ impl Converter for OnnxToCoreMLConverter {
     fn name(&self) -> &str {
         "ONNX → Core ML (shim)"
     }
+
+    fn produces_plan(&self) -> bool {
+        true
+    }
     fn source_format(&self) -> ModelFormat {
         ModelFormat::ONNX
     }
@@ -1542,6 +1610,10 @@ pub struct SafeTensorsToGgufConverter;
 impl Converter for SafeTensorsToGgufConverter {
     fn name(&self) -> &str {
         "SafeTensors → GGUF (shim)"
+    }
+
+    fn produces_plan(&self) -> bool {
+        true
     }
     fn source_format(&self) -> ModelFormat {
         ModelFormat::Safetensors
@@ -1748,6 +1820,7 @@ mod tests {
     fn test_conversion_result_compression_ratio() {
         let result = ConversionResult {
             data: vec![],
+            plan: None,
             source_format: ModelFormat::PyTorch,
             target_format: ModelFormat::Safetensors,
             conversion_path: vec![],
@@ -2194,6 +2267,7 @@ mod tests {
         // Covers L120 — input_size == 0 returns 0.0
         let result = ConversionResult {
             data: vec![],
+            plan: None,
             source_format: ModelFormat::PyTorch,
             target_format: ModelFormat::Safetensors,
             conversion_path: vec![],
@@ -2255,21 +2329,60 @@ mod tests {
     }
 
     #[test]
-    fn test_conversion_with_final_validation() {
-        // Covers L434-435 — final validation branch in convert()
+    fn test_shim_pipeline_returns_plan_not_data() {
+        // PyTorch → ONNX needs an external Python toolchain. The pipeline must
+        // say so explicitly rather than handing back plan bytes that a caller
+        // would write out as a .onnx file.
         let pipeline = ConversionPipeline::with_builtins();
-        let opts = ConversionOptions::with_validation();
-        let result = pipeline.convert(
-            b"model data",
-            &ModelFormat::PyTorch,
-            &ModelFormat::ONNX,
-            &opts,
-            None,
+        let conv = pipeline
+            .convert(
+                b"model data",
+                &ModelFormat::PyTorch,
+                &ModelFormat::ONNX,
+                &ConversionOptions::with_validation(),
+                None,
+            )
+            .expect("planning a shim conversion is not an error");
+
+        assert!(conv.is_plan(), "shim conversion must be reported as a plan");
+        assert!(
+            conv.data.is_empty(),
+            "a plan must not masquerade as model data"
         );
-        // Should succeed (shim converters produce plans)
-        assert!(result.is_ok());
-        let conv = result.unwrap();
-        assert!(conv.validation.is_some());
+        assert_eq!(conv.output_size, 0);
+        assert_eq!(conv.plan.as_ref().unwrap()["converter"], "pytorch_to_onnx");
+        // Validating a plan against target-format magic bytes is meaningless.
+        assert!(conv.validation.is_none());
+    }
+
+    #[test]
+    fn test_native_conversion_is_not_a_plan() {
+        // The pure-Rust path must stay unaffected: real bytes, no plan.
+        let header = serde_json::json!({
+            "weight": { "dtype": "F32", "shape": [2, 2], "data_offsets": [0, 16] }
+        });
+        let header_bytes = serde_json::to_vec(&header).unwrap();
+        let mut safetensors = Vec::new();
+        safetensors.extend_from_slice(&(header_bytes.len() as u64).to_le_bytes());
+        safetensors.extend_from_slice(&header_bytes);
+        for f in &[1.0f32, 2.0, 3.0, 4.0] {
+            safetensors.extend_from_slice(&f.to_le_bytes());
+        }
+
+        let pipeline = ConversionPipeline::with_builtins();
+        let conv = pipeline
+            .convert(
+                &safetensors,
+                &ModelFormat::Safetensors,
+                &ModelFormat::PyTorch,
+                &ConversionOptions::default(),
+                None,
+            )
+            .expect("native conversion should succeed");
+
+        assert!(!conv.is_plan());
+        assert!(conv.plan.is_none());
+        assert!(!conv.data.is_empty());
     }
 
     #[test]
@@ -2431,23 +2544,31 @@ mod tests {
     }
 
     #[test]
-    fn test_multi_step_with_progress() {
-        // Covers L396-403 — progress callback during multi-step
+    fn test_multi_step_halts_at_first_plan_step() {
+        // PyTorch → ONNX → TensorRT: step 1 needs external tooling, so there are
+        // no real ONNX bytes for step 2 to consume. The pipeline must stop and
+        // return that plan rather than feeding a plan into the next converter
+        // (which previously produced a meaningless plan-of-a-plan).
         let pipeline = ConversionPipeline::with_builtins();
         let steps_arc = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let sc = steps_arc.clone();
         let cb: ProgressCallback = Box::new(move |p| {
             sc.lock().unwrap().push(p.step);
         });
-        let _ = pipeline.convert(
-            b"model",
-            &ModelFormat::PyTorch,
-            &ModelFormat::TensorRT,
-            &ConversionOptions::default(),
-            Some(&cb),
-        );
+        let conv = pipeline
+            .convert(
+                b"model",
+                &ModelFormat::PyTorch,
+                &ModelFormat::TensorRT,
+                &ConversionOptions::default(),
+                Some(&cb),
+            )
+            .expect("planning should not error");
+
         let logged = steps_arc.lock().unwrap();
-        assert!(logged.len() >= 2); // at least 2 steps
+        assert_eq!(logged.len(), 1, "must stop after the first plan step");
+        assert!(conv.is_plan());
+        assert_eq!(conv.plan.as_ref().unwrap()["converter"], "pytorch_to_onnx");
     }
 
     #[test]

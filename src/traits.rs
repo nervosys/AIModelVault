@@ -1095,7 +1095,7 @@ mod tests {
     fn test_aimv_uri_with_empty_value_query() {
         // Covers line 217 — key-only query param (v.is_empty())
         let mut query = HashMap::new();
-        query.insert("verbose".into(), "".into());
+        query.insert("verbose".into(), String::new());
         let uri = AimvUri {
             vault: Some("default".into()),
             model: Some("test".into()),
@@ -1105,7 +1105,7 @@ mod tests {
         };
         let s = uri.to_string();
         assert!(s.contains("?verbose"));
-        assert!(!s.contains("="));
+        assert!(!s.contains('='));
     }
 
     #[test]
@@ -1327,7 +1327,7 @@ mod tests {
             query: {
                 let mut m = std::collections::HashMap::new();
                 m.insert("format".into(), "gguf".into());
-                m.insert("flag".into(), "".into());
+                m.insert("flag".into(), String::new());
                 m
             },
         };

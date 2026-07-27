@@ -653,9 +653,10 @@ Use S3 or Azure instead
 
 ## Environment Variables
 
-- `aimodelvault_CONFIG` - Path to configuration file
+- `aimodelvault_CONFIG` - Config directory override (`config.yaml`, profiles, plugins)
+- `aimodelvault_HOME` - Relocates all config/data/cache directories under one root
 - `aimodelvault_VAULT` - Default vault name
-- `aimodelvault_PASSPHRASE` - Passphrase (NOT RECOMMENDED for security)
+- `aimodelvault_PASSPHRASE` - Passphrase for unattended use: a literal value or a KMS URI (`env://`, `file://`, `aws-sm://`, `azure-kv://`, `vault://`). Prefer a KMS URI or `file://` over a literal on shared hosts — see [KMS.md](KMS.md)
 - `AWS_ACCESS_KEY_ID` - AWS access key for S3
 - `AWS_SECRET_ACCESS_KEY` - AWS secret key for S3
 - `AWS_REGION` - AWS region (default: us-east-1)

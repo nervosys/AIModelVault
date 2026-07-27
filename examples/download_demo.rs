@@ -21,7 +21,7 @@ fn main() -> ai_model_vault::Result<()> {
 
     // 2. Create a downloader
     println!("2. Creating model downloader...");
-    let downloader = ModelDownloader::new("./downloaded_models");
+    let _downloader = ModelDownloader::new("./downloaded_models");
     println!("   ✓ Downloader configured for ./downloaded_models\n");
 
     // 3. Create a downloader with HuggingFace token

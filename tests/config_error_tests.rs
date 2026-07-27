@@ -86,7 +86,7 @@ fn test_vault_error_model_not_found() {
 fn test_vault_error_version_not_found() {
     let err = VaultError::VersionNotFound(5, "model".to_string());
     let display = format!("{}", err);
-    assert!(display.contains("model") || display.contains("5") || display.contains("version"));
+    assert!(display.contains("model") || display.contains('5') || display.contains("version"));
 }
 
 #[test]

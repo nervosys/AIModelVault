@@ -1,10 +1,66 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-04-06
-> Current version: **1.6.0** (test coverage, benchmarks, documentation, dependency audit)
-> Status: Production release — 2,059 tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, CI benchmark tracking, mkdocs strict build, API docs
+> Last updated: 2026-07-27
+> Current version: **1.7.0** (unattended operation, KMS backends, security remediation)
+> Status: Production release — 2,088 Rust tests + 84 Python tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, clippy clean across 7 feature combinations, `cargo audit` / `cargo deny` clean
 
 ---
+
+## v1.7.0 — Unattended Operation, KMS & Security (complete)
+
+Closes the gap between what the docs promised and what the code did, and clears
+the security backlog. Four features were documented but never implemented, two
+cargo features did not compile at all, and nine RUSTSEC advisories had accrued
+since the last release.
+
+### Unattended operation
+
+- [x] **Non-interactive passphrase** — `$aimodelvault_PASSPHRASE` (literal or KMS URI) → piped stdin → interactive prompt. `AGENTS.md` documented the env var; no code read it, so every passphrase-gated command required a TTY.
+- [x] **CLI integration coverage** — 7 tests covering store → list → get round-trip, wrong-passphrase rejection, KMS URIs, and stdin. Previously no CLI test could unlock a vault.
+
+### KMS
+
+- [x] **URI scheme** (`KmsUri`) — `env://`, `file://`, `aws-sm://`, `azure-kv://`, `vault://`, matching the table in `docs/KMS.md`, which had no parser behind it
+- [x] **`file://` backend** — permission-checked (rejects group/world-readable secrets on Unix)
+- [x] **HashiCorp Vault backend** — KV v2 with v1 fallback over `$VAULT_ADDR`
+- [x] **Azure Key Vault backend** — REST with a bearer token from `AZURE_KEYVAULT_TOKEN`
+- [x] **AWS Secrets Manager backend** — `aws-sdk-secretsmanager` under the `s3` feature (the previous stub errored even with `s3` enabled)
+
+### Build health
+
+- [x] **`s3` feature compiles** — missing `ModelFormat` / `ModelMetadata` imports in `cli/handlers/cloud.rs`
+- [x] **`azure` feature compiles** — three API-drift errors in `storage/azure.rs`; `futures-util` added under the feature
+- [x] **Clippy clean on current stable** — 60+ findings across lib, tests, examples, and benches
+- [x] **CI feature matrix** — clippy over `default`, `s3`, `azure`, `cloud`, `api`, `database`; CI previously built only `full,graphql`, which is why the cloud features rotted unnoticed
+- [x] **CI clippy runs `--all-targets`** — examples and benches were never linted
+
+### Security
+
+- [x] **9 RUSTSEC advisories resolved** — `cargo audit` and `cargo deny check` pass again after going red on advisories published since v1.6.0
+- [x] **AWS SDKs off the legacy TLS stack** — their default `rustls` feature selects hyper-0.14/rustls-0.21, pulling vulnerable rustls-webpki 0.101 (RUSTSEC-2026-0098/0099/0104)
+- [x] **pyo3 0.24 → 0.29** (RUSTSEC-2026-0176/0177) — API migration in `src/python.rs`
+- [x] **Stale ignores pruned from `deny.toml`** — three entries were suppressing advisories that are now genuinely fixed
+- [x] **`.cargo/audit.toml` added** — `cargo audit` and `cargo deny` read separate config; only the latter had documented exceptions
+- [ ] **quick-xml 0.31 (RUSTSEC-2026-0194/0195)** — pinned by `azure_core` 0.21, the end of the legacy Azure SDK line. Requires migrating `src/storage/azure.rs` to `azure_storage_blob` (beta) and its TokenCredential auth model. Documented exception until that crate is stable.
+
+### Conversion correctness
+
+- [x] **`aim convert` works on vaulted models at all** — it parsed the stored format name (`"PyTorch"`) with `from_extension`, so every conversion failed with "No conversion path"; `aim diff` silently degraded to a byte diff for the same reason
+- [x] **`ModelFormat::from_name` / `from_stored`** with a round-trip test across all 22 variants
+
+### Conversion honesty
+
+- [x] **REST `/convert` no longer returns plan JSON as target-format bytes** — it set `target_format: "onnx"` on a base64 payload that was actually a JSON plan; clients decoding it produced corrupt files
+- [x] **`ConversionResult::plan` / `is_plan()` / `Converter::produces_plan()`** — a typed signal, replacing the CLI's habit of sniffing its own output for a `"converter"` key
+- [x] **Multi-step planning halts at the first external-tooling step** — it used to feed a plan into the next converter and emit a plan-of-a-plan
+- [x] **`.well-known/openapi.yaml` `ConversionResult` corrected** — the published schema described fields the endpoint never returned
+- [x] **README / AGENTS.md conversion claims narrowed** to what actually converts natively
+
+### Release consistency
+
+- [x] **Python package version synced to the crate** — package was 1.3.0, its test asserted 1.2.1, crate was 1.6.0; all now 1.7.0 and the test compares against `Cargo.toml`
+- [x] **`--key` accepts KMS URIs** for `aim sign` / `aim verify` — the last documented-but-missing claim
+- [x] **15 orphaned docs added to mkdocs nav**
 
 ## v1.6.0 — Test Coverage, Benchmarks & Documentation (complete)
 

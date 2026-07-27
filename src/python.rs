@@ -63,7 +63,9 @@ fn parse_format(s: &str) -> PyResult<ModelFormat> {
 /// AI model format identifier.
 ///
 /// Use `detect("model.safetensors")` to auto-detect from filename.
-#[pyclass(name = "ModelFormat")]
+// Opt in to the FromPyObject derive: before pyo3 0.29 it was automatic for
+// Clone pyclasses, and callers extract these types by value.
+#[pyclass(name = "ModelFormat", from_py_object)]
 #[derive(Clone)]
 struct PyModelFormat {
     inner: ModelFormat,
@@ -123,7 +125,9 @@ impl PyModelFormat {
 // ── PyModelMetadata ──────────────────────────────────────────────────────────
 
 /// Metadata attached to a stored model.
-#[pyclass(name = "ModelMetadata")]
+// Opt in to the FromPyObject derive: before pyo3 0.29 it was automatic for
+// Clone pyclasses, and callers extract these types by value.
+#[pyclass(name = "ModelMetadata", from_py_object)]
 #[derive(Clone)]
 struct PyModelMetadata {
     inner: ModelMetadata,
@@ -216,7 +220,9 @@ impl PyModelMetadata {
 // ── PyModelVersion ───────────────────────────────────────────────────────────
 
 /// Read-only snapshot of a model version.
-#[pyclass(name = "ModelVersion")]
+// Opt in to the FromPyObject derive: before pyo3 0.29 it was automatic for
+// Clone pyclasses, and callers extract these types by value.
+#[pyclass(name = "ModelVersion", from_py_object)]
 #[derive(Clone)]
 struct PyModelVersion {
     inner: ModelVersion,
@@ -280,7 +286,9 @@ impl PyModelVersion {
 // ── PyVaultConfig ────────────────────────────────────────────────────────────
 
 /// Vault configuration — XDG-compliant paths and crypto settings.
-#[pyclass(name = "VaultConfig")]
+// Opt in to the FromPyObject derive: before pyo3 0.29 it was automatic for
+// Clone pyclasses, and callers extract these types by value.
+#[pyclass(name = "VaultConfig", from_py_object)]
 #[derive(Clone)]
 struct PyVaultConfig {
     inner: VaultConfig,
@@ -415,7 +423,7 @@ impl PyVault {
         version: Option<u32>,
     ) -> PyResult<Bound<'py, PyBytes>> {
         let data = self.inner.get_model(name, version).map_err(to_py_err)?;
-        Ok(PyBytes::new_bound(py, &data))
+        Ok(PyBytes::new(py, &data))
     }
 
     /// List all model names in the vault.
@@ -449,7 +457,7 @@ impl PyVault {
     /// Get vault statistics.
     fn get_stats<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
         let stats = self.inner.get_stats().map_err(to_py_err)?;
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
         dict.set_item("model_count", stats.model_count)?;
         dict.set_item("total_versions", stats.total_versions)?;
         dict.set_item("total_size_bytes", stats.total_size_bytes)?;
@@ -475,7 +483,7 @@ impl PyVault {
         parent_version: Option<u32>,
     ) -> PyResult<PyModelVersion> {
         let mut buf = Vec::new();
-        let iter = chunks.iter()?;
+        let iter = chunks.try_iter()?;
         for item in iter {
             let item = item?;
             let bytes: &[u8] = item.extract()?;
@@ -534,7 +542,9 @@ impl PyVault {
 ///         model_type="transformer", description="A fine-tuned LLM"
 ///     )
 ///     print(card.to_markdown())
-#[pyclass(name = "ModelCard")]
+// Opt in to the FromPyObject derive: before pyo3 0.29 it was automatic for
+// Clone pyclasses, and callers extract these types by value.
+#[pyclass(name = "ModelCard", from_py_object)]
 #[derive(Clone)]
 struct PyModelCard {
     inner: ModelCard,
@@ -703,9 +713,7 @@ impl PyModelStream {
     }
 
     fn __next__<'py>(&mut self, py: Python<'py>) -> Option<Bound<'py, PyBytes>> {
-        self.inner
-            .next()
-            .map(|chunk| PyBytes::new_bound(py, &chunk))
+        self.inner.next().map(|chunk| PyBytes::new(py, &chunk))
     }
 
     fn __repr__(&self) -> String {
@@ -753,7 +761,7 @@ impl PyVaultBuilder {
     }
 
     /// Set a custom `VaultConfig`.
-    fn config(mut slf: PyRefMut<'_, Self>, config: &PyVaultConfig) -> PyRefMut<'_, Self> {
+    fn config<'py>(mut slf: PyRefMut<'py, Self>, config: &PyVaultConfig) -> PyRefMut<'py, Self> {
         slf.config = Some(config.inner.clone());
         slf
     }
@@ -920,7 +928,7 @@ impl PyAclGuard {
         Ok(self
             .inner
             .resolve(principal)
-            .map_or(false, |resolved| resolved >= r))
+            .is_some_and(|resolved| resolved >= r))
     }
 
     fn __repr__(&self) -> String {
@@ -1033,6 +1041,7 @@ impl PyQuantProfileStore {
             .collect()
     }
 
+    #[staticmethod]
     fn estimate(size: u64, from_method: &str, to_method: &str) -> PyResult<u64> {
         let from: crate::quantization::QuantMethod = from_method
             .parse()

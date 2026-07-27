@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // model name. In production each closure would call into a real
     // `Vault` instance instead.
     thread_local! {
-        static STORE: RefCell<BTreeMap<String, ModelRecord>> = RefCell::new(BTreeMap::new());
+        static STORE: RefCell<BTreeMap<String, ModelRecord>> = const { RefCell::new(BTreeMap::new()) };
     }
 
     #[derive(Clone)]

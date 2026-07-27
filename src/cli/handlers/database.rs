@@ -453,11 +453,7 @@ pub fn handle_database(command: DatabaseCommands) -> Result<()> {
                     println!("   With embeddings: {}", with_embeddings);
                     println!(
                         "   Average document size: {} chars",
-                        if total_docs > 0 {
-                            total_chars / total_docs
-                        } else {
-                            0
-                        }
+                        total_chars.checked_div(total_docs).unwrap_or(0)
                     );
                 }
                 #[cfg(not(feature = "sqlite"))]

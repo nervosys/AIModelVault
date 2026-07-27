@@ -25,7 +25,10 @@ impl S3Backend {
         let region_provider =
             RegionProviderChain::first_try(aws_sdk_s3::config::Region::new(region));
 
-        let config = aws_config::from_env().region(region_provider).load().await;
+        let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+            .region(region_provider)
+            .load()
+            .await;
 
         let client = Client::new(&config);
 
@@ -210,7 +213,7 @@ mod tests {
     // They are disabled by default. Enable with: cargo test --features s3-integration-tests
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "requires live AWS credentials and a test bucket"]
     async fn test_s3_backend() {
         let bucket = std::env::var("TEST_S3_BUCKET").unwrap();
         let region = std::env::var("TEST_S3_REGION").unwrap_or("us-east-1".to_string());

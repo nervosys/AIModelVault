@@ -137,8 +137,9 @@ impl ModelDiffer {
         left_fmt: &str,
         right_fmt: &str,
     ) -> Result<ModelDiff> {
-        let left_format = crate::formats::ModelFormat::from_extension(left_fmt);
-        let right_format = crate::formats::ModelFormat::from_extension(right_fmt);
+        // These come from version records, which store `format.name()`.
+        let left_format = crate::formats::ModelFormat::from_stored(left_fmt);
+        let right_format = crate::formats::ModelFormat::from_stored(right_fmt);
 
         let left_tensors = Self::parse_tensors(left, &left_format);
         let right_tensors = Self::parse_tensors(right, &right_format);

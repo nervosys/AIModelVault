@@ -99,35 +99,58 @@ fn test_cli_init_vault() {
 
     aim()
         .args(["init", "--name", "test-vault"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("Vault").or(predicate::str::contains("initialized").or(predicate::str::contains("created"))));
 }
 
+/// With neither `aimodelvault_PASSPHRASE` nor anything on stdin, `list` must
+/// fail rather than unlock with an empty passphrase — a closed stdin reads as
+/// "" from the prompt, which would otherwise derive a key from no secret.
+/// The unattended paths are covered by `test_cli_list_empty_vault_non_interactive`.
 #[test]
-fn test_cli_list_empty_vault() {
-    // `list` requires interactive passphrase, so just verify it starts and asks
-    // for input (will fail/timeout without tty, which is expected).
-    // We verify the binary accepts the command without crashing.
+fn test_cli_list_without_passphrase_source() {
     let dir = tempdir().unwrap();
 
-    // Init first
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
-    // List will fail because no tty for passphrase — that's expected
-    // Just verify it doesn't crash with a bad exit code before prompting
-    let result = aim()
+    aim()
         .args(["list"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
-        .timeout(std::time::Duration::from_secs(3))
-        .assert();
-    // Expect either success (if no passphrase needed) or failure (no tty)
-    let _ = result;
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
+        .env_remove("aimodelvault_PASSPHRASE")
+        .timeout(std::time::Duration::from_secs(10))
+        // Only the exit status is asserted: with no terminal, `rpassword` may
+        // either return an empty string or fail outright depending on how the
+        // test harness attaches stdin, and the two render different messages.
+        // What must hold either way is that the vault does not unlock.
+        .assert()
+        .failure();
+}
+
+/// An explicitly empty `aimodelvault_PASSPHRASE` must not unlock the vault
+/// either — it falls through to the prompt, which now refuses an empty secret.
+#[test]
+fn test_cli_empty_passphrase_env_is_rejected() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["list"])
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
+        .env("aimodelvault_PASSPHRASE", "")
+        .timeout(std::time::Duration::from_secs(10))
+        .assert()
+        .failure();
 }
 
 #[test]
@@ -146,13 +169,13 @@ fn test_cli_stats_on_vault() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["stats"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -195,7 +218,7 @@ fn test_cli_sqlite_versions_flag_accepted() {
 
     aim()
         .args(["--sqlite-versions", "init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -206,13 +229,13 @@ fn test_cli_compliance_runs() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["compliance"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -673,13 +696,13 @@ fn test_cli_cache_on_vault() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["cache"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -705,7 +728,7 @@ fn test_cli_init_custom_name() {
 
     aim()
         .args(["init", "--name", "my-custom-vault"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(
@@ -721,13 +744,13 @@ fn test_cli_sqlite_versions_with_stats() {
 
     aim()
         .args(["--sqlite-versions", "init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["--sqlite-versions", "stats"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -738,13 +761,13 @@ fn test_cli_sqlite_versions_with_compliance() {
 
     aim()
         .args(["--sqlite-versions", "init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["--sqlite-versions", "compliance"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -759,7 +782,7 @@ fn test_cli_no_telemetry_flag_with_init() {
 
     aim()
         .args(["--no-telemetry", "init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -922,13 +945,13 @@ fn test_cli_sqlite_versions_with_cache() {
 
     aim()
         .args(["--sqlite-versions", "init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["--sqlite-versions", "cache"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -939,13 +962,13 @@ fn test_cli_init_twice_same_dir() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1080,13 +1103,13 @@ fn test_cli_gc_dry_run_on_vault() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["gc", "--dry-run"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1097,26 +1120,26 @@ fn test_cli_acl_grant_list_revoke() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["acl", "grant", "alice", "writer"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["acl", "list"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("alice"));
 
     aim()
         .args(["acl", "revoke", "alice"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1128,19 +1151,19 @@ fn test_cli_webhook_add_list_remove() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["webhook", "add", &id, "https://example.com/hook"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["webhook", "list"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("example.com"));
@@ -1152,19 +1175,19 @@ fn test_cli_policy_set_show() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["policy", "set", "test-model", "--max-versions", "5"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["policy", "show", "test-model"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("test-model"));
@@ -1207,13 +1230,13 @@ fn test_cli_lineage_graph_show_empty() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["lineage-graph", "show", "any-model"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1224,13 +1247,13 @@ fn test_cli_plugin_list_empty() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["plugin", "list"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1241,19 +1264,19 @@ fn test_cli_tag_add_list_on_vault() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["tag", "add", "my-model", "llm", "production"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["tag", "list", "my-model"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("llm"));
@@ -1305,13 +1328,13 @@ fn test_cli_search_empty_query() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["search"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1369,7 +1392,7 @@ fn test_cli_quantize_set_list_remove() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
@@ -1383,20 +1406,20 @@ fn test_cli_quantize_set_list_remove() {
             "--description",
             "Fast 4-bit",
         ])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["quantize", "list"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("fast-q4"));
 
     aim()
         .args(["quantize", "remove", "fast-q4"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1407,7 +1430,7 @@ fn test_cli_quantize_estimate() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
@@ -1420,7 +1443,7 @@ fn test_cli_quantize_estimate() {
             "--to",
             "q4_k_m",
         ])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1431,7 +1454,7 @@ fn test_cli_eval_record_list_suites() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
@@ -1449,20 +1472,20 @@ fn test_cli_eval_record_list_suites() {
             "--unit",
             "score",
         ])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["eval", "list", "my-model"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("mmlu").or(predicate::str::contains("my-model")));
 
     aim()
         .args(["eval", "suites"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("mmlu"));
@@ -1475,7 +1498,7 @@ fn test_cli_backup_set_list_remove() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
@@ -1491,20 +1514,20 @@ fn test_cli_backup_set_list_remove() {
             "--output-dir",
             backup_dir.path().to_str().unwrap(),
         ])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["backup", "list"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("nightly"));
 
     aim()
         .args(["backup", "remove", "nightly"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1515,13 +1538,13 @@ fn test_cli_backup_history_empty() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["backup", "history"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1533,7 +1556,7 @@ fn test_cli_vaults_register_list_activate_deactivate() {
 
     aim()
         .args(["init"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
@@ -1546,32 +1569,32 @@ fn test_cli_vaults_register_list_activate_deactivate() {
             "--description",
             "Production vault",
         ])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["vaults", "list"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success()
         .stdout(predicate::str::contains("prod"));
 
     aim()
         .args(["vaults", "activate", "prod"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["vaults", "deactivate"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 
     aim()
         .args(["vaults", "unregister", "prod"])
-        .env("aimodelvault_VAULT", dir.path().to_str().unwrap())
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
         .assert()
         .success();
 }
@@ -1623,4 +1646,369 @@ fn test_cli_eval_compare_missing_suite() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("required").or(predicate::str::contains("error")));
+}
+
+// ──────────────────────────────────────────────────────────────
+// Non-interactive passphrase (aimodelvault_PASSPHRASE / stdin / KMS URI)
+//
+// Before these existed, every passphrase-gated command required a TTY, so the
+// vault round-trip below could not be tested from CI at all.
+// ──────────────────────────────────────────────────────────────
+
+const TEST_PASS: &str = "cli-integration-passphrase";
+
+/// `init` + `store` + `list` + `get`, driven entirely by the env var.
+#[test]
+fn test_cli_roundtrip_with_passphrase_env() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    let model = dir.path().join("model.safetensors");
+    std::fs::write(&model, b"fake-safetensors-payload").unwrap();
+
+    aim()
+        .args(["init", "--name", "roundtrip"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+
+    aim()
+        .args(["store", "demo", model.to_str().unwrap()])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("stored successfully"));
+
+    aim()
+        .args(["list"])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("demo"));
+
+    let out = dir.path().join("retrieved.safetensors");
+    aim()
+        .args(["get", "demo", out.to_str().unwrap()])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success();
+
+    assert_eq!(
+        std::fs::read(&out).unwrap(),
+        b"fake-safetensors-payload",
+        "retrieved model must match what was stored"
+    );
+}
+
+/// A wrong passphrase must fail rather than silently returning garbage.
+#[test]
+fn test_cli_wrong_passphrase_fails() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+    let model = dir.path().join("m.bin");
+    std::fs::write(&model, b"payload").unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+
+    aim()
+        .args(["store", "m", model.to_str().unwrap()])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success();
+
+    let out = dir.path().join("out.bin");
+    aim()
+        .args(["get", "m", out.to_str().unwrap()])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", "not-the-right-passphrase")
+        .assert()
+        .failure();
+}
+
+/// The env var may hold an `env://` KMS URI pointing at another variable.
+#[test]
+fn test_cli_passphrase_via_kms_env_uri() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+
+    aim()
+        .args(["list"])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", "env://AIM_CLI_TEST_SECRET")
+        .env("AIM_CLI_TEST_SECRET", TEST_PASS)
+        .assert()
+        .success();
+}
+
+/// ...or a `file://` URI pointing at a secret file.
+#[test]
+fn test_cli_passphrase_via_kms_file_uri() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    let secret = dir.path().join("passphrase.txt");
+    std::fs::write(&secret, format!("{TEST_PASS}\n")).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o600)).unwrap();
+    }
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+
+    aim()
+        .args(["list"])
+        .env("aimodelvault_HOME", vault_dir)
+        .env(
+            "aimodelvault_PASSPHRASE",
+            format!("file://{}", secret.display()),
+        )
+        .assert()
+        .success();
+}
+
+/// An unresolvable KMS URI must fail loudly, not fall back to an empty secret.
+#[test]
+fn test_cli_unresolvable_kms_uri_fails() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+
+    aim()
+        .args(["list"])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", "env://AIM_NOT_SET_ANYWHERE_42")
+        .assert()
+        .failure();
+}
+
+/// With no env var, a piped passphrase on stdin is accepted.
+#[test]
+fn test_cli_passphrase_via_stdin() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+
+    aim()
+        .args(["list"])
+        .env("aimodelvault_HOME", vault_dir)
+        .env_remove("aimodelvault_PASSPHRASE")
+        .write_stdin(format!("{TEST_PASS}\n"))
+        .assert()
+        .success();
+}
+
+/// `list` against a freshly initialised vault now runs unattended — this
+/// replaces the old test that could only assert "it did not crash".
+#[test]
+fn test_cli_list_empty_vault_non_interactive() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+
+    aim()
+        .args(["list"])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success();
+}
+
+/// `aim sign` / `aim verify` accept a KMS URI for --key, not just a file path.
+/// The secret may be a bare hex seed, as a secret manager would store it.
+#[test]
+fn test_cli_sign_verify_with_kms_key_uri() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    let model = dir.path().join("model.bin");
+    std::fs::write(&model, b"contents to be signed").unwrap();
+
+    // A 32-byte seed, hex-encoded, as `aim sign` would have generated.
+    let seed = "a".repeat(64);
+
+    aim()
+        .args([
+            "sign",
+            "ignored",
+            "--file",
+            model.to_str().unwrap(),
+            "--key",
+            "env://AIM_TEST_SIGN_KEY",
+        ])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("AIM_TEST_SIGN_KEY", &seed)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("KMS"));
+
+    let sig = model.with_extension("sig");
+    assert!(
+        sig.exists(),
+        "detached signature should be written next to the file"
+    );
+
+    aim()
+        .args([
+            "verify",
+            "ignored",
+            "--file",
+            model.to_str().unwrap(),
+            "--signature",
+            sig.to_str().unwrap(),
+            "--key",
+            "env://AIM_TEST_SIGN_KEY",
+        ])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("AIM_TEST_SIGN_KEY", &seed)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Verification PASSED"));
+}
+
+/// A malformed KMS-sourced signing key must fail loudly.
+#[test]
+fn test_cli_sign_rejects_bad_kms_key() {
+    let dir = tempdir().unwrap();
+    let model = dir.path().join("m.bin");
+    std::fs::write(&model, b"data").unwrap();
+
+    aim()
+        .args([
+            "sign",
+            "ignored",
+            "--file",
+            model.to_str().unwrap(),
+            "--key",
+            "env://AIM_TEST_BAD_KEY",
+        ])
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
+        .env("AIM_TEST_BAD_KEY", "not-a-valid-seed")
+        .assert()
+        .failure();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Conversion
+// ──────────────────────────────────────────────────────────────
+
+/// Regression: version records store `format.name()` ("PyTorch"), which
+/// `from_extension` does not recognise. `aim convert` used to parse the stored
+/// format that way, yielding `Custom("pytorch")`, so it could never find a
+/// conversion path for ANY vaulted model.
+#[test]
+fn test_cli_convert_resolves_stored_format() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    // Minimal ZIP-magic payload so the format is detected as PyTorch.
+    let model = dir.path().join("m.pt");
+    let mut bytes = vec![0x50, 0x4b, 0x03, 0x04];
+    bytes.extend_from_slice(&[0u8; 60]);
+    std::fs::write(&model, &bytes).unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+
+    aim()
+        .args(["store", "demo", model.to_str().unwrap()])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success();
+
+    let work = dir.path().join("work");
+    std::fs::create_dir_all(&work).unwrap();
+
+    aim()
+        .args(["convert", "demo", "--to-format", "onnx"])
+        .current_dir(&work)
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Source format: PyTorch"))
+        .stdout(predicate::str::contains("No conversion path").not());
+}
+
+/// A conversion needing external tooling must leave a plan, never a file with
+/// the target extension containing JSON.
+#[test]
+fn test_cli_convert_writes_plan_not_fake_target_file() {
+    let dir = tempdir().unwrap();
+    let vault_dir = dir.path().to_str().unwrap();
+
+    let model = dir.path().join("m.pt");
+    let mut bytes = vec![0x50, 0x4b, 0x03, 0x04];
+    bytes.extend_from_slice(&[0u8; 60]);
+    std::fs::write(&model, &bytes).unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", vault_dir)
+        .assert()
+        .success();
+    aim()
+        .args(["store", "demo", model.to_str().unwrap()])
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success();
+
+    let work = dir.path().join("work");
+    std::fs::create_dir_all(&work).unwrap();
+
+    aim()
+        .args(["convert", "demo", "--to-format", "onnx"])
+        .current_dir(&work)
+        .env("aimodelvault_HOME", vault_dir)
+        .env("aimodelvault_PASSPHRASE", TEST_PASS)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No ONNX file was produced"));
+
+    assert!(
+        work.join("demo_converted.plan.json").exists(),
+        "the plan should be written alongside the requested output"
+    );
+    assert!(
+        !work.join("demo_converted.onnx").exists(),
+        "no .onnx file may be produced when nothing was converted"
+    );
 }

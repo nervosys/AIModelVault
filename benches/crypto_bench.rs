@@ -13,7 +13,7 @@ fn bench_encryption(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("encryption");
 
-    for size in [1024, 1024 * 10, 1024 * 100, 1024 * 1024].iter() {
+    for size in &[1024, 1024 * 10, 1024 * 100, 1024 * 1024] {
         let data = vec![0u8; *size];
 
         group.bench_with_input(BenchmarkId::from_parameter(size), &data, |b, data| {
@@ -31,7 +31,7 @@ fn bench_decryption(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("decryption");
 
-    for size in [1024, 1024 * 10, 1024 * 100, 1024 * 1024].iter() {
+    for size in &[1024, 1024 * 10, 1024 * 100, 1024 * 1024] {
         let data = vec![0u8; *size];
         let encrypted = crypto.encrypt(&data, &key).unwrap();
 
@@ -65,7 +65,7 @@ fn bench_key_derivation(c: &mut Criterion) {
 fn bench_compression(c: &mut Criterion) {
     let mut group = c.benchmark_group("compression");
 
-    for size in [1024, 1024 * 10, 1024 * 100].iter() {
+    for size in &[1024, 1024 * 10, 1024 * 100] {
         let data = vec![42u8; *size]; // Highly compressible
 
         group.bench_with_input(BenchmarkId::new("gzip", size), &data, |b, data| {

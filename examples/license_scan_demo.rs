@@ -3,7 +3,6 @@
 //! Run with: cargo run --example license_scan_demo
 
 use ai_model_vault::license_scan::LicenseScanner;
-use std::path::Path;
 
 fn main() -> ai_model_vault::Result<()> {
     println!("=== AI Model Vault License Scanning Example ===\n");

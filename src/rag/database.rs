@@ -584,11 +584,9 @@ impl SledDatabase {
     pub fn list_documents(&self) -> Result<Vec<String>> {
         let mut ids = Vec::new();
 
-        for item in self.db.iter() {
-            if let Ok((key, _)) = item {
-                if let Ok(id) = String::from_utf8(key.to_vec()) {
-                    ids.push(id);
-                }
+        for (key, _) in self.db.iter().flatten() {
+            if let Ok(id) = String::from_utf8(key.to_vec()) {
+                ids.push(id);
             }
         }
 
@@ -599,11 +597,9 @@ impl SledDatabase {
     pub fn search_prefix(&self, prefix: &str) -> Result<Vec<Document>> {
         let mut documents = Vec::new();
 
-        for item in self.db.scan_prefix(prefix.as_bytes()) {
-            if let Ok((_, value)) = item {
-                if let Ok(doc) = serde_json::from_slice::<Document>(&value) {
-                    documents.push(doc);
-                }
+        for (_, value) in self.db.scan_prefix(prefix.as_bytes()).flatten() {
+            if let Ok(doc) = serde_json::from_slice::<Document>(&value) {
+                documents.push(doc);
             }
         }
 
@@ -623,16 +619,14 @@ impl Database for SledDatabase {
         let prefix = parts[0];
         let mut results = Vec::new();
 
-        for item in self.db.scan_prefix(prefix.as_bytes()) {
-            if let Ok((key, value)) = item {
-                let mut record = HashMap::new();
-                record.insert("key".to_string(), String::from_utf8_lossy(&key).to_string());
-                record.insert(
-                    "value".to_string(),
-                    String::from_utf8_lossy(&value).to_string(),
-                );
-                results.push(record);
-            }
+        for (key, value) in self.db.scan_prefix(prefix.as_bytes()).flatten() {
+            let mut record = HashMap::new();
+            record.insert("key".to_string(), String::from_utf8_lossy(&key).to_string());
+            record.insert(
+                "value".to_string(),
+                String::from_utf8_lossy(&value).to_string(),
+            );
+            results.push(record);
         }
 
         Ok(results)

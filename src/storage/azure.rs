@@ -3,6 +3,7 @@
 use async_trait::async_trait;
 use azure_storage::StorageCredentials;
 use azure_storage_blobs::prelude::*;
+use futures_util::StreamExt;
 
 use crate::error::{Result, VaultError};
 use crate::storage::StorageBackend;
@@ -60,8 +61,9 @@ impl StorageBackend for AzureBackend {
         let blob_name = self.get_blob_name(key);
         let blob_client = self.client.blob_client(blob_name);
 
+        // The SDK's request body must be 'static, so the borrowed slice is copied.
         blob_client
-            .put_block_blob(data)
+            .put_block_blob(data.to_vec())
             .await
             .map_err(|e| VaultError::StorageError(format!("Azure upload failed: {}", e)))?;
 
@@ -123,15 +125,12 @@ impl StorageBackend for AzureBackend {
     async fn list(&self) -> Result<Vec<String>> {
         let mut keys = Vec::new();
 
-        let mut stream = self
-            .client
-            .list_blobs()
-            .prefix(if !self.prefix.is_empty() {
-                Some(self.prefix.clone())
-            } else {
-                None
-            })
-            .into_stream();
+        let mut builder = self.client.list_blobs();
+        // `prefix()` takes an owned string, not an Option, so only set it when present.
+        if !self.prefix.is_empty() {
+            builder = builder.prefix(self.prefix.clone());
+        }
+        let mut stream = builder.into_stream();
 
         while let Some(response) = stream.next().await {
             let response = response
@@ -178,7 +177,7 @@ mod tests {
     // They are disabled by default. Enable with: cargo test --features azure-integration-tests
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "requires live Azure credentials and a test container"]
     async fn test_azure_backend() {
         let account = std::env::var("TEST_AZURE_ACCOUNT").unwrap();
         let container = std::env::var("TEST_AZURE_CONTAINER").unwrap();

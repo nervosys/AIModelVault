@@ -591,6 +591,10 @@ mod tests {
             let err_msg = format!("{}", result.err().unwrap());
             assert!(err_msg.contains("S3 support not enabled"));
         }
+        // With `s3` enabled the call reaches the AWS SDK, whose outcome depends
+        // on ambient credentials — asserting either way would be flaky.
+        #[cfg(feature = "s3")]
+        drop(result);
     }
 
     #[test]
@@ -608,6 +612,10 @@ mod tests {
             let err_msg = format!("{}", result.err().unwrap());
             assert!(err_msg.contains("Azure support not enabled"));
         }
+        // With `azure` enabled the call reaches the Azure SDK, which requires
+        // ambient credentials — asserting either way would be flaky.
+        #[cfg(feature = "azure")]
+        drop(result);
     }
 
     #[test]

@@ -95,7 +95,7 @@ fn bench_acl(c: &mut Criterion) {
             },
             |(_tmp, mut guard)| {
                 guard.grant("user", Role::Writer).unwrap();
-                black_box(guard.require("user", Role::Reader).unwrap());
+                guard.require("user", Role::Reader).unwrap();
             },
         );
     });

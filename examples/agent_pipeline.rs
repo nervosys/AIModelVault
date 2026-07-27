@@ -36,7 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // reason about; here we gate on the recommendation field.
     println!("\n1. Safety scan (pickle opcodes / suspicious patterns)");
     let report = PickleScanner::scan(&checkpoint)?;
-    println!("   ✓ findings: {} · recommendation: {}",
+    println!(
+        "   ✓ findings: {} · recommendation: {}",
         report.findings.len(),
         first_sentence(&report.recommendation),
     );
@@ -62,7 +63,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let passphrase = std::env::var("aimodelvault_PASSPHRASE")
         .unwrap_or_else(|_| "demo-passphrase-not-for-production".to_string());
     vault.unlock(passphrase.into_bytes())?;
-    println!("\n2. Vault unlocked at {:?}", vault.get_config().dirs.vault_dir);
+    println!(
+        "\n2. Vault unlocked at {:?}",
+        vault.get_config().dirs.vault_dir
+    );
 
     // ── 3. Store the model with metadata ──────────────────────────────────
     let model_name = "agent-pipeline-demo";
