@@ -6,10 +6,13 @@ name: CI
 # ensure your test scripts do not echo or print passphrases to stdout/stderr.
 
 on:
+  # master is this repository's default branch. Omitting it meant these jobs
+  # never ran on a push to the default branch — the whole suite, clippy, MSRV,
+  # docs, coverage, fuzz and benchmarks were silently skipped.
   push:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ master, main ]
 
 concurrency:
   group: ci-${{ github.ref }}
