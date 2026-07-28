@@ -30,6 +30,23 @@ Three runnable Rust examples cover the three canonical integration patterns:
 
 Run any of them with `cargo run --example <name>`.
 
+## Running unattended
+
+Passphrase-gated commands (`store`, `get`, `list`, `sign`, `cloud *`, …) resolve the
+passphrase in this order, so no TTY is required:
+
+1. `$aimodelvault_PASSPHRASE` — a literal passphrase, or a KMS URI to resolve
+2. A line piped on stdin, when stdin is not a terminal
+3. An interactive masked prompt
+
+```bash
+aimodelvault_PASSPHRASE='vault://secret/aim/passphrase' aim list --format json
+printf '%s\n' "$PASSPHRASE" | aim list
+```
+
+An unresolvable KMS URI is a hard error — the CLI never falls back to an empty
+passphrase. See [docs/KMS.md](docs/KMS.md) for the URI table and backend setup.
+
 ## Stability contract
 
 | Guarantee         | Detail                                                                                                                                  |
@@ -41,6 +58,7 @@ Run any of them with `cargo run --example <name>`.
 | Error envelope    | Errors emit JSON `{ "code": "...", "message": "...", "hint": "..." }` on stderr; never bare strings                                     |
 | No surprise I/O   | The CLI never makes network calls except `aim pull`, `aim cloud *`, and opt-in telemetry (off by default; honors `DO_NOT_TRACK=1`)      |
 | URI scheme        | `aimv://vault/model@version` resolves through any of the three surfaces                                                                 |
+| Conversion honesty | `aim convert` and `POST /api/v1/convert` never emit a file or payload in the target format unless the bytes really are that format. When external tooling is required the REST response sets `converted: false` and carries a `plan`; the CLI writes `<output>.plan.json` and produces no target-format file |
 
 ## Project Identity
 
@@ -49,7 +67,7 @@ Run any of them with `cargo run --example <name>`.
 | **Name**       | AI Model Vault                           |
 | **Binary**     | `aim`                                    |
 | **Crate**      | `ai-model-vault`                         |
-| **Version**    | 1.6.0                                    |
+| **Version**    | 1.7.0                                    |
 | **Language**   | Rust (edition 2021, MSRV 1.89)           |
 | **License**    | AGPL-3.0-or-later                        |
 | **Repository** | https://github.com/nervosys/AIModelVault |
@@ -60,7 +78,7 @@ AI Model Vault is an **encrypted AI/ML model management system**. It provides:
 
 1. **Encrypted Storage** — AES-256-GCM encryption with Argon2id key derivation (FIPS 140-3)
 2. **Version Control** — Sequential versioning with parent lineage trees and instant rollback
-3. **Format Conversion** — Convert between 23+ model formats (SafeTensors, GGUF, ONNX, PyTorch, TensorRT, CoreML, MLX, etc.)
+3. **Format Conversion** — 23+ formats detected. Native pure-Rust conversion for SafeTensors ↔ PyTorch and SafeTensors ↔ raw; PyTorch→ONNX, ONNX→TensorRT, ONNX→CoreML and SafeTensors→GGUF require an external Python toolchain and return a plan (`converted: false`) instead of a file
 4. **Compliance** — FIPS 140-3, CMMC 2.0 Level 2, MITRE ATT&CK validation
 5. **RAG System** — Document store, knowledge base, rule engine with MCP tool integration
 6. **Cloud Storage** — Push/pull to AWS S3, Azure Blob, Google Cloud Storage
@@ -143,6 +161,7 @@ aim introspect [--format json|yaml|jsonld] [--compact]
 aim pull <SOURCE> [-o DIR] [--sha256 HASH] [--token TOKEN] [--store] [--name NAME]
 
 # Model signing & verification
+# KEY is a file path or a KMS URI (e.g. azure-kv://vault/hmac-key)
 aim sign <NAME> [--version V] [--key KEY] [--identity ID] [--file PATH]
 aim verify <NAME> --signature <SIG> [--key KEY] [--file PATH]
 
@@ -259,12 +278,31 @@ aim vaults active                             # Show active vault
 
 ## Conversion Paths
 
+`aim list-conversions` is the authoritative list. Ten converters are registered,
+in two classes:
+
+**Native (pure Rust — produces a real file):**
+
 ```
-PyTorch  → SafeTensors, ONNX, TorchScript, CoreML, MLX
-SafeTensors → GGUF (with quantization: q4_0, q4_k_m, q5_k_m, q8_0)
-ONNX → TensorRT, OpenVINO, TFLite
-TensorFlow → TFLite
+SafeTensors ↔ PyTorch
+SafeTensors ↔ raw
+GGUF        → metadata JSON   (header parser)
+ONNX        → metadata JSON   (metadata extractor)
 ```
+
+**Plan-only (needs an external Python toolchain — produces no file):**
+
+```
+PyTorch     → ONNX            (torch, onnx)
+ONNX        → TensorRT        (tensorrt / trtexec)
+ONNX        → Core ML         (coremltools)
+SafeTensors → GGUF            (gguf / llama-cpp-python; q4_0, q4_k_m, q5_k_m, q8_0)
+```
+
+Multi-step paths (e.g. PyTorch → ONNX → TensorRT) are found by BFS but stop at
+the first plan-only step. For those, `POST /api/v1/convert` returns
+`converted: false` with a `plan`, and `aim convert` writes `<output>.plan.json`
+and no target-format file.
 
 ## MCP Tools (Model Context Protocol)
 
@@ -299,9 +337,10 @@ Custom tools can be registered via `MCPServer::register_tool(tool, executor_fn)`
 
 | Variable                                                     | Purpose                              |
 | ------------------------------------------------------------ | ------------------------------------ |
-| `aimodelvault_PASSPHRASE`                                    | Vault passphrase (for CI/automation) |
+| `aimodelvault_PASSPHRASE`                                    | Vault passphrase for CI/automation — a literal value or a KMS URI (`env://`, `file://`, `aws-sm://`, `azure-kv://`, `vault://`). See [docs/KMS.md](docs/KMS.md) |
 | `aimodelvault_VAULT`                                         | Default vault name                   |
-| `aimodelvault_CONFIG`                                        | Custom config path                   |
+| `aimodelvault_CONFIG`                                        | Config directory override (`config.yaml`, profiles, plugins) |
+| `aimodelvault_HOME`                                          | Relocates all config/data/cache directories under one root — use for test isolation, containers, and per-project vaults |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | AWS S3 credentials                   |
 | `AZURE_STORAGE_ACCOUNT` / `AZURE_STORAGE_KEY`                | Azure credentials                    |
 | `GOOGLE_APPLICATION_CREDENTIALS` / `GCP_PROJECT`             | GCS credentials                      |

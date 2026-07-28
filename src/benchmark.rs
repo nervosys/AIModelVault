@@ -231,6 +231,9 @@ impl BenchmarkStore {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
+// Exact float comparison is intentional here: these assert on literal
+// constants that round-trip bit-for-bit, not on computed results.
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

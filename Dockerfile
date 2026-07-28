@@ -11,7 +11,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1 — Builder (uses Rust slim to compile the binary)
 # ---------------------------------------------------------------------------
-FROM rust:1.85-slim-bookworm AS builder
+FROM rust:1.89-slim-bookworm AS builder
 
 ARG FEATURES=""
 
@@ -65,7 +65,7 @@ VOLUME ["/data", "/config", "/cache"]
 
 LABEL org.opencontainers.image.title="AI Model Vault" \
     org.opencontainers.image.description="Universal secure vault for AI model formats" \
-    org.opencontainers.image.version="1.5.0" \
+    org.opencontainers.image.version="1.7.0" \
     org.opencontainers.image.source="https://github.com/nervosys/AIModelVault" \
     org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
@@ -101,6 +101,6 @@ VOLUME ["/data", "/config", "/cache"]
 
 LABEL org.opencontainers.image.title="AI Model Vault" \
     org.opencontainers.image.description="Universal secure vault for AI model formats" \
-    org.opencontainers.image.version="1.5.0" \
+    org.opencontainers.image.version="1.7.0" \
     org.opencontainers.image.source="https://github.com/nervosys/AIModelVault" \
     org.opencontainers.image.licenses="AGPL-3.0-or-later"

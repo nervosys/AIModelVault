@@ -90,7 +90,8 @@ pub fn handle_convert(
         .find(|v| v.version == version_num)
         .ok_or_else(|| VaultError::VersionNotFound(version_num, name.clone()))?;
 
-    let from_format = ModelFormat::from_extension(&model_version.format);
+    // Version records store `format.name()`, not an extension.
+    let from_format = ModelFormat::from_stored(&model_version.format);
     println!("   Source format: {}", from_format.name());
     println!("   Source size: {} bytes", data.len());
 
@@ -170,15 +171,8 @@ pub fn handle_convert(
         Some(&progress_cb),
     )?;
 
-    // Check if the result is a shim plan (JSON with "converter" key)
-    let is_shim_plan = serde_json::from_slice::<serde_json::Value>(&result.data)
-        .ok()
-        .and_then(|v| v.get("converter").cloned())
-        .is_some();
-
-    if is_shim_plan {
-        // Shim converter — output is a JSON plan, not actual converted data
-        let plan: serde_json::Value = serde_json::from_slice(&result.data).unwrap();
+    if let Some(plan) = &result.plan {
+        // No conversion happened — the pipeline returned instructions instead.
         println!("\n📋 This conversion requires external Python tools.");
         println!("   Converter: {}", plan["converter"]);
 
@@ -208,6 +202,16 @@ pub fn handle_convert(
             println!("\n   Or shell command:");
             println!("     {}", shell);
         }
+
+        // Write the plan next to the requested output, never *as* it — a file
+        // named `model.onnx` must never contain a JSON plan.
+        let plan_path = output_path.with_extension("plan.json");
+        std::fs::write(&plan_path, serde_json::to_vec_pretty(plan)?)?;
+        println!("\n   Plan written: {}", plan_path.display());
+        println!(
+            "   No {} file was produced — run the steps above to create one.",
+            to_format.name()
+        );
 
         println!("\n   After conversion, store back:");
         println!(

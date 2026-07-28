@@ -1,3 +1,10 @@
+// Assertions in these tests compare literal constants that round-trip
+// bit-for-bit and build fixed strings; the lints below are noise here.
+#![allow(
+    clippy::float_cmp,
+    clippy::single_char_pattern,
+    clippy::manual_string_new
+)]
 //! Consolidated coverage tests - merged from 12 incremental coverage files.
 //! Each original file is a uniquely named module to avoid name collisions.
 
@@ -8204,6 +8211,7 @@ mod deep_coverage_tests {
         fn conversion_result_fields() {
             let result = ConversionResult {
                 data: vec![1, 2, 3],
+                plan: None,
                 source_format: ModelFormat::PyTorch,
                 target_format: ModelFormat::ONNX,
                 conversion_path: vec![ModelFormat::PyTorch, ModelFormat::ONNX],
@@ -8895,6 +8903,7 @@ mod edge_coverage_tests {
         fn conversion_result_compression_ratio() {
             let result = ConversionResult {
                 data: vec![1, 2],
+                plan: None,
                 source_format: ModelFormat::PyTorch,
                 target_format: ModelFormat::ONNX,
                 conversion_path: vec![],
@@ -8909,6 +8918,7 @@ mod edge_coverage_tests {
         fn conversion_result_compression_ratio_zero_input() {
             let result = ConversionResult {
                 data: vec![],
+                plan: None,
                 source_format: ModelFormat::PyTorch,
                 target_format: ModelFormat::ONNX,
                 conversion_path: vec![],
@@ -12283,6 +12293,7 @@ mod full_coverage_tests {
         fn compression_ratio() {
             let r = ConversionResult {
                 data: vec![],
+                plan: None,
                 source_format: ModelFormat::PyTorch,
                 target_format: ModelFormat::ONNX,
                 conversion_path: vec![],
@@ -12297,6 +12308,7 @@ mod full_coverage_tests {
         fn compression_ratio_zero_input() {
             let r = ConversionResult {
                 data: vec![],
+                plan: None,
                 source_format: ModelFormat::PyTorch,
                 target_format: ModelFormat::ONNX,
                 conversion_path: vec![],

@@ -196,7 +196,7 @@ impl PickleScanner {
         Self::scan_patterns(&data, &mut findings);
 
         // Sort findings by severity (critical first)
-        findings.sort_by(|a, b| b.severity.cmp(&a.severity));
+        findings.sort_by_key(|f| std::cmp::Reverse(f.severity));
 
         // Build summary
         let mut summary = HashMap::new();
@@ -253,7 +253,7 @@ impl PickleScanner {
         }
         Self::scan_patterns(data, &mut findings);
 
-        findings.sort_by(|a, b| b.severity.cmp(&a.severity));
+        findings.sort_by_key(|f| std::cmp::Reverse(f.severity));
 
         let mut summary = HashMap::new();
         for f in &findings {

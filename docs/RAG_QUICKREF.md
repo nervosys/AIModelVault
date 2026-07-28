@@ -281,5 +281,5 @@ fn cached_retrieve(
 ## See Also
 
 - [Full Documentation](RAG.md)
-- [Examples](../examples/rag_demo.rs)
-- [Tests](../tests/rag_tests.rs)
+- [Examples](https://github.com/nervosys/AIModelVault/blob/master/examples/rag_demo.rs)
+- [Tests](https://github.com/nervosys/AIModelVault/blob/master/tests/rag_tests.rs)

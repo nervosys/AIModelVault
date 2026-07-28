@@ -262,7 +262,15 @@ fn test_shim_pytorch_to_onnx_custom_opset() {
         .convert(b"", &ModelFormat::PyTorch, &ModelFormat::ONNX, &opts, None)
         .unwrap();
 
-    let plan: serde_json::Value = serde_json::from_slice(&result.data).unwrap();
+    assert!(
+        result.is_plan(),
+        "conversion needing external tooling must be reported as a plan"
+    );
+    assert!(
+        result.data.is_empty(),
+        "a plan must not masquerade as model data"
+    );
+    let plan = result.plan.clone().unwrap();
     assert_eq!(plan["converter"], "pytorch_to_onnx");
     assert_eq!(plan["opset_version"], 15);
 }
@@ -285,7 +293,15 @@ fn test_shim_safetensors_to_gguf_quantization() {
         )
         .unwrap();
 
-    let plan: serde_json::Value = serde_json::from_slice(&result.data).unwrap();
+    assert!(
+        result.is_plan(),
+        "conversion needing external tooling must be reported as a plan"
+    );
+    assert!(
+        result.data.is_empty(),
+        "a plan must not masquerade as model data"
+    );
+    let plan = result.plan.clone().unwrap();
     assert_eq!(plan["converter"], "safetensors_to_gguf");
     assert_eq!(plan["quantization"], "q4_k_m");
 }
@@ -303,7 +319,15 @@ fn test_shim_onnx_to_tensorrt() {
         )
         .unwrap();
 
-    let plan: serde_json::Value = serde_json::from_slice(&result.data).unwrap();
+    assert!(
+        result.is_plan(),
+        "conversion needing external tooling must be reported as a plan"
+    );
+    assert!(
+        result.data.is_empty(),
+        "a plan must not masquerade as model data"
+    );
+    let plan = result.plan.clone().unwrap();
     assert_eq!(plan["converter"], "onnx_to_tensorrt");
     assert!(plan["requires"]
         .as_array()
@@ -324,7 +348,15 @@ fn test_shim_onnx_to_coreml() {
         )
         .unwrap();
 
-    let plan: serde_json::Value = serde_json::from_slice(&result.data).unwrap();
+    assert!(
+        result.is_plan(),
+        "conversion needing external tooling must be reported as a plan"
+    );
+    assert!(
+        result.data.is_empty(),
+        "a plan must not masquerade as model data"
+    );
+    let plan = result.plan.clone().unwrap();
     assert_eq!(plan["converter"], "onnx_to_coreml");
 }
 
@@ -344,9 +376,13 @@ fn test_multi_step_pytorch_to_tensorrt_via_onnx() {
         )
         .unwrap();
 
-    // The final output is the last step's plan (ONNX → TensorRT)
-    let plan: serde_json::Value = serde_json::from_slice(&result.data).unwrap();
-    assert_eq!(plan["converter"], "onnx_to_tensorrt");
+    // Planning stops at the first step that needs external tooling: there are no
+    // real ONNX bytes for the second step to consume, so the returned plan is the
+    // PyTorch → ONNX one, not a plan derived from another plan.
+    assert!(result.is_plan());
+    assert!(result.data.is_empty());
+    let plan = result.plan.clone().unwrap();
+    assert_eq!(plan["converter"], "pytorch_to_onnx");
     assert_eq!(result.conversion_path.len(), 3);
 }
 
@@ -433,6 +469,7 @@ fn test_conversion_options_with_validation() {
 fn test_conversion_result_compression_ratio() {
     let result = ConversionResult {
         data: vec![],
+        plan: None,
         source_format: ModelFormat::PyTorch,
         target_format: ModelFormat::Safetensors,
         conversion_path: vec![],
@@ -447,6 +484,7 @@ fn test_conversion_result_compression_ratio() {
 fn test_conversion_result_zero_input() {
     let result = ConversionResult {
         data: vec![],
+        plan: None,
         source_format: ModelFormat::PyTorch,
         target_format: ModelFormat::Safetensors,
         conversion_path: vec![],

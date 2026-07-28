@@ -1,35 +1,54 @@
 //! CLI handlers for model signing and verification (aim sign, aim verify).
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use ai_model_vault::{ModelSigner, Result, VaultConfig, VaultError};
+use ai_model_vault::{kms, ModelSigner, Result, SigningKeyPair, VaultConfig, VaultError};
 
 use crate::cli::helpers::{build_vault, prompt_passphrase};
+
+/// Load a signing key pair from a KMS URI.
+///
+/// The stored secret may be either a full keypair JSON document or a bare
+/// hex-encoded 32-byte seed.
+fn keypair_from_kms(uri: &str, identity: Option<&str>) -> Result<SigningKeyPair> {
+    println!("Loading signing key from KMS: {uri}");
+    let secret = kms::resolve(uri)?;
+    ModelSigner::parse_keypair(&secret, identity)
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_sign(
     name: String,
     version: Option<u32>,
-    key: Option<PathBuf>,
+    key: Option<String>,
     identity: Option<String>,
     file: Option<PathBuf>,
     config: VaultConfig,
     use_sqlite: bool,
 ) -> Result<()> {
-    // Determine or generate the signing key
-    let key_path = key.unwrap_or_else(|| config.dirs.config_dir.join("signing_key.json"));
+    let id = identity.as_deref();
 
-    let keypair = if key_path.exists() {
-        println!("Loading signing key from: {}", key_path.display());
-        ModelSigner::load_keypair(&key_path)?
-    } else {
-        let id = identity.as_deref();
-        println!("Generating new signing key pair...");
-        let kp = ModelSigner::generate_keypair(id)?;
-        ModelSigner::save_keypair(&kp, &key_path)?;
-        println!("Key pair saved to: {}", key_path.display());
-        kp
+    // A KMS-backed key is fetched, never generated or written to disk.
+    let keypair = match key.as_deref() {
+        Some(k) if kms::is_kms_uri(k) => keypair_from_kms(k, id)?,
+        other => {
+            let key_path = other.map_or_else(
+                || config.dirs.config_dir.join("signing_key.json"),
+                PathBuf::from,
+            );
+
+            if key_path.exists() {
+                println!("Loading signing key from: {}", key_path.display());
+                ModelSigner::load_keypair(&key_path)?
+            } else {
+                println!("Generating new signing key pair...");
+                let kp = ModelSigner::generate_keypair(id)?;
+                ModelSigner::save_keypair(&kp, &key_path)?;
+                println!("Key pair saved to: {}", key_path.display());
+                kp
+            }
+        }
     };
 
     let metadata = HashMap::new();
@@ -72,7 +91,7 @@ pub fn handle_verify(
     name: String,
     _version: Option<u32>,
     signature: PathBuf,
-    key: Option<PathBuf>,
+    key: Option<String>,
     file: Option<PathBuf>,
     config: VaultConfig,
     use_sqlite: bool,
@@ -96,11 +115,10 @@ pub fn handle_verify(
     };
 
     // Load secret key if provided (for HMAC verification)
-    let secret_seed = if let Some(key_path) = key {
-        let kp = ModelSigner::load_keypair(&key_path)?;
-        Some(kp.secret_seed.clone())
-    } else {
-        None
+    let secret_seed = match key.as_deref() {
+        Some(k) if kms::is_kms_uri(k) => Some(keypair_from_kms(k, None)?.secret_seed),
+        Some(k) => Some(ModelSigner::load_keypair(Path::new(k))?.secret_seed),
+        None => None,
     };
 
     let result = ModelSigner::verify(&sig, &file_path, secret_seed.as_deref())?;

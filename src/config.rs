@@ -131,6 +131,21 @@ impl Default for TelemetrySettings {
     }
 }
 
+/// Relocates every config/data/cache directory under one root.
+pub const ENV_HOME: &str = "aimodelvault_HOME";
+/// Overrides the config directory (holds `config.yaml`, profiles, plugins).
+pub const ENV_CONFIG: &str = "aimodelvault_CONFIG";
+/// Overrides the default vault name.
+pub const ENV_VAULT: &str = "aimodelvault_VAULT";
+
+/// Read an environment variable, treating empty/whitespace values as unset.
+fn non_empty_env(name: &str) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
 /// XDG-compliant directory paths for config, data, cache, and logs.
 #[derive(Debug, Clone, Default)]
 pub struct DirectoryPaths {
@@ -146,19 +161,30 @@ pub struct DirectoryPaths {
 
 impl VaultConfig {
     /// Create new configuration with defaults
+    ///
+    /// Honors three environment overrides:
+    /// - `aimodelvault_HOME` — relocate all config/data/cache directories
+    /// - `aimodelvault_CONFIG` — path to the config file to load
+    /// - `aimodelvault_VAULT` — default vault name
     pub fn new() -> Result<Self> {
         let dirs = Self::get_project_dirs()?;
         Self::ensure_directories(&dirs)?;
 
         let config_file = dirs.config_dir.join("config.yaml");
 
-        if config_file.exists() {
-            Self::load_from_file(&config_file, dirs)
+        let mut config = if config_file.exists() {
+            Self::load_from_file(&config_file, dirs)?
         } else {
             let config = Self::default_with_dirs(dirs);
             config.save()?;
-            Ok(config)
+            config
+        };
+
+        if let Some(name) = non_empty_env(ENV_VAULT) {
+            config.vault.default_vault = name;
         }
+
+        Ok(config)
     }
 
     /// Create configuration with custom directory paths
@@ -177,7 +203,41 @@ impl VaultConfig {
     /// - ~/.config/ai/utilities/
     /// - ~/.config/ai/databases/
     fn get_project_dirs() -> Result<DirectoryPaths> {
+        let mut dirs = Self::platform_dirs()?;
+
+        // `aimodelvault_CONFIG` relocates just the config tree.
+        if let Some(config_root) = non_empty_env(ENV_CONFIG) {
+            let config_dir = PathBuf::from(config_root);
+            dirs.backends_dir = config_dir.join("backends");
+            dirs.utilities_dir = config_dir.join("utilities");
+            dirs.databases_dir = config_dir.join("databases");
+            dirs.config_dir = config_dir;
+        }
+
+        Ok(dirs)
+    }
+
+    /// Directory layout before environment overrides are applied.
+    fn platform_dirs() -> Result<DirectoryPaths> {
         use directories::BaseDirs;
+
+        // `aimodelvault_HOME` relocates every directory under one root. Used for
+        // test isolation, containers, and per-project vaults.
+        if let Some(root) = non_empty_env(ENV_HOME) {
+            let root = PathBuf::from(root);
+            let config_dir = root.join("config");
+            let data_dir = root.join("data");
+            return Ok(DirectoryPaths {
+                cache_dir: root.join("cache"),
+                vault_dir: data_dir.join("vaults"),
+                log_dir: data_dir.join("logs"),
+                backends_dir: config_dir.join("backends"),
+                utilities_dir: config_dir.join("utilities"),
+                databases_dir: config_dir.join("databases"),
+                config_dir,
+                data_dir,
+            });
+        }
 
         let base_dirs = BaseDirs::new().ok_or_else(|| {
             VaultError::ConfigError("Failed to determine base directories".to_string())

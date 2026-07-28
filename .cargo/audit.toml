@@ -1,0 +1,18 @@
+# cargo-audit configuration.
+#
+# Keep this list in sync with the `ignore` list in deny.toml — CI runs both
+# `cargo audit` and `cargo deny check`, and they read separate config files.
+# Every entry must name the crate, the path that pulls it in, and what would
+# clear it.
+
+[advisories]
+ignore = [
+    # quick-xml 0.31 is pinned by azure_core 0.21, the last release of the legacy
+    # Azure SDK line, which has no path to quick-xml 0.41. Both advisories are
+    # denial-of-service via a malicious XML *response* — they require a hostile or
+    # compromised storage endpoint and are not reachable from vault data.
+    # Clearing them requires migrating src/storage/azure.rs to the rewritten Azure
+    # SDK (azure_storage_blob, in beta) and its TokenCredential auth model.
+    "RUSTSEC-2026-0194", # quick-xml quadratic duplicate-attribute scan (via azure_core)
+    "RUSTSEC-2026-0195", # quick-xml unbounded namespace allocation (via azure_core)
+]

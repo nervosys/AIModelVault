@@ -114,5 +114,5 @@ cargo run --example xdg_demo --release
 ## More Information
 
 - 📖 [docs/XDG_COMPLIANCE.md](XDG_COMPLIANCE.md) - Complete guide
-- 🔍 [examples/xdg_demo.rs](../examples/xdg_demo.rs) - Source code
+- 🔍 [examples/xdg_demo.rs](https://github.com/nervosys/AIModelVault/blob/master/examples/xdg_demo.rs) - Source code
 - 📋 [XDG Spec](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) - Official specification

@@ -6,9 +6,9 @@
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
 [![CMMC](https://img.shields.io/badge/CMMC-2.0%20Level%202-green.svg)](docs/SECURITY_HARDENING.md)
-[![Tests](https://img.shields.io/badge/tests-2%2C026%2B%20passing-brightgreen.svg)](reports/)
+[![Tests](https://img.shields.io/badge/tests-2%2C088%2B%20passing-brightgreen.svg)](reports/)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](CHANGELOG.md)
 [![Clippy](https://img.shields.io/badge/clippy-clean-brightgreen.svg)](validate.ps1)
 [![Agent-ready](https://img.shields.io/badge/agent--ready-AGENTS.md-blueviolet.svg)](AGENTS.md)
 
@@ -81,11 +81,11 @@ Every one of the 29 features in [AGENTS.md](AGENTS.md) is reachable from **all t
 
 - **Agent-first** — three coequal surfaces (CLI / REST+GraphQL / MCP), one schema, self-describing via `introspect` and `.well-known/`
 - **Secure by default** — AES-256-GCM with Argon2id KDF, FIPS 140-3 / CMMC 2.0 L2 / MITRE ATT&CK aligned
-- **Format-agnostic** — auto-detect and convert across 23+ formats (Safetensors, GGUF, ONNX, PyTorch, TensorRT, Core ML, MLX, …)
+- **Format-agnostic** — auto-detect 23+ formats; convert natively between SafeTensors, PyTorch, and raw. Conversions that need a Python toolchain (→ ONNX, → TensorRT, → Core ML, → GGUF) return a runnable plan rather than a silently wrong file
 - **Provenance built-in** — SHA-256 checksums, HMAC signatures, blockchain audit trail, license & pickle scanning
 - **Operational** — version control, retention policies, garbage collection, multi-vault, profiles, plugins, scheduled backups
 - **Integrated** — REST + GraphQL APIs, 86 MCP tools, Python bindings, Ollama / LM Studio interop, HuggingFace / Ollama / URL pull
-- **Quality** — 2,026+ tests, 0 clippy warnings, fuzz targets, property-based tests, criterion benchmarks
+- **Quality** — 2,088 Rust + 84 Python tests, 0 clippy warnings, fuzz targets, property-based tests, criterion benchmarks
 
 ---
 
@@ -148,7 +148,7 @@ All features below are fully implemented, tested, and exposed via both CLI and l
 | AES-256-GCM encryption  | (default)     | Argon2id KDF (64 MB / 3 iterations / 32-byte salt)         |
 | Streaming encryption    | (auto)        | Constant 8 MiB memory for multi-GB models                  |
 | GPU encryption (OpenCL) | (auto)        | AES-256-CTR with CPU fallback (`--features gpu`)           |
-| KMS integration         | —             | Env, AWS Secrets Manager, Azure Key Vault, HashiCorp Vault |
+| KMS integration         | `$aimodelvault_PASSPHRASE` | `env://`, `file://`, `azure-kv://`, `vault://`, `aws-sm://` (`--features s3`) |
 | 23+ model formats       | (auto-detect) | See [Supported Formats](#supported-model-formats)          |
 | Cloud storage           | `aim cloud`   | AWS S3, Azure Blob, GCS                                    |
 
@@ -167,7 +167,7 @@ All features below are fully implemented, tested, and exposed via both CLI and l
 
 | Feature                  | CLI                | Notes                                                 |
 | ------------------------ | ------------------ | ----------------------------------------------------- |
-| Format conversion (10×)  | `aim convert`      | PyTorch ↔ SafeTensors, → ONNX/TorchScript/Core ML/MLX |
+| Format conversion (10×)  | `aim convert`      | Native: PyTorch ↔ SafeTensors, ↔ raw. Plan-only (needs Python): → ONNX/TensorRT/Core ML/GGUF |
 | GGUF quantization        | `--quantization …` | Q4_0, Q4_K_M, Q5_K_M, Q8_0, F16, F32                  |
 | Quantization profiles    | `aim quantize`     | Per-model method selection, size estimation           |
 | ONNX → TensorRT/OpenVINO | `aim convert`      | Edge & GPU deployment paths                           |
@@ -487,9 +487,10 @@ Full demo guide: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md).
 
 | Variable                                                     | Purpose                            |
 | ------------------------------------------------------------ | ---------------------------------- |
-| `aimodelvault_PASSPHRASE`                                    | Vault passphrase (CI / automation) |
+| `aimodelvault_PASSPHRASE`                                    | Vault passphrase (CI / automation) — literal value or KMS URI, see [docs/KMS.md](docs/KMS.md) |
 | `aimodelvault_VAULT`                                         | Default vault name                 |
-| `aimodelvault_CONFIG`                                        | Custom config path                 |
+| `aimodelvault_CONFIG`                                        | Config directory override          |
+| `aimodelvault_HOME`                                          | Relocates all config/data/cache directories under one root |
 | `AIM_SQLITE_VERSIONS`                                        | Use SQLite version backend         |
 | `AIM_TELEMETRY_DISABLED=1` / `DO_NOT_TRACK=1`                | Disable anonymous telemetry        |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | AWS S3 credentials                 |

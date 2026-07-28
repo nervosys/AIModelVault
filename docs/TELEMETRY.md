@@ -27,4 +27,4 @@ Or set `telemetry.enabled = false` in `config.toml`.
 
 `GET /api/v1/telemetry/status` reports `{ "enabled": bool, "do_not_track": bool }`.
 
-See [src/telemetry.rs](../src/telemetry.rs).
+See [src/telemetry.rs](https://github.com/nervosys/AIModelVault/blob/master/src/telemetry.rs).

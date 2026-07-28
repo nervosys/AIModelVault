@@ -1093,8 +1093,10 @@ mod tests {
     #[tokio::test]
     async fn test_federation_manager_status() {
         let dir = tempfile::tempdir().unwrap();
-        let mut config = FederationConfig::default();
-        config.node_name = "test-node".to_string();
+        let config = FederationConfig {
+            node_name: "test-node".to_string(),
+            ..Default::default()
+        };
         let mgr = FederationManager::new(config, dir.path().to_path_buf()).unwrap();
 
         let status = mgr.status().await;

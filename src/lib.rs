@@ -137,7 +137,7 @@ pub use access_control::{AclEntry, AclGuard, Role};
 pub use gc::GcReport;
 
 // KMS exports
-pub use kms::{KmsBackend, KmsRequest};
+pub use kms::{is_kms_uri, KmsBackend, KmsRequest, KmsUri};
 
 // Lineage graph exports
 pub use lineage_graph::{DerivationKind, LineageEdge, LineageGraph};

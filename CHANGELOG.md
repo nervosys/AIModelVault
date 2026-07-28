@@ -5,7 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.7.0] - 2026-07-27
+
+### Security
+
+- **An empty passphrase can no longer unlock a vault.** On a closed or non-interactive stdin, `rpassword` returns `""`, which was accepted and used to derive a key — so `aim list` on a fresh vault succeeded with no secret at all. The prompt now rejects an empty passphrase and points at the three supported sources.
+- **9 advisories resolved.** `cargo audit` and `cargo deny check` both pass again; they had gone red as advisories were published after the last release.
+  - `rustls-webpki` 0.101 (RUSTSEC-2026-0098/0099/0104 — name-constraint bypasses and a CRL parse panic) reached the tree because the AWS SDKs' default `rustls` feature selects their *legacy* hyper-0.14/rustls-0.21 stack. Fixed by building the SDKs with `default-features = false` plus `default-https-client`, which uses rustls 0.23 / webpki 0.103.
+  - `pyo3` 0.24 → 0.29 (RUSTSEC-2026-0176 out-of-bounds read in `PyList`/`PyTuple` iterators, RUSTSEC-2026-0177 missing `Sync` bound).
+  - `quinn-proto` (RUSTSEC-2026-0185), `crossbeam-epoch` (RUSTSEC-2026-0204), `lru` (RUSTSEC-2026-0002) resolved by `cargo update`.
+  - `quick-xml` 0.31 (RUSTSEC-2026-0194/0195) remains, pinned by `azure_core` 0.21 — the last release of the legacy Azure SDK line. Both are denial-of-service via a malicious XML *response*, so they require a hostile storage endpoint and are unreachable from vault data. Documented with the upgrade path in `deny.toml` and the new `.cargo/audit.toml`; clearing them needs the rewritten `azure_storage_blob` crate, still in beta.
+- **Stale advisory ignores removed** from `deny.toml` — the three `rustls-webpki` entries were suppressing advisories that are now actually fixed.
+
+
+### Added
+
+- **Non-interactive passphrase resolution** — `prompt_passphrase()` now resolves in order: `$aimodelvault_PASSPHRASE` (literal value or KMS URI) → a line piped on stdin when stdin is not a terminal → interactive masked prompt. Every passphrase-gated command (`store`, `get`, `list`, `sign`, `cloud *`, …) is now usable from CI and from agents. The env var was documented in `AGENTS.md` but had never been read by any code path.
+- **KMS URIs for signing keys** — `aim sign --key` and `aim verify --key` accept a KMS URI as well as a file path; `docs/KMS.md` advertised this and it had never been implemented. The stored secret may be a keypair JSON document or a bare hex seed (`ModelSigner::keypair_from_seed` / `parse_keypair`). A KMS-backed key is never generated or written to disk.
+- **`aimodelvault_HOME`** — relocates all config/data/cache directories under one root, for test isolation, containers, and per-project vaults.
+- **KMS URI scheme** (`src/kms.rs`) — `KmsUri` parser and `kms::fetch` / `kms::resolve` for `env://NAME`, `file:///path`, `aws-sm://secret`, `azure-kv://vault/secret`, `vault://mount/path/key`. `docs/KMS.md` documented this scheme; no parser existed.
+- **KMS backends implemented** — `file://` (rejects group/world-readable files on Unix), Azure Key Vault and HashiCorp Vault over REST (KV v2 with v1 fallback), and AWS Secrets Manager via `aws-sdk-secretsmanager` behind the `s3` feature. Previously three of four backends were stubs that returned an error unconditionally — including with `s3` enabled, which the stub's own message told users to turn on.
+- **CI feature matrix job** — clippy over `default`, `s3`, `azure`, `cloud`, `api`, `database`. CI only ever built `full,graphql`, so breakage in the cloud features went unnoticed.
+- **CLI integration tests** — 7 tests covering the store → list → get round-trip, wrong-passphrase rejection, `env://` and `file://` URIs, unresolvable-URI failure, and stdin. No CLI test previously exercised a passphrase-gated command.
+
+
+### Fixed
+
+- **`aim convert` never worked on a vaulted model.** Version records persist `format.name()` (`"PyTorch"`), but the handler parsed it with `ModelFormat::from_extension`, which only knows extensions (`pt`/`pth`/`bin`). Every stored format silently became `Custom("pytorch")`, so path lookup always failed with "No conversion path from PyTorch to ONNX" — while the header printed `Source format: PyTorch`, because `Custom` renders its own string. `aim diff` on `name@version` had the same bug and silently fell back to a generic byte diff instead of tensor-level comparison. Added `ModelFormat::from_name` / `from_stored` with a round-trip test over every variant, and pointed both call sites at it. This went unnoticed because no CLI test could unlock a vault until this release.
+- **`POST /api/v1/convert` returned plan JSON labelled as the target format.** Four converters (PyTorch→ONNX, ONNX→TensorRT, ONNX→CoreML, SafeTensors→GGUF) need an external Python toolchain and emit a JSON *plan* instead of model bytes. The REST endpoint base64-encoded that plan into `data_base64` and returned HTTP 200 with `target_format: "onnx"` — a client decoding it into `model.onnx` got a corrupt file. The response now carries `converted: false` and a `plan` object, and omits `data_base64` entirely. `.well-known/openapi.yaml`'s `ConversionResult` schema, which described a completely different shape (`success`/`output_path`/`output_size_bytes`) than the endpoint actually returns, was corrected to match.
+- **"Is this a plan?" is now typed, not sniffed.** `ConversionResult` gained `plan: Option<Value>` and `is_plan()`, and `Converter` gained `produces_plan()`. The CLI previously detected this by parsing its own output looking for a `"converter"` key; any other consumer of the library API had no way to tell at all. When a conversion is a plan, `data` is empty, so no caller can write it out as a model file.
+- **Multi-step conversions no longer feed a plan into the next converter.** PyTorch→ONNX→TensorRT used to run step 2 on step 1's plan JSON, producing a meaningless plan-of-a-plan. The pipeline now stops at the first step needing external tooling and returns that plan.
+- **`aim convert` writes `<output>.plan.json`** rather than leaving the user with no artifact, and states plainly that no target-format file was produced.
+- **`aimodelvault_VAULT` and `aimodelvault_CONFIG` were never read.** Both are documented in `AGENTS.md`; nothing consumed them. The consequence was that the entire CLI test suite believed it was writing to a tempdir and was in fact operating on the developer's real vault — which is why tests could only run serially. Implemented as documented, pointed the tests at `aimodelvault_HOME`, and the CLI suite now passes in parallel (11s, down from 103s).
+- **Python package version drift** — the package was at 1.3.0 while `test_version_is_set` asserted 1.2.1, so CI's python job failed. Both are now 1.7.0, matching the crate, and the test asserts the version's shape plus equality with `Cargo.toml` rather than a literal that can rot.
+- **Dockerfile pinned `rust:1.85`** while the crate's MSRV is 1.89 — the image build could not have succeeded. Bumped to 1.89, and the stale `1.5.0` OCI version labels corrected.
+- **Helm chart pinned to 1.2.1** (`Chart.yaml` version/appVersion, `values.yaml` image tag), three releases behind. Synced to 1.7.0.
+- **`mkdocs build --strict` failed with 51 warnings**, so CI's docs job was red despite v1.6.0 recording it as added and passing. 52 links from `docs/*.md` pointed at repo files outside `docs/` (`../src/kms.rs`, `../SECURITY.md`, …) which mkdocs cannot resolve for a published site; they now use absolute GitHub URLs. Fixed three genuinely broken targets, and added a `validation:` block that keeps link checking strict while allowing the one nav entry for rustdoc output that a different CI job injects after the build.
+- **CI's mkdocs job installed only `mkdocs-material`** while `mkdocs.yml` declares the `minify` plugin — the build would have failed at config load, before rendering a single page. Verified the corrected install list builds strict-clean in a fresh virtualenv.
+- **15 orphaned docs** added to the mkdocs nav (access control, KMS, policies, GC, tags, profiles, webhooks, plugins, lineage graph, TUI, vault bundle, validation, federation, blockchain audit, telemetry).
+
+- **`s3` feature did not compile** — `src/cli/handlers/cloud.rs` used `ModelFormat` / `ModelMetadata` without importing them in the `cloud pull --store` path. Affected both `s3` and `azure`.
+- **`azure` feature did not compile** — `put_block_blob` needs an owned body, `list_blobs().prefix()` takes a string rather than an `Option`, and `Pageable::next()` needs `StreamExt` in scope (`futures-util` added under the `azure` feature).
+- **Deprecated AWS API** — `aws_config::from_env()` → `aws_config::defaults(BehaviorVersion::latest())`.
+- **Clippy failures on current stable** — `manual_checked_ops`, `unnecessary_sort_by`, `manual_string_new`, `single_char_pattern`, `io_error_other`, `field_reassign_with_default`, `no_effect_underscore_binding`, `needless_range_loop`, `let_and_return`, `unit_arg`, `missing_const_for_thread_local`, `needless_borrow`. `float_cmp` is allowed per-file in test modules that assert on literal constants.
+- **Two unused-code warnings in examples** — `examples/license_scan_demo.rs`, `examples/download_demo.rs`.
+
+
+### Changed
+
+- **Version** — 1.6.0 → 1.7.0 (Python package 1.3.0 → 1.7.0). Breaking for downstream code: `KmsBackend` gained a `File` variant, so exhaustive matches need a new arm; `aim sign`/`aim verify` take `--key` as a `String` rather than a `PathBuf`; `ConversionResult` gained a `plan` field, so struct literals need it; and `ConvertResponse.data_base64` is now optional.
+- **CI clippy runs `--all-targets`** — examples, benches, and tests are now linted, not just the lib and bin.
+- **CI feature matrix** extended with `python`.
+- **Test count** — 2,059 → 2,088 Rust tests, 84 Python tests.
 
 ## [1.6.0] - 2026-04-06
 

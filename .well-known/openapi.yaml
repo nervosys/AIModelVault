@@ -260,18 +260,54 @@ components:
 
     ConversionResult:
       type: object
+      required: [converted, source_format, target_format, conversion_path, input_size, output_size]
       properties:
-        success:
+        converted:
           type: boolean
-        output_path:
+          description: >-
+            True when `data_base64` holds real target-format bytes. False when the
+            conversion requires external tooling — `data_base64` is then absent and
+            `plan` describes the steps. Always check this before writing the payload
+            to a file, or you will produce a file with the target extension and the
+            wrong contents.
+        data_base64:
           type: string
-        output_format:
+          description: Converted model bytes, base64-encoded. Absent when `converted` is false.
+        plan:
+          type: object
+          description: >-
+            Instructions for performing this conversion with external tooling
+            (currently PyTorch→ONNX, ONNX→TensorRT, ONNX→CoreML, SafeTensors→GGUF).
+            Present only when `converted` is false.
+          properties:
+            converter:
+              type: string
+            requires:
+              type: array
+              items:
+                type: string
+            python:
+              type: string
+            shell:
+              type: string
+        source_format:
           type: string
-        output_size_bytes:
+        target_format:
+          type: string
+        conversion_path:
+          type: array
+          items:
+            type: string
+        input_size:
           type: integer
           format: int64
+        output_size:
+          type: integer
+          format: int64
+          description: Zero when `converted` is false.
         validation:
           type: object
+          nullable: true
 
     Document:
       type: object

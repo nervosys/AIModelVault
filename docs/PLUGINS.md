@@ -31,4 +31,4 @@ aim plugin uninstall my-plugin
 
 `plugin_discover`, `plugin_install`, `plugin_uninstall`, `plugin_list`, `plugin_info`.
 
-Plugins run with the same user-account permissions as `aim` — only install plugins you trust. See [src/plugins.rs](../src/plugins.rs).
+Plugins run with the same user-account permissions as `aim` — only install plugins you trust. See [src/plugins.rs](https://github.com/nervosys/AIModelVault/blob/master/src/plugins.rs).

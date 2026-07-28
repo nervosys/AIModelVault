@@ -29,9 +29,7 @@ fn main() -> ai_model_vault::Result<()> {
             finding.severity, finding.description, finding.count
         );
     }
-    if let Some(ref rec) = Some(&report.recommendation) {
-        println!("   Recommendation: {}", rec);
-    }
+    println!("   Recommendation: {}", report.recommendation);
     println!();
 
     // 3. Scan a file on disk (if it exists)

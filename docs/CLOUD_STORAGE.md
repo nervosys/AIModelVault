@@ -784,7 +784,7 @@ export RUST_LOG=cloud_storage=debug
 - [AWS S3 Documentation](https://docs.aws.amazon.com/s3/)
 - [Azure Blob Storage Documentation](https://docs.microsoft.com/azure/storage/blobs/)
 - [Google Cloud Storage Documentation](https://cloud.google.com/storage/docs)
-- [AI Model Vault Security Guide](../SECURITY.md)
+- [AI Model Vault Security Guide](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md)
 
 ---
 

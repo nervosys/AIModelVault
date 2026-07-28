@@ -412,7 +412,9 @@ impl MutationRoot {
             .decode(&input.data_base64)
             .map_err(|e| async_graphql::Error::new(format!("Invalid base64: {e}")))?;
 
-        let format = ModelFormat::from_extension(&input.format);
+        // Accept both a format name ("PyTorch") and an extension ("pt"): storing
+        // a Custom variant here would break conversion and diffing later.
+        let format = ModelFormat::from_stored(&input.format);
         let mut metadata = crate::formats::ModelMetadata::new(input.name.clone(), format);
 
         if let Some(desc) = input.description {

@@ -111,6 +111,41 @@ impl ModelSigner {
         Ok(())
     }
 
+    /// Rebuild a key pair from a hex-encoded 32-byte secret seed.
+    ///
+    /// Lets a signing key live in a secret manager as bare seed material rather
+    /// than as a full keypair document — the public key is re-derived, so the
+    /// result is identical to the keypair the seed was generated with.
+    pub fn keypair_from_seed(seed_hex: &str, identity: Option<&str>) -> Result<SigningKeyPair> {
+        let seed_hex = seed_hex.trim();
+        let seed = hex::decode(seed_hex)
+            .map_err(|e| VaultError::InvalidInput(format!("Signing seed is not valid hex: {e}")))?;
+        if seed.len() != 32 {
+            return Err(VaultError::InvalidInput(format!(
+                "Signing seed must be 32 bytes ({} hex chars), got {}",
+                64,
+                seed.len()
+            )));
+        }
+
+        Ok(SigningKeyPair {
+            secret_seed: hex::encode(&seed),
+            public_key: hex::encode(Sha256::digest(&seed)),
+            identity: identity.map(String::from),
+            created_at: chrono::Utc::now().to_rfc3339(),
+        })
+    }
+
+    /// Parse a key pair from either a JSON keypair document or a bare
+    /// hex-encoded seed — the two shapes a secret manager might hold.
+    pub fn parse_keypair(data: &str, identity: Option<&str>) -> Result<SigningKeyPair> {
+        let trimmed = data.trim();
+        if trimmed.starts_with('{') {
+            return serde_json::from_str(trimmed).map_err(Into::into);
+        }
+        Self::keypair_from_seed(trimmed, identity)
+    }
+
     /// Load a key pair from a JSON file.
     pub fn load_keypair(path: &Path) -> Result<SigningKeyPair> {
         let data = fs::read_to_string(path)?;
@@ -319,5 +354,55 @@ mod tests {
         let loaded = ModelSigner::load_signature(&sig_path).unwrap();
         assert_eq!(loaded.signature, sig.signature);
         assert_eq!(loaded.file_sha256, sig.file_sha256);
+    }
+
+    #[test]
+    fn test_keypair_from_seed_roundtrip() {
+        let original = ModelSigner::generate_keypair(Some("alice")).unwrap();
+
+        // Rebuilding from the seed alone must re-derive the same public key,
+        // so signatures made either way verify against each other.
+        let rebuilt = ModelSigner::keypair_from_seed(&original.secret_seed, Some("alice")).unwrap();
+        assert_eq!(rebuilt.secret_seed, original.secret_seed);
+        assert_eq!(rebuilt.public_key, original.public_key);
+    }
+
+    #[test]
+    fn test_keypair_from_seed_rejects_bad_input() {
+        assert!(ModelSigner::keypair_from_seed("not-hex", None).is_err());
+        // 16 bytes instead of 32
+        assert!(ModelSigner::keypair_from_seed(&"ab".repeat(16), None).is_err());
+    }
+
+    #[test]
+    fn test_parse_keypair_accepts_both_shapes() {
+        let kp = ModelSigner::generate_keypair(Some("bob")).unwrap();
+
+        let as_json = serde_json::to_string(&kp).unwrap();
+        let from_json = ModelSigner::parse_keypair(&as_json, None).unwrap();
+        assert_eq!(from_json.public_key, kp.public_key);
+        assert_eq!(from_json.identity.as_deref(), Some("bob"));
+
+        // A secret manager may hold just the seed; identity then comes from the caller.
+        let from_seed = ModelSigner::parse_keypair(&kp.secret_seed, Some("bob")).unwrap();
+        assert_eq!(from_seed.public_key, kp.public_key);
+        assert_eq!(from_seed.identity.as_deref(), Some("bob"));
+    }
+
+    #[test]
+    fn test_seed_sourced_key_produces_verifiable_signature() {
+        let kp = ModelSigner::generate_keypair(None).unwrap();
+        let rebuilt = ModelSigner::keypair_from_seed(&kp.secret_seed, None).unwrap();
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(b"payload signed with a KMS-sourced key")
+            .unwrap();
+
+        let sig = ModelSigner::sign(&rebuilt, file.path(), HashMap::new()).unwrap();
+        let result = ModelSigner::verify(&sig, file.path(), Some(&kp.secret_seed)).unwrap();
+        assert!(
+            result.valid,
+            "seed-sourced key must verify against the original"
+        );
     }
 }

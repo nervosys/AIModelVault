@@ -1,3 +1,6 @@
+// Assertions in these tests compare literal constants that round-trip
+// bit-for-bit and build fixed strings; the lints below are noise here.
+#![allow(clippy::float_cmp)]
 //! Comprehensive tests for model utilities
 
 use ai_model_vault::formats::{ModelFormat, ModelMetadata};

@@ -25,4 +25,4 @@ aim acl revoke alice
 
 `/api/v1/acl` (list/grant/revoke).
 
-JWT subject claims map directly to principal names — see [API authentication](API.md) and [src/access_control.rs](../src/access_control.rs).
+JWT subject claims map directly to principal names — see the [OpenAPI specification](https://github.com/nervosys/AIModelVault/blob/master/.well-known/openapi.yaml) and [src/access_control.rs](https://github.com/nervosys/AIModelVault/blob/master/src/access_control.rs).

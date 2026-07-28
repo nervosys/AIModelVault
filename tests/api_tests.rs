@@ -65,12 +65,11 @@ async fn get_token(state: &Arc<AppState>) -> String {
             .unwrap();
     }
 
-    let token = ai_model_vault::api::auth::create_token(
+    ai_model_vault::api::auth::create_token(
         &state.config.jwt_secret,
         state.config.token_expiry_secs,
     )
-    .unwrap();
-    token
+    .unwrap()
 }
 
 // ── Health ───────────────────────────────────────────────────────────────────
@@ -273,6 +272,54 @@ async fn test_convert_endpoint() {
         "Expected 400 or 500 for invalid model data, got {}",
         resp.status()
     );
+}
+
+/// A conversion needing external tooling must not return plan JSON dressed up as
+/// model bytes — a client decoding `data_base64` into `model.onnx` would get a
+/// corrupt file. The response says `converted: false` and carries a `plan`.
+#[tokio::test]
+async fn test_convert_endpoint_reports_plan_instead_of_fake_data() {
+    let dir = tempfile::tempdir().unwrap();
+    let state = test_state(&dir);
+    let token = get_token(&state).await;
+    let app = test_router(state);
+
+    let payload = serde_json::json!({
+        "data_base64": B64.encode(b"pytorch model bytes"),
+        "source_format": "pytorch",
+        "target_format": "onnx",
+    });
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/api/v1/convert")
+                .header(header::AUTHORIZATION, format!("Bearer {}", token))
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(serde_json::to_string(&payload).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(
+        json["converted"], false,
+        "PyTorch→ONNX needs external tooling"
+    );
+    assert!(
+        json.get("data_base64").is_none() || json["data_base64"].is_null(),
+        "no model bytes may be returned when nothing was converted: {json}"
+    );
+    assert_eq!(json["plan"]["converter"], "pytorch_to_onnx");
+    assert_eq!(json["output_size"], 0);
 }
 
 // ── OpenAPI ──────────────────────────────────────────────────────────────────

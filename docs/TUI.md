@@ -24,4 +24,4 @@ aim browse
 | `q`/`Esc` | Quit                    |
 | `/`       | Filter by name fragment |
 
-See [src/tui.rs](../src/tui.rs).
+See [src/tui.rs](https://github.com/nervosys/AIModelVault/blob/master/src/tui.rs).

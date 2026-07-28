@@ -44,9 +44,10 @@
         "5": "Integrity check failed"
       },
       "environment_variables": [
-        {"name": "aimodelvault_CONFIG", "description": "Custom config file path"},
+        {"name": "aimodelvault_CONFIG", "description": "Config directory override"},
+        {"name": "aimodelvault_HOME", "description": "Relocates all config/data/cache directories under one root"},
         {"name": "aimodelvault_VAULT", "description": "Default vault name"},
-        {"name": "aimodelvault_PASSPHRASE", "description": "Vault passphrase (for automation)"},
+        {"name": "aimodelvault_PASSPHRASE", "description": "Vault passphrase for automation: literal value or KMS URI (env://, file://, aws-sm://, azure-kv://, vault://)"},
         {"name": "AWS_ACCESS_KEY_ID", "description": "AWS S3 access key"},
         {"name": "AWS_SECRET_ACCESS_KEY", "description": "AWS S3 secret key"},
         {"name": "AWS_REGION", "description": "AWS region"},

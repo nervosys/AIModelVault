@@ -1,6 +1,10 @@
 //! Cloud storage command handlers (push, pull, list, config).
 
 use ai_model_vault::{Result, VaultConfig, VaultError};
+// Only the `cloud pull --store` path constructs metadata, and that path is
+// compiled behind the cloud backend features.
+#[cfg(any(feature = "s3", feature = "azure"))]
+use ai_model_vault::formats::{ModelFormat, ModelMetadata};
 
 use crate::cli::args::CloudCommands;
 use crate::cli::helpers::{build_vault, prompt_passphrase};

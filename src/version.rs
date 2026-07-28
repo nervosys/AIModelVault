@@ -223,7 +223,7 @@ impl VersionControl {
         }
 
         // Sort by version number descending
-        versions.sort_by(|a, b| b.version.cmp(&a.version));
+        versions.sort_by_key(|v| std::cmp::Reverse(v.version));
 
         // Keep the most recent
         let to_delete: Vec<u32> = versions

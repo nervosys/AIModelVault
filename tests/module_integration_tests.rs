@@ -243,8 +243,8 @@ fn test_lineage_display_nonempty() {
         .unwrap();
 
     let output = graph.display();
-    assert!(output.contains("A"));
-    assert!(output.contains("B"));
+    assert!(output.contains('A'));
+    assert!(output.contains('B'));
 }
 
 // ============================================================================

@@ -469,6 +469,6 @@ source ~/.bashrc
 ## Next Steps
 
 - Read [ARCHITECTURE.md](ARCHITECTURE.md) for system design
-- See [SECURITY.md](../SECURITY.md) for security practices
+- See [SECURITY.md](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md) for security practices
 - Check [QUICKSTART.md](QUICKSTART.md) for usage guide
 - Run `cargo run --example xdg_demo` to see it in action

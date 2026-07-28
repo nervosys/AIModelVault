@@ -202,7 +202,9 @@ pub async fn store_model(
 
     let data = file_data.ok_or_else(|| ApiError::bad_request("Missing 'file' field"))?;
     let fmt = format_str.ok_or_else(|| ApiError::bad_request("Missing 'format' field"))?;
-    let format = ModelFormat::from_extension(&fmt);
+    // Accept both a format name ("PyTorch") and an extension ("pt"): storing a
+    // Custom variant here would break conversion and diffing later.
+    let format = ModelFormat::from_stored(&fmt);
 
     let mut metadata = ModelMetadata::new(name.clone(), format);
     if let Some(desc) = description {
@@ -365,7 +367,19 @@ pub struct ConvertRequest {
 
 #[derive(Serialize)]
 pub struct ConvertResponse {
-    pub data_base64: String,
+    /// True when `data_base64` holds real target-format bytes.
+    ///
+    /// False when the conversion needs external tooling: `data_base64` is then
+    /// `null` and `plan` describes the steps to run. Clients must check this
+    /// before writing the payload to a file — otherwise they produce a file
+    /// with the target extension and the wrong contents.
+    pub converted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data_base64: Option<String>,
+    /// Instructions for performing this conversion with external tooling.
+    /// Present only when `converted` is false.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plan: Option<serde_json::Value>,
     pub source_format: String,
     pub target_format: String,
     pub conversion_path: Vec<String>,
@@ -401,7 +415,7 @@ pub async fn convert(
         .convert(&data, &src, &tgt, &opts, None)
         .map_err(ApiError::from)?;
 
-    let validation = result.validation.map(|r| {
+    let validation = result.validation.as_ref().map(|r| {
         serde_json::json!({
             "passed": r.passed,
             "checks": r.checks.iter().map(|c| serde_json::json!({
@@ -412,8 +426,12 @@ pub async fn convert(
         })
     });
 
+    let converted = !result.is_plan();
+
     Ok(Json(ConvertResponse {
-        data_base64: B64.encode(&result.data),
+        converted,
+        data_base64: converted.then(|| B64.encode(&result.data)),
+        plan: result.plan.clone(),
         source_format: result.source_format.to_string(),
         target_format: result.target_format.to_string(),
         conversion_path: result

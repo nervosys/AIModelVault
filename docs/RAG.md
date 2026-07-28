@@ -589,5 +589,5 @@ let doc = Document {
 ## See Also
 
 - [Utilities Guide](UTILITIES.md)
-- [Security Features](../SECURITY.md)
+- [Security Features](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md)
 - [API Documentation](https://docs.rs/ai-model-vault)
