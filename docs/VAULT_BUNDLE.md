@@ -24,4 +24,4 @@ aim vault-import ./my-vault-2025-01-01.tar.gz /path/to/target
 - Version manifests, model cards, lineage, tags, ACLs.
 - Vault config (without the master passphrase).
 
-The passphrase is **never** included — the recipient supplies it at first open. See [src/vault_bundle.rs](../src/vault_bundle.rs).
+The passphrase is **never** included — the recipient supplies it at first open. See [src/vault_bundle.rs](https://github.com/nervosys/AIModelVault/blob/master/src/vault_bundle.rs).

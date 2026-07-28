@@ -24,4 +24,4 @@ aim policy remove my-llm
 
 `policy_set`, `policy_remove`, `policy_list`, `policy_apply`, `policy_apply_all`.
 
-`--dry-run` reports the actions that would be taken without deleting anything. See [src/policies.rs](../src/policies.rs).
+`--dry-run` reports the actions that would be taken without deleting anything. See [src/policies.rs](https://github.com/nervosys/AIModelVault/blob/master/src/policies.rs).

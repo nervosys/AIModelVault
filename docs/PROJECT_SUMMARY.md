@@ -195,10 +195,10 @@ User Passphrase
 | **Quick Start**       | Get up and running in 5 minutes     | [QUICKSTART.md](QUICKSTART.md)           |
 | **CLI Reference**     | Complete command-line documentation | [CLI.md](CLI.md)                         |
 | **Utilities Guide**   | Model utilities documentation       | [UTILITIES.md](UTILITIES.md) ⭐           |
-| **Development Guide** | For contributors and developers     | [DEVELOPMENT.md](../DEVELOPMENT.md) ⭐    |
+| **Development Guide** | For contributors and developers     | [DEVELOPMENT.md](https://github.com/nervosys/AIModelVault/blob/master/DEVELOPMENT.md) ⭐    |
 | **Implementation**    | Architecture and technical details  | [IMPLEMENTATION.md](IMPLEMENTATION.md) ⭐ |
-| **Security Policy**   | Security standards and reporting    | [SECURITY.md](../SECURITY.md)            |
-| **Contributing**      | How to contribute                   | [CONTRIBUTING.md](../CONTRIBUTING.md)    |
+| **Security Policy**   | Security standards and reporting    | [SECURITY.md](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md)            |
+| **Contributing**      | How to contribute                   | [CONTRIBUTING.md](https://github.com/nervosys/AIModelVault/blob/master/CONTRIBUTING.md)    |
 
 ---
 
@@ -325,7 +325,7 @@ cargo test
 cargo doc --open
 ```
 
-See [DEVELOPMENT.md](../DEVELOPMENT.md) for detailed development guide.
+See [DEVELOPMENT.md](https://github.com/nervosys/AIModelVault/blob/master/DEVELOPMENT.md) for detailed development guide.
 
 ---
 
@@ -387,13 +387,13 @@ cargo build --release --target x86_64-pc-windows-msvc
 
 ## 📝 License
 
-AGPL-3.0-or-later - see [LICENSE](../LICENSE) file
+AGPL-3.0-or-later - see [LICENSE](https://github.com/nervosys/AIModelVault/blob/master/LICENSE) file
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Please see [CONTRIBUTING.md](https://github.com/nervosys/AIModelVault/blob/master/CONTRIBUTING.md) for guidelines.
 
 ---
 
@@ -403,7 +403,7 @@ For security issues, please email: **security@nervosys.ai**
 
 Do NOT open public issues for security vulnerabilities.
 
-See [SECURITY.md](../SECURITY.md) for full security policy.
+See [SECURITY.md](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md) for full security policy.
 
 ---
 

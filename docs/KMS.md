@@ -79,7 +79,7 @@ let secret = kms::fetch(&uri)?;
 # Ok::<(), ai_model_vault::VaultError>(())
 ```
 
-See [src/kms.rs](../src/kms.rs).
+See [src/kms.rs](https://github.com/nervosys/AIModelVault/blob/master/src/kms.rs).
 
 ## Signing keys
 

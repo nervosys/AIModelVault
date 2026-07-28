@@ -316,5 +316,5 @@ for model_name in vault.list_models() {
 
 ## See Also
 
-- [Formats Guide](../FORMATS.md) - Supported model formats
+- [Formats Guide](https://github.com/nervosys/AIModelVault/blob/master/FORMATS.md) - Supported model formats
 - [CLI Documentation](CLI.md) - Command-line usage

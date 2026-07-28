@@ -61,6 +61,7 @@ since the last release.
 - [x] **Python package version synced to the crate** — package was 1.3.0, its test asserted 1.2.1, crate was 1.6.0; all now 1.7.0 and the test compares against `Cargo.toml`
 - [x] **`--key` accepts KMS URIs** for `aim sign` / `aim verify` — the last documented-but-missing claim
 - [x] **15 orphaned docs added to mkdocs nav**
+- [x] **`mkdocs build --strict` actually passes** — it failed with 51 warnings; 52 out-of-`docs/` links now use absolute GitHub URLs, and CI installs the `minify` plugin the config requires
 
 ## v1.6.0 — Test Coverage, Benchmarks & Documentation (complete)
 

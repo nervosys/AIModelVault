@@ -286,4 +286,4 @@ aim --version   # Should show 1.0.0
 
 - **Issues**: https://github.com/nervosys/AIModelVault/issues
 - **Discussions**: https://github.com/nervosys/AIModelVault/discussions
-- **Security**: See [SECURITY.md](../SECURITY.md)
+- **Security**: See [SECURITY.md](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md)

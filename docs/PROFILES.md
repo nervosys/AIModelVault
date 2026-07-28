@@ -20,4 +20,4 @@ aim profile remove dev
 
 `profile_create`, `profile_remove`, `profile_list`, `profile_activate`, `profile_deactivate`, `profile_show`.
 
-Active profile name is persisted in the XDG config dir; overrides are merged over the base config at load time. See [src/profiles.rs](../src/profiles.rs).
+Active profile name is persisted in the XDG config dir; overrides are merged over the base config at load time. See [src/profiles.rs](https://github.com/nervosys/AIModelVault/blob/master/src/profiles.rs).

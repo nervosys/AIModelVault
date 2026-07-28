@@ -706,4 +706,4 @@ This separation allows:
 
 ## Appendix B: Ontology Reference
 
-See [`.well-known/ontology.jsonld`](../.well-known/ontology.jsonld) for the full machine-readable ontology that makes this architecture observable by agents.
+See [`.well-known/ontology.jsonld`](https://github.com/nervosys/AIModelVault/blob/master/.well-known/ontology.jsonld) for the full machine-readable ontology that makes this architecture observable by agents.

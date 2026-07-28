@@ -491,8 +491,8 @@ spec:
 ## 12. Additional Resources
 
 ### Documentation
-- [SECURITY.md](../SECURITY.md) - Security policy
-- [SECURITY_AUDIT.md](../SECURITY_AUDIT.md) - Latest audit report
+- [SECURITY.md](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md) - Security policy
+- [SECURITY_AUDIT.md](SECURITY_AUDIT.md) - Latest audit report
 - [docs/ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
 
 ### Standards

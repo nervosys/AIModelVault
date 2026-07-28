@@ -90,6 +90,18 @@ extra:
       link: https://github.com/nervosys/AIModelVault
   generator: false
 
+# `--strict` promotes warnings to errors. Keep link checking strict — a broken
+# cross-reference between docs is a real defect — but allow the one nav entry
+# that points at rustdoc output, which the CI `docs` job copies into
+# `website/public/mkdocs/api/` after this build runs and which therefore cannot
+# exist at build time.
+validation:
+  nav:
+    not_found: info
+  links:
+    not_found: warn
+    unrecognized_links: warn
+
 nav:
   - Home: index.md
   - Getting Started:

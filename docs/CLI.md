@@ -796,5 +796,5 @@ chmod 600 ~/.config/aimodelvault/config.yaml
 ## See Also
 
 - [Quick Start Guide](QUICKSTART.md)
-- [Security Policy](../SECURITY.md)
+- [Security Policy](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md)
 - [API Documentation](https://docs.rs/aimodelvault)

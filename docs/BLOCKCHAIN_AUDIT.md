@@ -26,4 +26,4 @@ aim audit --export OUT # export the chain for archival
 | `prev_hash` | SHA-256 of the previous block                   |
 | `hash`      | SHA-256 of this block (covers all fields above) |
 
-See [src/blockchain.rs](../src/blockchain.rs).
+See [src/blockchain.rs](https://github.com/nervosys/AIModelVault/blob/master/src/blockchain.rs).

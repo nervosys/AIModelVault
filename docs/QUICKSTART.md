@@ -1,6 +1,6 @@
 # aimodelvault Quick Start Guide
 
-> **Current version: 1.2.1** — See [CHANGELOG](../CHANGELOG.md) for details.
+> **Current version: 1.2.1** — See [CHANGELOG](https://github.com/nervosys/AIModelVault/blob/master/CHANGELOG.md) for details.
 
 ## What's New in v1.2
 
@@ -251,5 +251,5 @@ cp -r /backup/aimodelvault ~/.local/share/
 ## Next Steps
 
 - Read the [CLI Reference](CLI.md)
-- Explore [Security Features](../SECURITY.md)
+- Explore [Security Features](https://github.com/nervosys/AIModelVault/blob/master/SECURITY.md)
 - View [API Documentation](https://docs.rs/aimodelvault)

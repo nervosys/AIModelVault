@@ -276,23 +276,23 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ## 📚 Related Documentation
 
-- **[README.md](../README.md)** - Complete project documentation
-- **[FEATURES_DEMO.md](../reports/FEATURES_DEMO.md)** - Detailed feature showcase
+- **[README.md](https://github.com/nervosys/AIModelVault/blob/master/README.md)** - Complete project documentation
+- **[FEATURES_DEMO.md](https://github.com/nervosys/AIModelVault/blob/master/reports/FEATURES_DEMO.md)** - Detailed feature showcase
 - **[QUICKSTART.md](QUICKSTART.md)** - 5-minute setup guide
-- **[PRODUCTION_READY.md](../reports/PRODUCTION_READY.md)** - Production deployment guide
-- **[examples/](../examples/)** - Source code for all demos
+- **[PRODUCTION_READY.md](https://github.com/nervosys/AIModelVault/blob/master/reports/PRODUCTION_READY.md)** - Production deployment guide
+- **[examples/](https://github.com/nervosys/AIModelVault/blob/master/examples/)** - Source code for all demos
 
 ## 🤝 Contributing
 
 Found an issue with the demo scripts? Please:
-1. Check [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines
+1. Check [CONTRIBUTING.md](https://github.com/nervosys/AIModelVault/blob/master/CONTRIBUTING.md) for guidelines
 2. Open an issue on GitHub
 3. Submit a pull request with improvements
 
 ## 📝 License
 
 Demo scripts are part of AI Model Vault and licensed under AGPL-3.0-or-later.
-See [LICENSE](../LICENSE) for details.
+See [LICENSE](https://github.com/nervosys/AIModelVault/blob/master/LICENSE) for details.
 
 ---
 
@@ -306,4 +306,4 @@ See [LICENSE](../LICENSE) for details.
 ./demo.sh --quick
 ```
 
-**Questions?** Check out the [README.md](../README.md) or open an issue!
+**Questions?** Check out the [README.md](https://github.com/nervosys/AIModelVault/blob/master/README.md) or open an issue!

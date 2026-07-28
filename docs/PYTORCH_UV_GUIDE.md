@@ -194,10 +194,10 @@ model.load_state_dict(torch.load("restored_model.pt"))
 - Read the [PyTorch demo source](demo_pytorch.py) for detailed examples
 - Check [DEMO_GUIDE.md](DEMO_GUIDE.md) for more demo options
 - See [UTILITIES.md](UTILITIES.md) for model utilities
-- Read [FEATURES_DEMO.md](../reports/FEATURES_DEMO.md) for all features
+- Read [FEATURES_DEMO.md](https://github.com/nervosys/AIModelVault/blob/master/reports/FEATURES_DEMO.md) for all features
 
 ## Learn More
 
 - **uv documentation**: https://docs.astral.sh/uv/
-- **AI Model Vault docs**: [docs/](./)
+- **AI Model Vault docs**: [Quick Start](QUICKSTART.md)
 - **PyTorch tutorials**: https://pytorch.org/tutorials/

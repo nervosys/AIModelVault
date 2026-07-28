@@ -359,7 +359,9 @@ jobs:
         python-version: "3.12"
 
     - name: Install mkdocs
-      run: pip install mkdocs-material
+      # mkdocs.yml declares the `minify` plugin, which is a separate package —
+      # without it the build fails at config load, before any page is rendered.
+      run: pip install mkdocs-material mkdocs-minify-plugin
 
     - name: Build docs (strict)
       run: mkdocs build --strict

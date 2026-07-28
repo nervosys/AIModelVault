@@ -30,4 +30,4 @@ aim webhook remove <ID>
 }
 ```
 
-If a secret is configured, the request includes `X-AIM-Signature: sha256=<HMAC>` over the raw body. See [src/webhooks.rs](../src/webhooks.rs).
+If a secret is configured, the request includes `X-AIM-Signature: sha256=<HMAC>` over the raw body. See [src/webhooks.rs](https://github.com/nervosys/AIModelVault/blob/master/src/webhooks.rs).

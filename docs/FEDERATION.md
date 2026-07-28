@@ -20,4 +20,4 @@ Federation operations are exposed through the library (`src/federation.rs`) and 
 
 Use federation when multiple workstations or CI runners need to share a single logical vault without a central server. For centralized storage, prefer the cloud backends (S3, Azure Blob, GCS) — see [CLOUD_STORAGE.md](CLOUD_STORAGE.md).
 
-See [src/federation.rs](../src/federation.rs).
+See [src/federation.rs](https://github.com/nervosys/AIModelVault/blob/master/src/federation.rs).

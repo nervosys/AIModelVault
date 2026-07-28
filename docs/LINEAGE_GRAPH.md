@@ -20,4 +20,4 @@ aim lineage-graph descendants llama-base
 
 `lineage_graph_add`, `lineage_graph_show`, `lineage_graph_ancestors`, `lineage_graph_descendants`.
 
-The store is a DAG — cycles are rejected at insert time. See [src/lineage_graph.rs](../src/lineage_graph.rs).
+The store is a DAG — cycles are rejected at insert time. See [src/lineage_graph.rs](https://github.com/nervosys/AIModelVault/blob/master/src/lineage_graph.rs).

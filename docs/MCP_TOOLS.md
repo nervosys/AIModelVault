@@ -662,5 +662,5 @@ impl MCPServer {
 
 - [RAG Guide](RAG.md) - Complete RAG documentation
 - [RAG Quick Reference](RAG_QUICKREF.md) - Quick reference card
-- [Examples](../examples/mcp_tools_demo.rs) - Working examples
-- [Tests](../tests/rag_tests.rs) - Test suite
+- [Examples](https://github.com/nervosys/AIModelVault/blob/master/examples/mcp_tools_demo.rs) - Working examples
+- [Tests](https://github.com/nervosys/AIModelVault/blob/master/tests/rag_tests.rs) - Test suite

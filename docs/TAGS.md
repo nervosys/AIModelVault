@@ -23,4 +23,4 @@ aim search llm --tag production --format json
 
 `/api/v1/models/{name}/tags`, `/api/v1/search`.
 
-Tags are case-sensitive; search matches name substring AND every supplied tag/annotation filter. See [src/tags.rs](../src/tags.rs).
+Tags are case-sensitive; search matches name substring AND every supplied tag/annotation filter. See [src/tags.rs](https://github.com/nervosys/AIModelVault/blob/master/src/tags.rs).

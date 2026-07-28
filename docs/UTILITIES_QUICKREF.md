@@ -283,4 +283,4 @@ for name in vault.list_models() {
 
 - [Complete Utilities Guide](UTILITIES.md) - Detailed documentation and examples
 - [API Documentation](https://docs.rs/ai-model-vault) - Full API reference
-- [Examples](../examples/) - Working code examples
+- [Examples](https://github.com/nervosys/AIModelVault/blob/master/examples/) - Working code examples
