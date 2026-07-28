@@ -494,7 +494,7 @@ Full demo guide: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md).
 | `AIM_SQLITE_VERSIONS`                                        | Use SQLite version backend         |
 | `AIM_TELEMETRY_DISABLED=1` / `DO_NOT_TRACK=1`                | Disable anonymous telemetry        |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | AWS S3 credentials                 |
-| `AZURE_STORAGE_ACCOUNT` / `AZURE_STORAGE_KEY`                | Azure credentials                  |
+| `AZURE_STORAGE_ACCOUNT` / `AZURE_STORAGE_SAS_TOKEN`          | Azure: account + SAS. Or Entra ID via `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET`. Shared keys (`AZURE_STORAGE_KEY`) are not supported |
 | `GOOGLE_APPLICATION_CREDENTIALS` / `GCP_PROJECT`             | GCS credentials                    |
 
 ---

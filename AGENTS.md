@@ -342,7 +342,7 @@ Custom tools can be registered via `MCPServer::register_tool(tool, executor_fn)`
 | `aimodelvault_CONFIG`                                        | Config directory override (`config.yaml`, profiles, plugins) |
 | `aimodelvault_HOME`                                          | Relocates all config/data/cache directories under one root — use for test isolation, containers, and per-project vaults |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | AWS S3 credentials                   |
-| `AZURE_STORAGE_ACCOUNT` / `AZURE_STORAGE_KEY`                | Azure credentials                    |
+| `AZURE_STORAGE_ACCOUNT` / `AZURE_STORAGE_SAS_TOKEN`          | Azure: account + SAS, or Entra ID (`AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET`). Shared keys are not supported |
 | `GOOGLE_APPLICATION_CREDENTIALS` / `GCP_PROJECT`             | GCS credentials                      |
 | `AIM_TELEMETRY_ENABLED`                                      | Set to `false` to disable telemetry  |
 | `AIM_TELEMETRY_DISABLED`                                     | Set to `1` to disable telemetry      |

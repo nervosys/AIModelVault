@@ -246,7 +246,14 @@ az storage account keys list \
     --query '[0].value' -o tsv
 
 export AZURE_STORAGE_ACCOUNT="AI Model Vaultstorage"
-export AZURE_STORAGE_KEY="your-account-key"
+export AZURE_STORAGE_SAS_TOKEN="your-sas-token"
+
+# Shared account keys (AZURE_STORAGE_KEY) are not supported: the Azure SDK for
+# Rust v1 has no shared-key credential. Mint a SAS from the key instead:
+#   az storage container generate-sas --account-name ACCOUNT --name CONTAINER \
+#     --permissions rwdl --expiry 2027-01-01 --account-key KEY -o tsv
+# Or authenticate with Entra ID:
+#   export AZURE_TENANT_ID=... AZURE_CLIENT_ID=... AZURE_CLIENT_SECRET=...
 ```
 
 **Option 2: SAS Token**

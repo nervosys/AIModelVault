@@ -57,8 +57,14 @@ aws-sdk-secretsmanager = { version = "1.111", optional = true, default-features 
     "rt-tokio",
     "behavior-version-latest",
 ] }
-azure_storage = { version = "0.21", optional = true }
-azure_storage_blobs = { version = "0.21", optional = true }
+# Azure SDK for Rust v1. The legacy azure_storage/azure_storage_blobs line ended
+# at azure_core 0.21, which pins quick-xml 0.31 (RUSTSEC-2026-0194/0195); this
+# stack uses quick-xml 0.41. It authenticates with Entra ID or a SAS URL only —
+# there is no shared-key credential, so AZURE_STORAGE_KEY is not supported.
+azure_storage_blob = { version = "1.1.0-beta.1", optional = true }
+azure_core = { version = "1.1", optional = true }
+azure_identity = { version = "1.0", optional = true }
+url = { version = "2.5", optional = true }
 futures-util = { version = "0.3", optional = true } # StreamExt for Azure blob pagination
 # cloud-storage = { version = "0.11", optional = true }  # Disabled due to security issues
 
@@ -163,7 +169,7 @@ vector-db = ["qdrant-client"]
 database = ["sqlite", "kv-store"]
 # Cloud storage features
 s3 = ["aws-config", "aws-sdk-s3", "aws-sdk-secretsmanager"]
-azure = ["azure_storage", "azure_storage_blobs", "futures-util"]
+azure = ["azure_storage_blob", "azure_core", "azure_identity", "url", "futures-util"]
 # gcs = ["cloud-storage"]  # Disabled due to security vulnerabilities in cloud-storage crate
 cloud = ["s3", "azure"] # GCS removed until cloud-storage is updated
 # REST API

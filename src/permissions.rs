@@ -67,22 +67,30 @@ fn restrict_acl(path: &Path) -> std::io::Result<()> {
         )
     })?;
 
-    let status = std::process::Command::new("icacls")
-        .arg(path.as_os_str())
-        .arg("/inheritance:r")
-        .arg("/grant:r")
-        .arg(format!("{username}:F"))
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()?;
+    let run = || {
+        std::process::Command::new("icacls")
+            .arg(path.as_os_str())
+            .arg("/inheritance:r")
+            .arg("/grant:r")
+            .arg(format!("{username}:F"))
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+    };
 
-    if !status.success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            "Failed to restrict file permissions via icacls",
-        ));
+    // icacls can fail transiently when several invocations target the same
+    // path concurrently, so a single failure is not conclusive.
+    if run()?.success() || run()?.success() {
+        return Ok(());
     }
-    Ok(())
+
+    Err(std::io::Error::new(
+        std::io::ErrorKind::PermissionDenied,
+        format!(
+            "Failed to restrict permissions on {} via icacls",
+            path.display()
+        ),
+    ))
 }
 
 #[cfg(test)]

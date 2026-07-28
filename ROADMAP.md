@@ -2,7 +2,7 @@
 
 > Last updated: 2026-07-27
 > Current version: **1.7.0** (unattended operation, KMS backends, security remediation)
-> Status: Production release — 2,088 Rust tests + 84 Python tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, clippy clean across 7 feature combinations, `cargo audit` / `cargo deny` clean
+> Status: Production release — 2,097 Rust tests + 84 Python tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, clippy clean across 7 feature combinations, `cargo audit` / `cargo deny` clean with zero suppressions
 
 ---
 
@@ -41,7 +41,8 @@ since the last release.
 - [x] **pyo3 0.24 → 0.29** (RUSTSEC-2026-0176/0177) — API migration in `src/python.rs`
 - [x] **Stale ignores pruned from `deny.toml`** — three entries were suppressing advisories that are now genuinely fixed
 - [x] **`.cargo/audit.toml` added** — `cargo audit` and `cargo deny` read separate config; only the latter had documented exceptions
-- [ ] **quick-xml 0.31 (RUSTSEC-2026-0194/0195)** — pinned by `azure_core` 0.21, the end of the legacy Azure SDK line. Requires migrating `src/storage/azure.rs` to `azure_storage_blob` (beta) and its TokenCredential auth model. Documented exception until that crate is stable.
+- [x] **quick-xml 0.31 (RUSTSEC-2026-0194/0195) cleared** — migrated `src/storage/azure.rs` to the Azure SDK for Rust v1 (`azure_storage_blob`), which uses quick-xml 0.41 and drops `http-types`. Breaking: shared-key auth (`AZURE_STORAGE_KEY`) has no equivalent in the v1 SDK; SAS and Entra ID are supported instead.
+- [x] **Both advisory ignore lists are empty** — `deny.toml` and `.cargo/audit.toml` carry no suppressions; six further ignores no longer matched the dependency graph and were removed
 
 ### Conversion correctness
 

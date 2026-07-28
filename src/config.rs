@@ -138,6 +138,27 @@ pub const ENV_CONFIG: &str = "aimodelvault_CONFIG";
 /// Overrides the default vault name.
 pub const ENV_VAULT: &str = "aimodelvault_VAULT";
 
+/// Serialises directory creation and permission tightening within the process.
+static INIT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Create a directory, tolerating a concurrent creator.
+///
+/// Two processes (or two threads) initialising the vault at once will race:
+/// one may be rewriting a parent's ACL while the other creates a child. A
+/// single retry covers that window; `AlreadyExists` is always success.
+fn create_dir_resilient(dir: &std::path::Path) -> Result<()> {
+    match fs::create_dir_all(dir) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
+        Err(_) if dir.is_dir() => Ok(()),
+        Err(first) => match fs::create_dir_all(dir) {
+            Ok(()) => Ok(()),
+            Err(_) if dir.is_dir() => Ok(()),
+            Err(_) => Err(VaultError::IoError(first)),
+        },
+    }
+}
+
 /// Read an environment variable, treating empty/whitespace values as unset.
 fn non_empty_env(name: &str) -> Option<String> {
     std::env::var(name)
@@ -271,7 +292,7 @@ impl VaultConfig {
 
     /// Ensure all required directories exist with secure permissions
     fn ensure_directories(dirs: &DirectoryPaths) -> Result<()> {
-        for dir in [
+        let all = [
             &dirs.config_dir,
             &dirs.data_dir,
             &dirs.cache_dir,
@@ -280,12 +301,27 @@ impl VaultConfig {
             &dirs.backends_dir,
             &dirs.utilities_dir,
             &dirs.databases_dir,
-        ] {
-            if !dir.exists() {
-                fs::create_dir_all(dir)?;
+        ];
+
+        // Serialise first-run setup. Several callers in one process (CLI
+        // handlers, the API server's workers, the test harness) can initialise
+        // the same directories at once, and on Windows `icacls /inheritance:r`
+        // briefly leaves a directory without a usable DACL — a concurrent
+        // create or write in that window fails with "Access is denied".
+        let _guard = INIT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
+        // Restrict each directory immediately after creating it, parents before
+        // children: `vault_dir` and `log_dir` live under `data_dir`, and
+        // tightening a parent's ACL once a child already exists makes `icacls`
+        // fail on the child.
+        for dir in all {
+            if !dir.is_dir() {
+                // A separate process may still be mid-setup.
+                create_dir_resilient(dir)?;
                 crate::permissions::restrict_dir(dir)?;
             }
         }
+
         Ok(())
     }
 

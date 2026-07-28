@@ -638,7 +638,7 @@ export AWS_REGION=us-east-1  # optional
 **Azure Blob Storage:**
 ```bash
 export AZURE_STORAGE_ACCOUNT=your_account_name
-export AZURE_STORAGE_KEY=your_account_key
+export AZURE_STORAGE_SAS_TOKEN=your_sas_token   # or Entra ID: AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
 ```
 
 **Google Cloud Storage:**
@@ -661,7 +661,7 @@ Use S3 or Azure instead
 - `AWS_SECRET_ACCESS_KEY` - AWS secret key for S3
 - `AWS_REGION` - AWS region (default: us-east-1)
 - `AZURE_STORAGE_ACCOUNT` - Azure storage account name
-- `AZURE_STORAGE_KEY` - Azure storage account key
+- `AZURE_STORAGE_SAS_TOKEN` - Azure SAS token (shared account keys are not supported; use a SAS or Entra ID)
 
 ---
 

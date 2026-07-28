@@ -90,4 +90,4 @@ maturin develop --features python
 | `AWS_SECRET_ACCESS_KEY` | `s3`     | AWS credentials                |
 | `AWS_REGION`            | `s3`     | AWS region                     |
 | `AZURE_STORAGE_ACCOUNT` | `azure`  | Azure credentials              |
-| `AZURE_STORAGE_KEY`     | `azure`  | Azure credentials              |
+| `AZURE_STORAGE_SAS_TOKEN` | `azure` | Azure SAS (or Entra ID vars)  |

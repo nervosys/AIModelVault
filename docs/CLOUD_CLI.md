@@ -79,7 +79,7 @@ aim cloud config --provider s3 --show
 ```bash
 # Set Azure credentials
 export AZURE_STORAGE_ACCOUNT=your_account_name
-export AZURE_STORAGE_KEY=your_account_key
+export AZURE_STORAGE_SAS_TOKEN=your_sas_token
 
 # Verify configuration
 aim cloud config --provider azure --show
@@ -88,7 +88,7 @@ aim cloud config --provider azure --show
 **Windows PowerShell**:
 ```powershell
 $env:AZURE_STORAGE_ACCOUNT = "your_account_name"
-$env:AZURE_STORAGE_KEY = "your_account_key"
+$env:AZURE_STORAGE_SAS_TOKEN = "your_sas_token"
 
 aim cloud config --provider azure --show
 ```
@@ -283,7 +283,7 @@ aim cloud pull gpt2-finetuned --provider s3 --bucket my-ai-models --remote-path 
 ```bash
 # 1. Configure Azure credentials
 export AZURE_STORAGE_ACCOUNT=mystorageaccount
-export AZURE_STORAGE_KEY=Eby8vdM02xNOcqFlqUwJPLlmEt...
+export AZURE_STORAGE_SAS_TOKEN="sv=2024-11-04&ss=b&srt=co&sp=rwdlac&sig=..."
 
 # 2. Verify configuration
 aim cloud config --provider azure --show
@@ -374,7 +374,7 @@ aim cloud config --provider s3 --show
 **Solution**: Set credentials and verify:
 ```bash
 export AZURE_STORAGE_ACCOUNT=your_account
-export AZURE_STORAGE_KEY=your_key
+export AZURE_STORAGE_SAS_TOKEN=your_sas_token
 aim cloud config --provider azure --show
 ```
 
