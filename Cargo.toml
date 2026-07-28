@@ -13,6 +13,27 @@ readme = "README.md"
 keywords = ["ai", "ml", "vault", "encryption", "model-management"]
 categories = ["cryptography", "command-line-utilities", "science"]
 
+# Keep the published crate to what a consumer needs: sources, examples, tests,
+# benches, the docs, and the `.well-known/` discovery manifests this project is
+# built around. Everything below is repository infrastructure that only bloated
+# the download.
+exclude = [
+    "website/",
+    "reports/",
+    "deploy/",
+    "scripts/",
+    "fuzz/",
+    ".github/",
+    "videos/",
+    "htmlcov/",
+    ".venv/",
+    ".cache/",
+    ".pytest_cache/",
+    "tarpaulin-report.json",
+    ".coverage",
+    "uv.lock",
+]
+
 [dependencies]
 # Cryptography - FIPS 140-3 compliant
 aes-gcm = "0.10"                                     # AES-GCM encryption

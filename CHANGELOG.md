@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Version** — 1.6.0 → 1.7.0 (Python package 1.3.0 → 1.7.0). Breaking for downstream code: `KmsBackend` gained a `File` variant, so exhaustive matches need a new arm; `aim sign`/`aim verify` take `--key` as a `String` rather than a `PathBuf`; `ConversionResult` gained a `plan` field, so struct literals need it; and `ConvertResponse.data_base64` is now optional.
 - **CI clippy runs `--all-targets`** — examples, benches, and tests are now linted, not just the lib and bin.
 - **CI feature matrix** extended with `python`.
+- **Published crate trimmed 8.3 MiB → 3.8 MiB** (3.9 MiB → 802 KiB compressed). `Cargo.toml` now excludes repository infrastructure that was shipping to crates.io: the Next.js website, Helm charts, CI workflows, status reports, fuzz harness, and coverage artifacts. Sources, examples, tests, benches, docs and the `.well-known/` manifests are kept. Verified with `cargo publish --dry-run`, which builds the packaged crate in isolation.
 - **Test count** — 2,059 → 2,088 Rust tests, 84 Python tests.
 
 ## [1.6.0] - 2026-04-06
