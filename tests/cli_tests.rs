@@ -2012,3 +2012,105 @@ fn test_cli_convert_writes_plan_not_fake_target_file() {
         "no .onnx file may be produced when nothing was converted"
     );
 }
+
+// ──────────────────────────────────────────────────────────────
+// Diff
+// ──────────────────────────────────────────────────────────────
+
+/// Build a minimal spec-shaped GGUF v3 file: magic, counts, two metadata KV
+/// pairs (a string and an array, so the parser has to step over both), then the
+/// tensor infos.
+fn write_gguf(path: &std::path::Path, tensors: &[(&str, &[u64], u32)]) {
+    fn push_str(out: &mut Vec<u8>, s: &str) {
+        out.extend_from_slice(&(s.len() as u64).to_le_bytes());
+        out.extend_from_slice(s.as_bytes());
+    }
+
+    let mut data = Vec::new();
+    data.extend_from_slice(b"GGUF");
+    data.extend_from_slice(&3u32.to_le_bytes());
+    data.extend_from_slice(&(tensors.len() as u64).to_le_bytes());
+    data.extend_from_slice(&2u64.to_le_bytes());
+
+    push_str(&mut data, "general.architecture");
+    data.extend_from_slice(&8u32.to_le_bytes()); // STRING
+    push_str(&mut data, "llama");
+
+    push_str(&mut data, "tokenizer.ggml.tokens");
+    data.extend_from_slice(&9u32.to_le_bytes()); // ARRAY
+    data.extend_from_slice(&8u32.to_le_bytes()); // of STRING
+    data.extend_from_slice(&2u64.to_le_bytes());
+    push_str(&mut data, "a");
+    push_str(&mut data, "bb");
+
+    for (name, dims, ggml_type) in tensors {
+        push_str(&mut data, name);
+        data.extend_from_slice(&(dims.len() as u32).to_le_bytes());
+        for d in *dims {
+            data.extend_from_slice(&d.to_le_bytes());
+        }
+        data.extend_from_slice(&ggml_type.to_le_bytes());
+        data.extend_from_slice(&0u64.to_le_bytes()); // data offset
+    }
+
+    std::fs::write(path, data).unwrap();
+}
+
+/// `aim diff` used to fabricate its GGUF tensor map from the header's tensor
+/// *count* alone — `tensor_0`, `tensor_1`, … with no shape and dtype
+/// `"unknown"`. Two files with equal tensor counts therefore always reported as
+/// identical. This pair differs in dtype, in one tensor name, and in one shape,
+/// while keeping the count at 3 — exactly the case that used to come back
+/// clean.
+#[test]
+fn test_cli_diff_gguf_reports_real_tensor_changes() {
+    let dir = tempdir().unwrap();
+    let left = dir.path().join("left.gguf");
+    let right = dir.path().join("right.gguf");
+
+    write_gguf(
+        &left,
+        &[
+            ("blk.0.attn_q.weight", &[4096, 4096], 0), // F32
+            ("blk.0.attn_k.weight", &[4096, 1024], 0),
+            ("output_norm.weight", &[4096], 0),
+        ],
+    );
+    write_gguf(
+        &right,
+        &[
+            ("blk.0.attn_q.weight", &[4096, 4096], 12), // Q4_K
+            ("blk.0.attn_k.weight", &[4096, 1024], 12),
+            ("blk.0.ffn_gate.weight", &[4096, 11008], 12),
+        ],
+    );
+
+    aim()
+        .args(["diff", left.to_str().unwrap(), right.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("added: 1"))
+        .stdout(predicate::str::contains("removed: 1"))
+        .stdout(predicate::str::contains("changed: 2"))
+        // Real names and dtypes, not `tensor_0` / `unknown`.
+        .stdout(predicate::str::contains("blk.0.ffn_gate.weight"))
+        .stdout(predicate::str::contains("F32 → Q4_K"))
+        .stdout(predicate::str::contains("output_norm.weight"));
+}
+
+/// A GGUF file whose header is cut short must not panic or hang the CLI.
+#[test]
+fn test_cli_diff_truncated_gguf_is_handled() {
+    let dir = tempdir().unwrap();
+    let full = dir.path().join("full.gguf");
+    write_gguf(&full, &[("a", &[2, 2], 0), ("b", &[2, 2], 0)]);
+
+    let bytes = std::fs::read(&full).unwrap();
+    let cut = dir.path().join("cut.gguf");
+    std::fs::write(&cut, &bytes[..bytes.len() - 12]).unwrap();
+
+    aim()
+        .args(["diff", full.to_str().unwrap(), cut.to_str().unwrap()])
+        .assert()
+        .success();
+}
