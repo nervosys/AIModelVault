@@ -72,7 +72,6 @@ src/
 ├── crypto/                 # Cryptography module
 │   ├── mod.rs              # AES-256-GCM + Argon2id (FIPS 140-3)
 │   ├── compression.rs      # Compression algorithms
-│   ├── gpu.rs              # GPU-accelerated encryption (OpenCL)
 │   └── streaming.rs        # Streaming encryption
 │
 ├── cli/                    # CLI subcommand handlers
@@ -171,7 +170,7 @@ examples/
 - **MCP_TOOLS.md** - MCP tools documentation
 - **MCP_QUICKREF.md** - MCP quick reference
 - **CLOUD_STORAGE.md** - Cloud storage guide
-- **HDF5_SUPPORT.md** - HDF5 installation guide
+- **HDF5_SUPPORT.md** - How .h5/.hdf5 files are handled
 - **MODEL_CARDS.md** - Model card guide
 - **MODEL_CARDS_QUICKREF.md** - Model card quick reference
 - **VERSION_CONTROL.md** - Version control guide
@@ -184,7 +183,6 @@ examples/
 - **ARCHITECTURE_V2.md** - System architecture (v2)
 - **FEATURE_FLAGS.md** - Cargo features reference
 - **PERFORMANCE.md** - Performance benchmarks
-- **GPU_ACCELERATION.md** - GPU encryption guide
 - **SECURITY_AUDIT.md** - Security audit report
 - **SECURITY_HARDENING.md** - Security hardening guide
 - **VULNERABILITY_FIXES.md** - Vulnerability resolution report
@@ -312,9 +310,6 @@ cargo build --features full
 # API server
 cargo build --features api,graphql
 
-# GPU-accelerated encryption
-cargo build --features gpu
-
 # Cloud storage
 cargo build --features cloud
 cargo build --features s3
@@ -324,7 +319,7 @@ cargo build --features azure
 cargo build --features python
 
 # With HDF5 support (requires system library)
-cargo build --features hdf5-support
+
 ```
 
 See [FEATURE_FLAGS.md](FEATURE_FLAGS.md) for a complete reference.
@@ -345,7 +340,7 @@ See [FEATURE_FLAGS.md](FEATURE_FLAGS.md) for a complete reference.
 - **Security** → SECURITY.md → docs/SECURITY_AUDIT.md → docs/SECURITY_HARDENING.md
 - **RAG/AI** → docs/RAG.md → docs/MCP_TOOLS.md → docs/DATABASE.md
 - **Cloud** → docs/CLOUD_STORAGE.md → docs/CLOUD_CLI.md
-- **Features** → docs/FEATURE_FLAGS.md → docs/PERFORMANCE.md → docs/GPU_ACCELERATION.md
+- **Features** → docs/FEATURE_FLAGS.md → docs/PERFORMANCE.md
 - **Model Cards** → docs/MODEL_CARDS.md → docs/MODEL_CARDS_QUICKREF.md
 - **Version Control** → docs/VERSION_CONTROL.md → docs/VERSION_CONTROL_QUICKREF.md
 

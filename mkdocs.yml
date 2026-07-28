@@ -166,7 +166,6 @@ nav:
       - Federation: FEDERATION.md
   - Performance:
       - Performance: PERFORMANCE.md
-      - GPU Acceleration: GPU_ACCELERATION.md
       - Feature Flags: FEATURE_FLAGS.md
       - Benchmarks: BENCHMARKS.md
   - Architecture:

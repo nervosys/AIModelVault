@@ -329,9 +329,7 @@ Custom tools can be registered via `MCPServer::register_tool(tool, executor_fn)`
 | `cloud`        | All cloud backends                  |
 | `api`          | REST API (Axum + JWT)               |
 | `graphql`      | GraphQL API                         |
-| `gpu`          | GPU-accelerated encryption (OpenCL) |
 | `python`       | Python bindings (PyO3)              |
-| `hdf5-support` | HDF5 format support                 |
 
 ## Environment Variables
 

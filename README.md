@@ -147,7 +147,6 @@ All features below are fully implemented, tested, and exposed via both CLI and l
 | ----------------------- | ------------- | ---------------------------------------------------------- |
 | AES-256-GCM encryption  | (default)     | Argon2id KDF (64 MB / 3 iterations / 32-byte salt)         |
 | Streaming encryption    | (auto)        | Constant 8 MiB memory for multi-GB models                  |
-| GPU encryption (OpenCL) | (auto)        | AES-256-CTR with CPU fallback (`--features gpu`)           |
 | KMS integration         | `$aimodelvault_PASSPHRASE` | `env://`, `file://`, `azure-kv://`, `vault://`, `aws-sm://` (`--features s3`) |
 | 23+ model formats       | (auto-detect) | See [Supported Formats](#supported-model-formats)          |
 | Cloud storage           | `aim cloud`   | AWS S3, Azure Blob, GCS                                    |
@@ -284,14 +283,10 @@ The release binary lives at `target/release/aim` (~17 MB, LTO + stripped).
 | `cloud`        | All cloud backends                   |
 | `api`          | REST API (Axum + JWT)                |
 | `graphql`      | GraphQL API                          |
-| `gpu`          | GPU-accelerated encryption (OpenCL)  |
 | `python`       | Python bindings (PyO3)               |
-| `hdf5-support` | HDF5 format support (system library) |
 
 ### Optional system dependencies
 
-- **HDF5** — required for `hdf5-support`. See [docs/HDF5_SUPPORT.md](docs/HDF5_SUPPORT.md).
-- **OpenCL** — required for `gpu`. Any vendor SDK (NVIDIA / AMD / Intel) works.
 - **HashiCorp Vault / AWS / Azure** — only if you use the corresponding KMS / cloud features.
 
 ---
@@ -569,7 +564,6 @@ Deep dives: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/ARCHITECTURE_V
 | Backup scheduling                       | [docs/BACKUP_SCHEDULING.md](docs/BACKUP_SCHEDULING.md)                                                             |
 | Multi-vault                             | [docs/MULTI_VAULT.md](docs/MULTI_VAULT.md)                                                                         |
 | Python bindings                         | [docs/PYTHON_BINDINGS.md](docs/PYTHON_BINDINGS.md)                                                                 |
-| GPU acceleration                        | [docs/GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md)                                                               |
 | Security hardening                      | [docs/SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md) · [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)        |
 | XDG compliance                          | [docs/XDG_COMPLIANCE.md](docs/XDG_COMPLIANCE.md) · [docs/XDG_QUICKREF.md](docs/XDG_QUICKREF.md)                    |
 | Architecture                            | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md)                  |

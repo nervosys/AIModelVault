@@ -7,7 +7,7 @@ export default function PerformancePage() {
       <h1 className="text-4xl font-bold mb-4">Performance</h1>
       <p className="text-lg text-[var(--color-text-secondary)] mb-8">
         Benchmark results captured with Criterion 0.5 on Windows x86_64.
-        All benchmarks use the default (non-GPU) code path in release mode.
+        All benchmarks use the default code path in release mode.
       </p>
 
       <h2 className="text-2xl font-bold mt-10 mb-4" id="encryption">AES-256-GCM Encryption</h2>

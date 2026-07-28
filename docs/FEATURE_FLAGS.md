@@ -39,15 +39,11 @@ Enabled by default with `cargo build`:
 | `api`     | axum, tower, tower-http, jsonwebtoken, utoipa, hyper | REST API with JWT auth          | `cargo build --features api`     |
 | `graphql` | async-graphql, async-graphql-axum (+ `api`)          | GraphQL endpoint (requires api) | `cargo build --features graphql` |
 
-### Acceleration & Bindings
+### Bindings
 
-| Feature        | Crate(s) | Purpose                              | Build Command                         |
-| -------------- | -------- | ------------------------------------ | ------------------------------------- |
-| `gpu`          | ocl      | GPU-accelerated AES-256-GCM (OpenCL) | `cargo build --features gpu`          |
-| `python`       | pyo3     | Python native bindings               | `maturin develop --features python`   |
-| `hdf5-support` | hdf5     | HDF5 format support                  | `cargo build --features hdf5-support` |
-
-> **Note:** `hdf5-support` requires the HDF5 C library installed on your system. See [HDF5_SUPPORT.md](HDF5_SUPPORT.md).
+| Feature  | Crate(s) | Purpose                | Build Command                       |
+| -------- | -------- | ---------------------- | ----------------------------------- |
+| `python` | pyo3     | Python native bindings | `maturin develop --features python` |
 
 ## Meta Features
 
@@ -56,7 +52,7 @@ Enabled by default with `cargo build`:
 | `default` | safetensors, ndarray, sqlite                  | Minimal working set     |
 | `full`    | safetensors, ndarray, sqlite, sled, vector-db | All non-system features |
 
-> `full` excludes `hdf5-support` (requires system library), `gpu` (requires OpenCL), `python` (requires Python), `api`/`graphql` (server features), and cloud backends.
+> `full` excludes `python` (requires Python), `api`/`graphql` (server features), and cloud backends.
 
 ## Common Build Recipes
 
@@ -74,7 +70,7 @@ cargo build --release --features api,cloud
 cargo build --release --features graphql,cloud
 
 # All features (except Python — needs maturin)
-cargo build --release --features full,api,graphql,gpu,cloud,hdf5-support
+cargo build --release --features full,api,graphql,cloud
 
 # Python bindings
 pip install maturin

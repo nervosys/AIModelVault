@@ -153,10 +153,6 @@
       "description": "Append-only blockchain audit trail with Merkle tree proofs",
       "feature_flag": "default"
     },
-    "gpu_acceleration": {
-      "description": "GPU-accelerated encryption using OpenCL",
-      "feature_flag": "gpu"
-    },
     "agent_discovery": {
       "description": "Machine-readable CLI schema introspection for AI agent bootstrapping",
       "commands": ["aim introspect"],

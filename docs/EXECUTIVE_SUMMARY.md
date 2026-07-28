@@ -204,7 +204,7 @@ cargo install ai-model-vault
 cargo build --features cloud
 
 # With HDF5 (requires system library)
-cargo build --features hdf5-support
+
 
 # From source
 git clone https://github.com/nervosys/AIModelVault.git

@@ -10,8 +10,6 @@
 //! - RFC 9106 (Argon2)
 
 pub mod compression;
-#[cfg(feature = "gpu")]
-pub mod gpu;
 pub mod streaming;
 
 use aes_gcm::{

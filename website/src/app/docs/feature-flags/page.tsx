@@ -7,7 +7,7 @@ export default function FeatureFlagsPage() {
       <h1 className="text-4xl font-bold mb-4">Feature Flags</h1>
       <p className="text-lg text-[var(--color-text-secondary)] mb-8">
         Cargo feature flags keep the default binary lean while enabling optional
-        capabilities such as cloud storage, GPU acceleration, and API serving.
+        capabilities such as cloud storage, database backends, and API serving.
       </p>
 
       <h2 className="text-2xl font-bold mt-10 mb-4" id="default-features">Default Features</h2>
@@ -100,14 +100,13 @@ export default function FeatureFlagsPage() {
             </tr>
           </thead>
           <tbody className="text-[var(--color-text-secondary)]">
-            <tr className="border-b border-[var(--color-border)]"><td className="py-2 pr-4 font-mono">gpu</td><td className="py-2 pr-4">ocl</td><td className="py-2 pr-4">GPU-accelerated AES-256-GCM (OpenCL)</td><td className="py-2 font-mono text-xs">cargo build --features gpu</td></tr>
+            
             <tr className="border-b border-[var(--color-border)]"><td className="py-2 pr-4 font-mono">python</td><td className="py-2 pr-4">pyo3</td><td className="py-2 pr-4">Python native bindings</td><td className="py-2 font-mono text-xs">maturin develop --features python</td></tr>
-            <tr className="border-b border-[var(--color-border)]"><td className="py-2 pr-4 font-mono">hdf5-support</td><td className="py-2 pr-4">hdf5</td><td className="py-2 pr-4">HDF5 format support</td><td className="py-2 font-mono text-xs">cargo build --features hdf5-support</td></tr>
           </tbody>
         </table>
       </div>
       <Callout type="info" title="System dependencies">
-        hdf5-support requires the HDF5 C library, gpu requires an OpenCL runtime, and python requires a Python interpreter.
+        python requires a Python interpreter.
       </Callout>
 
       <h2 className="text-2xl font-bold mt-10 mb-4" id="meta-features">Meta Features</h2>
@@ -141,7 +140,7 @@ cargo build --release --features api,cloud
 cargo build --release --features graphql,cloud
 
 # All features (except Python needs maturin)
-cargo build --release --features full,api,graphql,gpu,cloud,hdf5-support
+cargo build --release --features full,api,graphql,cloud
 
 # Python bindings
 pip install maturin

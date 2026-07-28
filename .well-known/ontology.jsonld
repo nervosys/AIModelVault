@@ -87,7 +87,6 @@
       "REST API (Axum) and GraphQL (async-graphql)",
       "Blockchain-based audit trail with Merkle proofs",
       "Federated vault sync with vector clocks",
-      "GPU-accelerated encryption (OpenCL)",
       "Python bindings (PyO3)",
       "XDG Base Directory compliance",
       "TAR/ZIP archiving and deduplication"

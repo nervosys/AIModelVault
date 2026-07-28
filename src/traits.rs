@@ -229,7 +229,6 @@ impl fmt::Display for AimvUri {
 ///
 /// Implementations:
 /// - `FipsCrypto` (default: AES-256-GCM + Argon2id)
-/// - `GpuCrypto` (GPU-accelerated, feature-gated)
 /// - Test mocks
 pub trait CryptoProvider: Send + Sync {
     /// Derive an encryption key from a passphrase.

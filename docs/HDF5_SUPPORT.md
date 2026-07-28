@@ -1,122 +1,40 @@
 # HDF5 Support
 
-AI Model Vault includes optional support for HDF5 format (.h5, .hdf5 files). This feature requires the HDF5 library to be installed on your system.
-
-## Installation
-
-### Ubuntu/Debian
-```bash
-sudo apt-get install libhdf5-dev pkg-config
-```
-
-### macOS
-```bash
-brew install hdf5 pkg-config
-```
-
-### Windows
-1. Download HDF5 from https://www.hdfgroup.org/downloads/hdf5/
-2. Install to a standard location (e.g., `C:\Program Files\HDF5`)
-3. Set environment variable: `HDF5_DIR=C:\Program Files\HDF5`
-
-## Building with HDF5 Support
-
-Once the HDF5 library is installed:
+`.h5` and `.hdf5` files are supported in every build. No feature flag, no system
+library, no extra setup.
 
 ```bash
-# Build with HDF5 support
-cargo build --features hdf5-support
-
-# Build with all features including HDF5
-cargo build --features full,hdf5-support
-
-# Run tests with HDF5 support
-cargo test --features hdf5-support
+aim store model.h5 --name my-model
+aim get my-model --output restored.h5
 ```
 
-## Building Without HDF5 (Default)
+## Why there is no `hdf5-support` feature
 
-By default, AI Model Vault builds without HDF5 support:
+There used to be one. It gated an optional `hdf5` crate dependency that no code
+in this repository ever called, so enabling it linked the HDF5 C library and
+changed nothing observable. This page previously claimed that `.h5` files were
+unsupported without it, which was never true. Both the flag and the unused
+dependency were removed.
 
-```bash
-# Standard build (no HDF5)
-cargo build --release
+## What the vault does with an HDF5 file
 
-# Run tests (no HDF5)
-cargo test
+The same thing it does with any model file: stores it as opaque encrypted bytes,
+checksums it, and versions it. `ModelFormat::HDF5` is detected from the `.h5` /
+`.hdf5` extension and drives compression-ratio estimation and conversion-path
+lookup. Round-tripping is byte-exact.
 
-# Build with cloud storage but no HDF5
-cargo build --features cloud
-```
+## What is not supported
 
-## Format Support Without HDF5
+Tensor-level introspection. `aim diff` reports HDF5 differences at the file
+level (size, checksum) rather than per-tensor, because nothing parses the HDF5
+container's group/dataset structure. SafeTensors and GGUF do get tensor-level
+diffs, since their headers can be read without a C library.
 
-Even without HDF5 support, AI Model Vault supports 20+ other formats:
-- PyTorch (.pt, .pth, .bin)
-- TensorFlow (.pb, .keras)
-- ONNX (.onnx)
-- Safetensors (.safetensors)
-- GGUF (.gguf)
-- And 15+ more!
+If per-tensor HDF5 diffing is wanted, that is the work to do — and it would be a
+real feature flag, because it would genuinely need `libhdf5` (or a pure-Rust
+reader) at build time.
 
-HDF5 is only needed if you specifically work with .h5/.hdf5 files.
+## Related
 
-## Troubleshooting
-
-### Error: "Unable to locate HDF5 root directory"
-
-This means the HDF5 library is not installed. Either:
-1. Install HDF5 (see Installation above)
-2. Build without HDF5: `cargo build` (don't use `--features hdf5-support`)
-
-### Error: "hdf5-sys build failed"
-
-Ensure pkg-config can find HDF5:
-
-**Linux/macOS:**
-```bash
-pkg-config --cflags --libs hdf5
-```
-
-**Windows:**
-```powershell
-# Set environment variable
-$env:HDF5_DIR = "C:\Program Files\HDF5"
-```
-
-## Production Deployment
-
-For production deployments, we recommend:
-
-1. **Docker**: Include HDF5 in your container image
-   ```dockerfile
-   FROM rust:latest
-   RUN apt-get update && apt-get install -y libhdf5-dev
-   COPY . /app
-   WORKDIR /app
-   RUN cargo build --release --features hdf5-support
-   ```
-
-2. **System Package**: Install HDF5 as a system dependency
-   ```bash
-   # Add to deployment script
-   apt-get install -y libhdf5-dev  # Debian/Ubuntu
-   yum install hdf5-devel          # RHEL/CentOS
-   ```
-
-3. **Skip HDF5**: If you don't need .h5 files, skip the feature entirely
-
-## Feature Matrix
-
-| Format      | Default Build | With hdf5-support |
-| ----------- | ------------- | ----------------- |
-| PyTorch     | ✅             | ✅                 |
-| TensorFlow  | ✅             | ✅                 |
-| ONNX        | ✅             | ✅                 |
-| Safetensors | ✅             | ✅                 |
-| GGUF        | ✅             | ✅                 |
-| **HDF5**    | ❌             | ✅                 |
-| NumPy       | ✅             | ✅                 |
-| All others  | ✅             | ✅                 |
-
-Only HDF5 format requires the optional feature.
+- [FEATURE_FLAGS.md](FEATURE_FLAGS.md) — the flags that do exist
+- [`FORMATS.md`](https://github.com/nervosys/AIModelVault/blob/master/FORMATS.md) — every supported format

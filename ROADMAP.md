@@ -360,13 +360,17 @@ Distributed systems and hardware acceleration.
   - Mutations: store_model, delete_model, delete_version, convert_model, unlock, lock
   - GraphQL Playground at `/graphql`
 
-- [x] **GPU-Accelerated Encryption** (`gpu` feature flag, ~500 lines)
-  - OpenCL-based AES-256-CTR encryption/decryption
-  - Full AES implementation in OpenCL kernel (~200 lines)
-  - Automatic CPU fallback when GPU unavailable
-  - Threshold-based activation (≥10 MiB for GPU)
-  - Benchmark utilities for CPU vs GPU comparison
-  - Requires OpenCL SDK installation
+- [~] **GPU-Accelerated Encryption** — *removed after v1.7.0, not planned*
+  - The OpenCL `gpu` feature never compiled: launching a kernel requires an
+    `unsafe` block and the crate sets `unsafe_code = "forbid"`. Because it never
+    built, its hand-written AES-256-CTR kernel was never executed or checked
+    against NIST known-answer vectors.
+  - Shipping unvalidated hand-rolled AES was a worse trade than losing the
+    feature, so the module, the flag, and the `ocl` dependency were dropped.
+    This also closed audit findings C-01 (unauthenticated CTR), C-02 (AES key
+    left resident in GPU memory) and C-03 (unsafe OpenCL FFI).
+  - If GPU offload is revisited, it should wrap a validated implementation
+    rather than reimplement the cipher.
 
 - [x] **Federated Vault Synchronization** (~800 lines)
   - Vector clocks for causal ordering (`VectorClock`, `ClockComparison`)

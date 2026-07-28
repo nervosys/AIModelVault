@@ -80,7 +80,6 @@ docker pull ghcr.io/nervosys/ai-model-vault:1.1.0-api`}</CodeBlock>
               ["cloud", "No", "AWS S3 & Azure Blob Storage"],
               ["full", "No", "All features combined"],
               ["sqlite", "Yes", "SQLite database backend"],
-              ["hdf5-support", "No", "HDF5 format support"],
             ].map(([feature, def, desc]) => (
               <tr key={feature} className="border-b border-[var(--color-border)]">
                 <td className="p-3"><code className="px-1.5 py-0.5 bg-[var(--color-bg-secondary)] rounded text-xs">{feature}</code></td>

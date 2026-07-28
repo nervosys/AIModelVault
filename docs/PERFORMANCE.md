@@ -1,7 +1,7 @@
 # Performance Baseline — v1.2.1
 
 Benchmark results captured with `cargo bench` using Criterion 0.5 on Windows (x86_64).
-All benchmarks run on the default (non-GPU) code path.
+All benchmarks run on the default code path.
 
 **Environment:** Windows 11, x86_64, Rust stable, `--release` profile
 

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+With `gpu` and `hdf5-support` gone, **every feature flag the crate declares is now built by CI** — the `full,graphql` Test Suite job plus the `feature-matrix` job cover `default`, `s3`, `azure`, `cloud`, `api`, `database`, `python` and, transitively, `sqlite`, `kv-store` and `vector-db`. Both removed flags were the two that no job compiled, and both turned out to be broken or inert.
+
+### Removed
+
+- **The `gpu` feature and `src/crypto/gpu.rs` are gone.** The feature had never compiled in any release: launching the OpenCL kernel requires an `unsafe` block, and the crate sets `unsafe_code = "forbid"` at the manifest level, so `cargo build --features gpu` failed with `usage of an unsafe block` before it emitted a single object file. CI never caught it because the feature matrix did not include `gpu`.
+
+  The consequence was worse than a broken build flag: the module carried a hand-written AES-256 implementation as an OpenCL kernel that, never having compiled, had also never been executed or checked against NIST known-answer vectors. Shipping an unvalidated reimplementation of a cipher is a worse trade than not offering GPU offload, so the module, the feature flag, the `ocl` dependency, and the GPU documentation were removed rather than repaired.
+
+  This closes three open findings in `reports/SECURITY_AUDIT_REPORT.md`: **C-01** (AES-CTR without authentication), **C-02** (AES key left resident in GPU memory after the kernel ran), and **C-03** (unsafe OpenCL FFI). It is not a breaking change for any consumer — no version of the crate could be built with the feature enabled.
+
+- **The `hdf5-support` feature and the `hdf5` dependency are gone.** The flag gated nothing: no code in the crate ever referenced the `hdf5` crate, so enabling it linked the HDF5 C library and changed no observable behaviour. `docs/HDF5_SUPPORT.md` and the feature tables nonetheless claimed `.h5` files were unsupported without it — they were never unsupported. `.h5` / `.hdf5` files store, encrypt, checksum, version, and round-trip byte-exactly in a default build, exactly as they always did. `docs/HDF5_SUPPORT.md` has been rewritten to describe what actually happens, including the one real limitation: `aim diff` compares HDF5 files at the file level, not per tensor.
+
+### Fixed
+
+- **`aim diff` reported meaningless results for GGUF models.** `parse_gguf_header` read the tensor *count* out of the header and then fabricated that many entries named `tensor_0`, `tensor_1`, … each with an empty shape, dtype `"unknown"`, and a parameter count of zero — the metadata key/value block was never walked, so the real tensor descriptors were never reached. Two GGUF files therefore compared as identical whenever their tensor counts matched, no matter how different the tensors were: a full-precision model and its Q4_K quantization diffed as zero changes. The header is now parsed properly (metadata KV pairs are skipped by type to locate the tensor-info block, which yields real names, shapes, and `ggml_type` dtypes), with every read bounds-checked so a truncated or malformed file degrades to a partial map instead of panicking.
+- **`GpuCrypto::decrypt` panicked in debug builds on short input.** Its GPU-routing size calculation subtracted the nonce and tag lengths without checking, so any ciphertext between 12 and 43 bytes underflowed. Fixed with a saturating subtraction and a regression test over every length up to the minimum valid blob — then removed along with the rest of the module, above.
+
 ## [1.7.0] - 2026-07-27
 
 ### Security
