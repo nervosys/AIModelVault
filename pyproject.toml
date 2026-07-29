@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "aimodelvault"
-version = "1.7.0"
+version = "2.0.0"
 description = "Universal cross-platform XDG-compliant secure vault for AI model formats"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -23,14 +23,10 @@ classifiers = [
     "Topic :: Security :: Cryptography",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-
-[project.urls]
-Homepage = "https://github.com/nervosys/AIModelVault"
-Documentation = "https://github.com/nervosys/AIModelVault/tree/master/docs"
-Repository = "https://github.com/nervosys/AIModelVault"
-Issues = "https://github.com/nervosys/AIModelVault/issues"
-Changelog = "https://github.com/nervosys/AIModelVault/blob/master/CHANGELOG.md"
-
+# Keep `dependencies` inside [project]. TOML scopes every key to the table
+# header above it, so moving this below [project.urls] silently redefines it as
+# `project.urls.dependencies` — the package then declares no runtime
+# dependencies at all and maturin rejects the manifest.
 dependencies = [
     "cryptography>=42.0.0", # FIPS 140-3 compliant crypto
     "pyyaml>=6.0",
@@ -41,6 +37,13 @@ dependencies = [
     "jsonschema>=4.19.0",
     "packaging>=23.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/nervosys/AIModelVault"
+Documentation = "https://github.com/nervosys/AIModelVault/tree/master/docs"
+Repository = "https://github.com/nervosys/AIModelVault"
+Issues = "https://github.com/nervosys/AIModelVault/issues"
+Changelog = "https://github.com/nervosys/AIModelVault/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 ml = [
