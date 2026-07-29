@@ -235,8 +235,8 @@ chmod 600 ~/.config/aimodelvault/config.yaml
 ### Corrupted Vault
 
 ```bash
-# Check integrity
-aim verify my-model
+# Check integrity against a signature (--key is required for a real check)
+aim verify my-model --signature my-model.sig --key signing_key.json
 
 # Restore from backup
 cp -r /backup/aimodelvault ~/.local/share/

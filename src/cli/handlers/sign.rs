@@ -129,10 +129,12 @@ pub fn handle_verify(
         println!("✗ File hash does NOT match signature");
     }
 
-    if result.signature_match {
+    if !result.signature_checked {
+        println!("? Cryptographic signature NOT CHECKED (no --key supplied)");
+    } else if result.signature_match {
         println!("✓ Cryptographic signature valid");
     } else {
-        println!("✗ Cryptographic signature INVALID or no key provided");
+        println!("✗ Cryptographic signature INVALID");
     }
 
     if let Some(signer) = &sig.signer {
@@ -142,12 +144,14 @@ pub fn handle_verify(
 
     if result.valid {
         println!("\n✓ Verification PASSED");
-    } else {
-        println!("\n✗ Verification FAILED");
-        if let Some(reason) = &result.reason {
-            println!("Reason: {}", reason);
-        }
+        return Ok(());
     }
 
-    Ok(())
+    println!("\n✗ Verification FAILED");
+    // Fail the process too. `aim verify` is what a pipeline gates on; exiting 0
+    // after printing FAILED means every non-interactive caller treats a
+    // tampered or unverifiable model as good.
+    Err(VaultError::IntegrityError(result.reason.unwrap_or_else(
+        || "Signature verification failed".to_string(),
+    )))
 }

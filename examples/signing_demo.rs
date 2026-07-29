@@ -47,10 +47,21 @@ fn main() -> ai_model_vault::Result<()> {
     // 5. Verify
     println!("5. Verifying signature...");
     let loaded_sig = ModelSigner::load_signature(sig_path)?;
-    let verification = ModelSigner::verify(&loaded_sig, test_file, None)?;
+    // The key is required. Verifying without it can only re-hash the file and
+    // compare against a hash the signature file itself supplies, which proves
+    // nothing about who produced it.
+    let verification = ModelSigner::verify(&loaded_sig, test_file, Some(&keypair.secret_seed))?;
     println!("   ✓ Valid: {}", verification.valid);
     println!("   ✓ File hash match: {}", verification.file_hash_match);
-    println!("   ✓ Signature match: {}\n", verification.signature_match);
+    println!("   ✓ Signature match: {}", verification.signature_match);
+
+    // Without the key, authenticity is explicitly reported as unchecked.
+    let unkeyed = ModelSigner::verify(&loaded_sig, test_file, None)?;
+    println!("   ✓ Unkeyed verify: valid={}", unkeyed.valid);
+    println!(
+        "   ✓ Unkeyed verify: signature_checked={}\n",
+        unkeyed.signature_checked
+    );
 
     // Cleanup
     let _ = std::fs::remove_file(key_path);

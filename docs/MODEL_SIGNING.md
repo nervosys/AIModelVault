@@ -11,8 +11,9 @@ aim sign my-model
 # Sign with identity
 aim sign my-model --identity "ML Team <ml@company.com>"
 
-# Verify a signature
-aim verify my-model --signature my-model.sig
+# Verify a signature. --key is required for a real check; without it the
+# command reports the signature as NOT CHECKED and exits non-zero.
+aim verify my-model --signature my-model.sig --key signing_key.json
 
 # Sign a file on disk
 aim sign my-model --file ./model.safetensors
@@ -55,7 +56,13 @@ Options:
 1. **Key Generation** — A signing keypair (`SigningKeyPair`) is auto-generated on first use and saved to `<config_dir>/signing_key.json`
 2. **Signing** — HMAC-SHA256 is computed over the file content using the secret seed
 3. **Detached Signature** — A `.sig` JSON file is created containing signature, public key, file hash, signer identity, and timestamp
-4. **Verification** — The signature is validated against the file hash and the stored public key
+4. **Verification** — The file is re-hashed and compared against the `.sig`, then the HMAC tag is recomputed from the secret seed and compared in constant time
+
+> **The verification key is not optional.** Everything in a `.sig` file — including
+> `file_sha256` — is attacker-controlled if the attacker controls the file. Verifying
+> without the secret seed can only confirm the `.sig` is internally consistent, which
+> anyone can forge. `verify` therefore reports `valid: false` and
+> `signature_checked: false` when no key is supplied.
 
 ## Signature File Format
 
@@ -66,7 +73,7 @@ Options:
   "file_sha256": "hex-encoded SHA-256 of model file",
   "signer": "ML Team <ml@company.com>",
   "signed_at": "2026-04-04T12:00:00Z",
-  "version": 1,
+  "version": 2,
   "metadata": {}
 }
 ```
@@ -84,8 +91,20 @@ ModelSigner::save_keypair(&keypair, "signing_key.json")?;
 let signature = ModelSigner::sign(&keypair, Path::new("model.safetensors"), HashMap::new())?;
 ModelSigner::save_signature(&signature, Path::new("model.sig"))?;
 
-// Verify
+// Verify — the secret seed is required, or `valid` is false and
+// `signature_checked` is false.
 let loaded_sig = ModelSigner::load_signature(Path::new("model.sig"))?;
-let result = ModelSigner::verify(&loaded_sig, Path::new("model.safetensors"), None)?;
+let result = ModelSigner::verify(
+    &loaded_sig,
+    Path::new("model.safetensors"),
+    Some(&keypair.secret_seed),
+)?;
 assert!(result.valid);
 ```
+
+## Signature Versions
+
+| `version` | Tag construction | Status |
+| --- | --- | --- |
+| 1 | `SHA-256(seed \|\| file_hash)` | Accepted on verify; vulnerable to length extension. Re-sign to upgrade. |
+| 2 | `HMAC-SHA256(seed, file_hash)` (RFC 2104) | Written by all current signatures. |

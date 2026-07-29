@@ -69,6 +69,76 @@ pub struct SigningKeyPair {
 /// `ed25519` feature flag.
 pub struct ModelSigner;
 
+/// Signature format written by [`ModelSigner::sign`].
+///
+/// Version 1 computed `SHA-256(seed || file_hash)` while calling itself
+/// HMAC-SHA256. That is not HMAC: it is a bare hash of a concatenation, the
+/// construction HMAC exists to replace. Version 2 is RFC 2104 HMAC-SHA256.
+/// Version 1 signatures still verify, against the version-1 construction, so
+/// existing `.sig` files keep working.
+const SIGNATURE_VERSION: u32 = 2;
+
+/// RFC 2104 HMAC-SHA256.
+fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
+    const BLOCK: usize = 64;
+
+    // Keys longer than the block size are hashed down first.
+    let mut padded = [0u8; BLOCK];
+    if key.len() > BLOCK {
+        padded[..32].copy_from_slice(&Sha256::digest(key));
+    } else {
+        padded[..key.len()].copy_from_slice(key);
+    }
+
+    let mut ipad = [0x36u8; BLOCK];
+    let mut opad = [0x5cu8; BLOCK];
+    for i in 0..BLOCK {
+        ipad[i] ^= padded[i];
+        opad[i] ^= padded[i];
+    }
+
+    let mut inner = Sha256::new();
+    inner.update(ipad);
+    inner.update(message);
+    let inner_hash = inner.finalize();
+
+    let mut outer = Sha256::new();
+    outer.update(opad);
+    outer.update(inner_hash);
+
+    padded.fill(0);
+    ipad.fill(0);
+    opad.fill(0);
+
+    outer.finalize().into()
+}
+
+/// The pre-version-2 tag: `SHA-256(seed || file_hash)`. Kept only so old
+/// signatures remain verifiable.
+fn legacy_tag(seed: &[u8], file_hash: &[u8]) -> [u8; 32] {
+    let mut input = Vec::with_capacity(seed.len() + file_hash.len());
+    input.extend_from_slice(seed);
+    input.extend_from_slice(file_hash);
+    Sha256::digest(&input).into()
+}
+
+/// Compare two tags without leaking where they first differ.
+///
+/// A byte-wise `==` on the hex strings returns as soon as it finds a mismatch,
+/// which lets an attacker who can time repeated verifications recover a valid
+/// tag one byte at a time.
+fn tags_equal(a: &str, b: &str) -> bool {
+    let (a, b) = (a.as_bytes(), b.as_bytes());
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
 impl ModelSigner {
     /// Generate a new signing key pair.
     ///
@@ -168,11 +238,7 @@ impl ModelSigner {
         let seed_bytes = hex::decode(&keypair.secret_seed)
             .map_err(|e| VaultError::CryptoError(format!("Invalid secret seed: {}", e)))?;
 
-        // HMAC-SHA256: H(seed || file_hash)
-        let mut hmac_input = Vec::with_capacity(seed_bytes.len() + file_hash.len());
-        hmac_input.extend_from_slice(&seed_bytes);
-        hmac_input.extend_from_slice(&file_hash);
-        let signature_bytes = Sha256::digest(&hmac_input);
+        let signature_bytes = hmac_sha256(&seed_bytes, &file_hash);
 
         Ok(ModelSignature {
             signature: hex::encode(signature_bytes),
@@ -180,15 +246,20 @@ impl ModelSigner {
             file_sha256,
             signer: keypair.identity.clone(),
             signed_at: chrono::Utc::now().to_rfc3339(),
-            version: 1,
+            version: SIGNATURE_VERSION,
             metadata,
         })
     }
 
     /// Verify a detached signature against a model file.
     ///
-    /// Returns `Ok(true)` if valid, `Ok(false)` if the signature doesn't
-    /// match, or `Err` on I/O errors.
+    /// A verification only passes when the keyed tag was actually checked.
+    /// Without a secret seed this reports `valid: false` and
+    /// `signature_checked: false`, because the only thing comparable without
+    /// the key is the file hash — and that hash is read out of the signature
+    /// file, which is exactly what an attacker substituting a tampered model
+    /// would rewrite. Reporting such a pair as valid is worse than reporting
+    /// nothing.
     pub fn verify(
         signature: &ModelSignature,
         file_path: &Path,
@@ -204,30 +275,45 @@ impl ModelSigner {
                 valid: false,
                 file_hash_match: false,
                 signature_match: false,
+                signature_checked: secret_seed.is_some(),
                 signer: signature.signer.clone(),
                 signed_at: signature.signed_at.clone(),
                 reason: Some("File SHA-256 does not match signed hash".to_string()),
             });
         }
 
-        // If we have the secret seed, verify the HMAC
-        let signature_match = if let Some(seed_hex) = secret_seed {
-            let seed_bytes = hex::decode(seed_hex)
-                .map_err(|e| VaultError::CryptoError(format!("Invalid seed: {}", e)))?;
-            let mut hmac_input = Vec::with_capacity(seed_bytes.len() + file_hash.len());
-            hmac_input.extend_from_slice(&seed_bytes);
-            hmac_input.extend_from_slice(&file_hash);
-            let expected = hex::encode(Sha256::digest(&hmac_input));
-            expected == signature.signature
-        } else {
-            // Without the secret, we can only verify the file hash
-            true
+        let Some(seed_hex) = secret_seed else {
+            return Ok(SignatureVerification {
+                valid: false,
+                file_hash_match: true,
+                signature_match: false,
+                signature_checked: false,
+                signer: signature.signer.clone(),
+                signed_at: signature.signed_at.clone(),
+                reason: Some(
+                    "No verification key was supplied, so authenticity was not checked. \
+                     The file hash matched, but that hash is stored in the signature file \
+                     itself and proves nothing about who produced it. Pass --key with the \
+                     signing key (a file path or a KMS URI) to verify."
+                        .to_string(),
+                ),
+            });
         };
+
+        let seed_bytes = hex::decode(seed_hex)
+            .map_err(|e| VaultError::CryptoError(format!("Invalid seed: {}", e)))?;
+
+        let expected = match signature.version {
+            0 | 1 => legacy_tag(&seed_bytes, &file_hash),
+            _ => hmac_sha256(&seed_bytes, &file_hash),
+        };
+        let signature_match = tags_equal(&hex::encode(expected), &signature.signature);
 
         Ok(SignatureVerification {
             valid: signature_match,
             file_hash_match: true,
             signature_match,
+            signature_checked: true,
             signer: signature.signer.clone(),
             signed_at: signature.signed_at.clone(),
             reason: if signature_match {
@@ -254,7 +340,13 @@ impl ModelSigner {
 }
 
 /// Result of a signature verification.
+///
+/// The four flags are an independent report of what was checked and what
+/// passed, not a state machine — a caller may care that the file hash matched
+/// even when the tag was never checked. Collapsing them into an enum would
+/// discard exactly the distinction the unkeyed-verify fix exists to preserve.
 #[derive(Debug, Serialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct SignatureVerification {
     /// Overall validity
     pub valid: bool,
@@ -262,6 +354,9 @@ pub struct SignatureVerification {
     pub file_hash_match: bool,
     /// Whether the cryptographic signature matches
     pub signature_match: bool,
+    /// Whether the keyed tag was checked at all. False when no key was
+    /// supplied — in which case `valid` is false regardless of the file hash.
+    pub signature_checked: bool,
     /// Signer identity
     pub signer: Option<String>,
     /// When the file was signed
@@ -303,10 +398,138 @@ mod tests {
         assert!(result.file_hash_match);
         assert!(result.signature_match);
 
-        // Verify without secret (hash-only check)
+        // Without the secret, nothing about authenticity can be established.
         let result2 = ModelSigner::verify(&sig, file.path(), None).unwrap();
-        assert!(result2.valid);
+        assert!(!result2.valid, "no key means no verification");
+        assert!(!result2.signature_checked);
         assert!(result2.file_hash_match);
+    }
+
+    /// The signature file carries both the tag *and* the file hash it was made
+    /// over. Verifying without a key compared the file against that stored
+    /// hash and reported `valid: true` — so anyone could ship a tampered model
+    /// with a regenerated `.sig` and have `aim verify` call it good. The whole
+    /// point of the command is to detect exactly this.
+    #[test]
+    fn test_forged_signature_without_key_is_not_reported_valid() {
+        let kp = ModelSigner::generate_keypair(Some("honest-signer")).unwrap();
+
+        let mut genuine = NamedTempFile::new().unwrap();
+        genuine.write_all(b"the real model").unwrap();
+        let real_sig = ModelSigner::sign(&kp, genuine.path(), HashMap::new()).unwrap();
+
+        // Attacker swaps the payload and rewrites the hash in the .sig, keeping
+        // the original signer name and tag.
+        let mut tampered = NamedTempFile::new().unwrap();
+        tampered.write_all(b"malicious payload").unwrap();
+        let tampered_hash = hex::encode(Sha256::digest(b"malicious payload"));
+
+        let forged = ModelSignature {
+            file_sha256: tampered_hash,
+            ..real_sig.clone()
+        };
+
+        // No key: must refuse to bless it.
+        let unkeyed = ModelSigner::verify(&forged, tampered.path(), None).unwrap();
+        assert!(
+            !unkeyed.valid,
+            "a forged signature must never verify, least of all with no key"
+        );
+        assert!(
+            unkeyed.file_hash_match,
+            "the forged hash does match the file"
+        );
+        assert!(!unkeyed.signature_checked);
+
+        // With the key: the tag is over the original hash, so it fails.
+        let keyed = ModelSigner::verify(&forged, tampered.path(), Some(&kp.secret_seed)).unwrap();
+        assert!(!keyed.valid);
+        assert!(!keyed.signature_match);
+    }
+
+    #[test]
+    fn test_wrong_key_does_not_verify() {
+        let signer = ModelSigner::generate_keypair(None).unwrap();
+        let attacker = ModelSigner::generate_keypair(None).unwrap();
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(b"model bytes").unwrap();
+        let sig = ModelSigner::sign(&signer, file.path(), HashMap::new()).unwrap();
+
+        let result = ModelSigner::verify(&sig, file.path(), Some(&attacker.secret_seed)).unwrap();
+        assert!(!result.valid);
+        assert!(result.signature_checked);
+        assert!(!result.signature_match);
+    }
+
+    /// RFC 2104 test vector: key = 20 × 0x0b, data = "Hi There".
+    #[test]
+    fn test_hmac_sha256_matches_rfc4231_vector() {
+        let key = [0x0bu8; 20];
+        let tag = hmac_sha256(&key, b"Hi There");
+        assert_eq!(
+            hex::encode(tag),
+            "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
+        );
+    }
+
+    /// A key longer than the 64-byte block must be hashed down, per RFC 2104.
+    /// RFC 4231 case 4: 131 × 0xaa, data "Test Using Larger Than Block-Size Key -
+    /// Hash Key First".
+    #[test]
+    fn test_hmac_sha256_handles_oversized_keys() {
+        let key = [0xaau8; 131];
+        let tag = hmac_sha256(
+            &key,
+            b"Test Using Larger Than Block-Size Key - Hash Key First",
+        );
+        assert_eq!(
+            hex::encode(tag),
+            "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"
+        );
+    }
+
+    /// The v1 construction was `SHA-256(seed || hash)`, not HMAC. Signatures
+    /// written before the fix must still verify, or upgrading silently
+    /// invalidates every existing `.sig`.
+    #[test]
+    fn test_version_1_signatures_still_verify() {
+        let kp = ModelSigner::generate_keypair(None).unwrap();
+
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(b"legacy model").unwrap();
+        let file_hash = Sha256::digest(b"legacy model");
+
+        let seed = hex::decode(&kp.secret_seed).unwrap();
+        let legacy = ModelSignature {
+            signature: hex::encode(legacy_tag(&seed, &file_hash)),
+            public_key: kp.public_key.clone(),
+            file_sha256: hex::encode(file_hash),
+            signer: None,
+            signed_at: "2026-01-01T00:00:00Z".to_string(),
+            version: 1,
+            metadata: HashMap::new(),
+        };
+
+        let result = ModelSigner::verify(&legacy, file.path(), Some(&kp.secret_seed)).unwrap();
+        assert!(result.valid, "existing v1 signatures must keep verifying");
+
+        // And new signatures are written as v2.
+        let fresh = ModelSigner::sign(&kp, file.path(), HashMap::new()).unwrap();
+        assert_eq!(fresh.version, 2);
+        assert_ne!(
+            fresh.signature, legacy.signature,
+            "v2 must not reproduce the v1 tag"
+        );
+    }
+
+    #[test]
+    fn test_tag_comparison_rejects_length_and_content_mismatch() {
+        assert!(tags_equal("abcd", "abcd"));
+        assert!(!tags_equal("abcd", "abce"));
+        assert!(!tags_equal("abcd", "abc"));
+        assert!(!tags_equal("", "a"));
+        assert!(tags_equal("", ""));
     }
 
     #[test]
