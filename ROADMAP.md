@@ -1,10 +1,22 @@
 # AI Model Vault — Roadmap
 
-> Last updated: 2026-07-27
-> Current version: **1.7.0** (unattended operation, KMS backends, security remediation)
-> Status: Production release — 2,097 Rust tests + 84 Python tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, clippy clean across 7 feature combinations, `cargo audit` / `cargo deny` clean with zero suppressions
+> Last updated: 2026-07-29
+> Current version: **2.0.0** (signature, scanner, bundle and metadata-parsing security fixes)
+> Status: Production release — 2,131 Rust tests + 84 Python tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, clippy clean across every feature combination the crate declares, `cargo audit` / `cargo deny` clean with zero suppressions
 
 ---
+
+## v2.0.0 — Security (complete)
+
+Five defects sharing one shape: code that emitted a confident, plausible answer
+where it should have said it could not tell.
+
+- [x] **`aim verify` refuses to verify without a key** — it previously reported forged models as valid, comparing the file hash against a value the attacker-supplied `.sig` file itself contains, and then exited 0 when it printed FAILED
+- [x] **Signatures are real HMAC-SHA256** (RFC 2104, tested against RFC 4231), compared in constant time; the old `SHA-256(seed ‖ hash)` construction still verifies as version 1
+- [x] **The pickle scanner reads compressed ZIP members** — a DEFLATE-compressed malicious checkpoint previously scanned as `safe: true`
+- [x] **`aim vault-import` validates blob paths and verifies the bundle checksum** — the manifest's `file_path` was attacker-controlled and passed straight to `Path::join` (CWE-22), and the checksum was written but never read
+- [x] **GGUF metadata is parsed, not guessed at** — one shared bounds-checked reader fixes both `aim diff` (which saw F32 and Q4_K as identical) and license detection (which reported non-commercial models as MIT)
+- [x] **Every feature flag the crate declares is built by CI** — the two that no job compiled, `gpu` and `hdf5-support`, were both broken or inert and have been removed
 
 ## v1.7.0 — Unattended Operation, KMS & Security (complete)
 

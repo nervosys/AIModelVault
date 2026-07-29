@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2026-07-29
+
+A security release. Five defects are fixed here, and they share one shape: code that emitted a confident, plausible answer where it should have said it could not tell. `aim verify` called forged models valid, the license scanner reported non-commercial models as MIT, `aim diff` saw a full-precision model and its 4-bit quantization as identical, the pickle scanner called a malicious checkpoint clean, and `aim vault-import` trusted a path out of an untrusted manifest. Anyone relying on those commands as a gate should treat prior results as unverified and re-run them.
+
+The major bump is required by two changes: `ModelSigner::verify` no longer reports `valid: true` without a key, and the `gpu` and `hdf5-support` feature flags are gone. See **Breaking Changes** at the end of this section for the full list.
 
 With `gpu` and `hdf5-support` gone, **every feature flag the crate declares is now built by CI** — the `full,graphql` Test Suite job plus the `feature-matrix` job cover `default`, `s3`, `azure`, `cloud`, `api`, `database`, `python` and, transitively, `sqlite`, `kv-store` and `vector-db`. Both removed flags were the two that no job compiled, and both turned out to be broken or inert.
 
@@ -44,7 +48,23 @@ With `gpu` and `hdf5-support` gone, **every feature flag the crate declares is n
 - **License scanning could report a restricted model as MIT.** `extract_gguf_license` searched the raw bytes for the literal text `general.license`, then scanned the following **512 bytes** for any entry in `KNOWN_LICENSES`, returning the first table entry that matched anywhere in that window. Two things made that unsound. The window ran far past the value and into unrelated metadata, so a license name could be picked up from a description or a tokenizer token. Worse, the table is scanned in order with `("mit", "MIT")` first and matched as a bare substring — so any window containing `"limitations"` or `"permitted"`, which is ordinary license boilerplate, yielded **MIT, classified Permissive**, regardless of the model's actual license. A Llama-3.1 or CC-BY-NC model could therefore be reported as permissively licensed by a tool whose purpose is compliance. The value is now read from the `general.license` key itself; if the key is absent, empty, or not a string, no license is reported rather than a guessed one.
 
 - **`aim diff` reported meaningless results for GGUF models.** `parse_gguf_header` read the tensor *count* out of the header and then fabricated that many entries named `tensor_0`, `tensor_1`, … each with an empty shape, dtype `"unknown"`, and a parameter count of zero — the metadata key/value block was never walked, so the real tensor descriptors were never reached. Two GGUF files therefore compared as identical whenever their tensor counts matched, no matter how different the tensors were: a full-precision model and its Q4_K quantization diffed as zero changes. The header is now parsed properly (metadata KV pairs are skipped by type to locate the tensor-info block, which yields real names, shapes, and `ggml_type` dtypes), with every read bounds-checked so a truncated or malformed file degrades to a partial map instead of panicking.
+- **The Python package declared no runtime dependencies, and its wheel could not be built.** In `pyproject.toml`, the `dependencies` array sat *below* the `[project.urls]` header. TOML scopes every key to the table above it, so the array was parsed as `project.urls.dependencies` rather than `project.dependencies` — a silent redefinition, since nothing about the syntax is wrong. `cryptography`, `pyyaml`, `click`, `tqdm`, `platformdirs`, `filelock`, `jsonschema` and `packaging` were therefore absent from the package metadata, and an install into a clean environment would fail on the first import. maturin, which validates the table types, rejected the manifest outright with `invalid type: sequence, expected a string`, so `maturin build` and any `pip install .` through the build backend failed. The array is now inside `[project]`, with a comment recording why its position matters.
+
 - **`GpuCrypto::decrypt` panicked in debug builds on short input.** Its GPU-routing size calculation subtracted the nonce and tag lengths without checking, so any ciphertext between 12 and 43 bytes underflowed. Fixed with a saturating subtraction and a regression test over every length up to the minimum valid blob — then removed along with the rest of the module, above.
+
+### Breaking Changes
+
+- **`ModelSigner::verify(&sig, path, None)` no longer returns `valid: true`.** Callers must pass the secret seed. Code that did not is not losing a check — it never had one. `SignatureVerification` gains a `signature_checked` field distinguishing "the tag failed" from "no key was supplied, so nothing was checked".
+- **`aim verify` exits non-zero when verification fails or cannot be performed.** It previously exited 0 in both cases. Pipelines that gated on this command were not gating on anything; pipelines that swallowed its exit code will now surface failures.
+- **The `gpu` feature flag is gone.** Not breaking in practice: no released version could be built with it enabled, because launching the OpenCL kernel needs `unsafe` and the crate forbids `unsafe_code`. `cargo build --features gpu` now fails on an unknown feature rather than on a lint.
+- **The `hdf5-support` feature flag is gone.** It gated no code. `.h5` handling is unchanged in a default build.
+- **Vault bundles are now format version 2**, with a checksum that is verified on import. Version-1 bundles still import, but report `checksum_verified: false`. `ImportReport` gains that field.
+- **Signatures are now version 2** (RFC 2104 HMAC-SHA256 rather than `SHA-256(seed ‖ file_hash)`). Existing version-0/1 `.sig` files still verify; re-sign to upgrade.
+- **Blob paths inside a bundle must be a single file name.** Anything with a directory separator, a parent reference, or a root/drive prefix is rejected. Only hand-edited bundles are affected — `export_vault` has never produced anything else.
+
+### Version
+
+- **1.7.0 → 2.0.0** (Python package and Helm chart synced to 2.0.0).
 
 ## [1.7.0] - 2026-07-27
 

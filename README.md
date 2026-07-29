@@ -6,9 +6,9 @@
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
 [![CMMC](https://img.shields.io/badge/CMMC-2.0%20Level%202-green.svg)](docs/SECURITY_HARDENING.md)
-[![Tests](https://img.shields.io/badge/tests-2%2C088%2B%20passing-brightgreen.svg)](reports/)
+[![Tests](https://img.shields.io/badge/tests-2%2C131%2B%20passing-brightgreen.svg)](reports/)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](CHANGELOG.md)
 [![Clippy](https://img.shields.io/badge/clippy-clean-brightgreen.svg)](validate.ps1)
 [![Agent-ready](https://img.shields.io/badge/agent--ready-AGENTS.md-blueviolet.svg)](AGENTS.md)
 

@@ -90,7 +90,7 @@ cargo build --features "api,sqlite,s3"
 # Run all tests (lib + integration)
 cargo test --features "full,graphql"
 
-# Run lib tests only (623 tests)
+# Run lib tests only
 cargo test --lib --features "full,graphql"
 
 # Run a specific test
