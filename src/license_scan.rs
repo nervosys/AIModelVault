@@ -27,7 +27,7 @@ pub struct DetectedLicense {
 }
 
 /// Where a license was detected from.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LicenseSource {
     /// YAML frontmatter in a model card / README
     ModelCard,
@@ -271,34 +271,32 @@ impl LicenseScanner {
 
     /// Extract license from GGUF metadata.
     ///
-    /// GGUF stores metadata as key-value pairs; license is typically
-    /// under `general.license` key. We do a simple string search.
+    /// Reads the value stored under the `general.license` key by walking the
+    /// metadata block properly (see [`crate::gguf`]).
+    ///
+    /// This used to search the raw bytes for the literal text
+    /// `"general.license"` and then scan the following 512 bytes for any entry
+    /// in [`KNOWN_LICENSES`], returning the first that matched anywhere in that
+    /// window. Two things made that unsound for a compliance signal. The window
+    /// ran well past the value and into unrelated metadata, so a license name
+    /// could be picked up from a description or a tokenizer entry; and the table is
+    /// scanned in order with `"mit"` first, matched as a bare substring — so
+    /// any window containing "li**mit**ations" or "per**mit**ted", which is
+    /// ordinary license boilerplate, reported **MIT / permissive** no matter
+    /// what the model was actually licensed under.
     fn extract_gguf_license(data: &[u8]) -> Option<DetectedLicense> {
-        // Simple approach: search for "general.license" string in the binary
-        let needle = b"general.license";
-        let pos = data.windows(needle.len()).position(|w| w == needle)?;
-
-        // The value follows the key after some GGUF encoding bytes.
-        // Look for a reasonable UTF-8 string starting a few bytes after the key.
-        let search_start = pos + needle.len();
-        let search_end = (search_start + 512).min(data.len());
-        let region = &data[search_start..search_end];
-
-        // Find the longest valid UTF-8 substring that looks like a license identifier
-        let text = String::from_utf8_lossy(region);
-        for known in KNOWN_LICENSES {
-            if let Some(idx) = text.find(known.0) {
-                let raw = text[idx..idx + known.0.len()].to_string();
-                let classification = Self::classify_license(&raw);
-                return Some(DetectedLicense {
-                    spdx_id: Some(known.1.to_string()),
-                    raw,
-                    source: LicenseSource::GgufMetadata,
-                    classification,
-                });
-            }
+        let raw = crate::gguf::metadata_string(data, "general.license")?;
+        let raw = raw.trim().to_string();
+        if raw.is_empty() {
+            return None;
         }
-        None
+
+        Some(DetectedLicense {
+            spdx_id: Self::normalize_spdx(&raw),
+            classification: Self::classify_license(&raw),
+            raw,
+            source: LicenseSource::GgufMetadata,
+        })
     }
 
     /// Detect a license from the full text of a LICENSE file.
@@ -498,6 +496,86 @@ static KNOWN_LICENSES: &[(&str, &str)] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::gguf::test_support::{build, Meta};
+
+    #[test]
+    fn test_gguf_license_read_from_the_real_key() {
+        let data = build(
+            &[
+                ("general.architecture", Meta::Str("llama")),
+                ("general.license", Meta::Str("apache-2.0")),
+            ],
+            &[("blk.0.attn_q.weight", &[64, 64], 0)],
+        );
+
+        let lic = LicenseScanner::extract_gguf_license(&data).unwrap();
+        assert_eq!(lic.raw, "apache-2.0");
+        assert_eq!(lic.spdx_id.as_deref(), Some("Apache-2.0"));
+        assert_eq!(lic.classification, LicenseClass::Permissive);
+        assert_eq!(lic.source, LicenseSource::GgufMetadata);
+    }
+
+    /// The scanner used to search a 512-byte window after the literal text
+    /// `general.license` for any entry in `KNOWN_LICENSES`, taking the first
+    /// table hit. `("mit", "MIT")` is first, matched as a bare substring — so
+    /// ordinary license boilerplate containing "limitations" or "permitted"
+    /// anywhere nearby classified a restricted model as MIT / permissive.
+    #[test]
+    fn test_gguf_license_not_confused_by_neighbouring_metadata() {
+        let data = build(
+            &[
+                ("general.license", Meta::Str("llama3.1")),
+                (
+                    "general.description",
+                    Meta::Str(
+                        "Licensed as-is; see the LICENSE file for permitted uses and \
+                         limitations under the applicable terms.",
+                    ),
+                ),
+            ],
+            &[],
+        );
+
+        let lic = LicenseScanner::extract_gguf_license(&data).unwrap();
+        assert_eq!(lic.raw, "llama3.1");
+        assert_eq!(lic.spdx_id.as_deref(), Some("Llama-3.1-Community"));
+        assert_eq!(
+            lic.classification,
+            LicenseClass::Restricted,
+            "a Llama community licence must not be reported as permissive"
+        );
+    }
+
+    #[test]
+    fn test_gguf_license_absent_or_malformed() {
+        // No `general.license` key at all.
+        let no_key = build(&[("general.architecture", Meta::Str("llama"))], &[]);
+        assert!(LicenseScanner::extract_gguf_license(&no_key).is_none());
+
+        // Present but empty — not a licence claim.
+        let empty = build(&[("general.license", Meta::Str("   "))], &[]);
+        assert!(LicenseScanner::extract_gguf_license(&empty).is_none());
+
+        // Truncated at every length: never panics, never invents a licence.
+        let full = build(&[("general.license", Meta::Str("mit"))], &[]);
+        for cut in 0..full.len() {
+            let _ = LicenseScanner::extract_gguf_license(&full[..cut]);
+        }
+    }
+
+    #[test]
+    fn test_scan_bytes_picks_up_gguf_license() {
+        let data = build(&[("general.license", Meta::Str("cc-by-nc-4.0"))], &[]);
+        let report = LicenseScanner::scan_bytes(&data, "model.gguf");
+
+        let lic = report
+            .licenses
+            .iter()
+            .find(|l| l.source == LicenseSource::GgufMetadata)
+            .expect("GGUF licence should be detected end-to-end");
+        assert_eq!(lic.raw, "cc-by-nc-4.0");
+        assert_eq!(lic.classification, LicenseClass::Restricted);
+    }
 
     #[test]
     fn test_yaml_frontmatter() {

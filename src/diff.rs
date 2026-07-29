@@ -329,214 +329,30 @@ impl ModelDiffer {
 
     /// Parse GGUF header for tensor info.
     ///
-    /// GGUF v3 layout: [4-byte magic "GGUF"][4-byte version][8-byte tensor_count]
-    /// [8-byte metadata_count][metadata KV pairs][tensor infos].
-    ///
-    /// The metadata block is variable-length, so the tensor infos can only be
-    /// reached by walking every KV pair. A truncated or malformed header yields
-    /// whatever tensors were read before the break rather than an error — the
+    /// Delegates to [`crate::gguf`], which walks the variable-length metadata
+    /// block to reach the tensor descriptors. A truncated or malformed header
+    /// yields whatever was read before the break rather than an error — the
     /// caller only ever uses this for comparison.
     fn parse_gguf_header(data: &[u8]) -> TensorMap {
-        let mut map = BTreeMap::new();
-
-        // Check GGUF magic
-        if data.len() < 24 || &data[0..4] != b"GGUF" {
-            return map;
-        }
-
-        let mut r = GgufReader::after_magic(data);
-
-        let Some(version) = r.u32() else { return map };
-        if !(2..=3).contains(&version) {
-            return map;
-        }
-
-        let (Some(tensor_count), Some(metadata_count)) = (r.u64(), r.u64()) else {
-            return map;
-        };
-
-        // Walk past the metadata without decoding it; we only need the offset
-        // it leaves the cursor at.
-        for _ in 0..metadata_count {
-            if r.string().is_none() {
-                return map;
-            }
-            let Some(value_type) = r.u32() else {
-                return map;
-            };
-            if r.skip_value(value_type, 0).is_none() {
-                return map;
-            }
-        }
-
-        for _ in 0..tensor_count {
-            let Some(name) = r.string() else { return map };
-            let Some(n_dims) = r.u32() else { return map };
-            // ggml itself caps tensors at 4 dimensions; the extra headroom just
-            // avoids rejecting a future revision outright.
-            if n_dims > GGUF_MAX_DIMS {
-                return map;
-            }
-
-            let mut shape = Vec::with_capacity(n_dims as usize);
-            for _ in 0..n_dims {
-                let Some(dim) = r.u64().and_then(|d| usize::try_from(d).ok()) else {
-                    return map;
-                };
-                shape.push(dim);
-            }
-
-            let Some(ggml_type) = r.u32() else { return map };
-            // Data offset — not part of the comparison.
-            if r.u64().is_none() {
-                return map;
-            }
-
-            let param_count = shape
-                .iter()
-                .try_fold(1u64, |acc, &d| acc.checked_mul(d as u64))
-                .unwrap_or(u64::MAX);
-
-            map.insert(
-                name.clone(),
-                TensorInfo {
-                    name,
-                    shape,
-                    dtype: ggml_type_name(ggml_type).to_string(),
-                    param_count,
-                },
-            );
-        }
-
-        map
+        crate::gguf::tensors(data)
+            .into_iter()
+            .map(|t| {
+                (
+                    t.name.clone(),
+                    TensorInfo {
+                        name: t.name,
+                        shape: t.shape,
+                        dtype: t.dtype.to_string(),
+                        param_count: t.param_count,
+                    },
+                )
+            })
+            .collect()
     }
 
     /// Generic fallback: no tensor-level info available, just file-level.
     fn parse_generic(_data: &[u8]) -> TensorMap {
         BTreeMap::new()
-    }
-}
-
-// ── GGUF header primitives ───────────────────────────────────────────────────
-
-/// `gguf_metadata_value_type` tags.
-const GGUF_UINT8: u32 = 0;
-const GGUF_INT8: u32 = 1;
-const GGUF_UINT16: u32 = 2;
-const GGUF_INT16: u32 = 3;
-const GGUF_UINT32: u32 = 4;
-const GGUF_INT32: u32 = 5;
-const GGUF_FLOAT32: u32 = 6;
-const GGUF_BOOL: u32 = 7;
-const GGUF_STRING: u32 = 8;
-const GGUF_ARRAY: u32 = 9;
-const GGUF_UINT64: u32 = 10;
-const GGUF_INT64: u32 = 11;
-const GGUF_FLOAT64: u32 = 12;
-
-/// Upper bound on a tensor's declared dimension count.
-const GGUF_MAX_DIMS: u32 = 8;
-
-/// Human-readable name for a `ggml_type` discriminant.
-fn ggml_type_name(ggml_type: u32) -> &'static str {
-    match ggml_type {
-        0 => "F32",
-        1 => "F16",
-        2 => "Q4_0",
-        3 => "Q4_1",
-        6 => "Q5_0",
-        7 => "Q5_1",
-        8 => "Q8_0",
-        9 => "Q8_1",
-        10 => "Q2_K",
-        11 => "Q3_K",
-        12 => "Q4_K",
-        13 => "Q5_K",
-        14 => "Q6_K",
-        15 => "Q8_K",
-        16 => "IQ2_XXS",
-        17 => "IQ2_XS",
-        18 => "IQ3_XXS",
-        19 => "IQ1_S",
-        20 => "IQ4_NL",
-        21 => "IQ3_S",
-        22 => "IQ2_S",
-        23 => "IQ4_XS",
-        24 => "I8",
-        25 => "I16",
-        26 => "I32",
-        27 => "I64",
-        28 => "F64",
-        29 => "IQ1_M",
-        30 => "BF16",
-        // 4 and 5 were Q4_2/Q4_3, removed from ggml.
-        _ => "UNKNOWN",
-    }
-}
-
-/// Bounds-checked little-endian cursor over a GGUF header.
-///
-/// Every accessor returns `None` rather than panicking when the header is
-/// shorter than it claims to be, so a corrupt file degrades to a partial
-/// tensor map instead of aborting the diff.
-struct GgufReader<'a> {
-    data: &'a [u8],
-    pos: usize,
-}
-
-impl<'a> GgufReader<'a> {
-    /// Start reading immediately after the 4-byte `GGUF` magic.
-    fn after_magic(data: &'a [u8]) -> Self {
-        Self { data, pos: 4 }
-    }
-
-    fn take(&mut self, n: usize) -> Option<&'a [u8]> {
-        let end = self.pos.checked_add(n)?;
-        let slice = self.data.get(self.pos..end)?;
-        self.pos = end;
-        Some(slice)
-    }
-
-    fn u32(&mut self) -> Option<u32> {
-        Some(u32::from_le_bytes(self.take(4)?.try_into().ok()?))
-    }
-
-    fn u64(&mut self) -> Option<u64> {
-        Some(u64::from_le_bytes(self.take(8)?.try_into().ok()?))
-    }
-
-    /// GGUF strings are a u64 byte length followed by non-NUL-terminated UTF-8.
-    fn string(&mut self) -> Option<String> {
-        let len = usize::try_from(self.u64()?).ok()?;
-        let bytes = self.take(len)?;
-        Some(String::from_utf8_lossy(bytes).into_owned())
-    }
-
-    /// Advance past one metadata value of the given type without decoding it.
-    fn skip_value(&mut self, value_type: u32, depth: u32) -> Option<()> {
-        // Nested arrays are not legal GGUF, but a malformed file must not be
-        // able to drive this into unbounded recursion.
-        if depth > 4 {
-            return None;
-        }
-        match value_type {
-            GGUF_UINT8 | GGUF_INT8 | GGUF_BOOL => self.take(1).map(|_| ()),
-            GGUF_UINT16 | GGUF_INT16 => self.take(2).map(|_| ()),
-            GGUF_UINT32 | GGUF_INT32 | GGUF_FLOAT32 => self.take(4).map(|_| ()),
-            GGUF_UINT64 | GGUF_INT64 | GGUF_FLOAT64 => self.take(8).map(|_| ()),
-            GGUF_STRING => self.string().map(|_| ()),
-            GGUF_ARRAY => {
-                let elem_type = self.u32()?;
-                let count = self.u64()?;
-                for _ in 0..count {
-                    self.skip_value(elem_type, depth + 1)?;
-                }
-                Some(())
-            }
-            // An unknown tag has an unknown width, so the rest of the header is
-            // no longer navigable.
-            _ => None,
-        }
     }
 }
 
@@ -650,45 +466,18 @@ mod tests {
         data
     }
 
-    /// Build a syntactically valid GGUF v3 header: magic, counts, one string
-    /// and one array metadata pair (to prove the walker steps over them), then
-    /// the tensor infos.
+    /// A GGUF v3 header carrying one string and one array metadata pair, so the
+    /// walker has to step over both before reaching the tensor infos.
     fn make_gguf_header(tensors: &[(&str, &[u64], u32)]) -> Vec<u8> {
-        fn push_string(out: &mut Vec<u8>, s: &str) {
-            out.extend_from_slice(&(s.len() as u64).to_le_bytes());
-            out.extend_from_slice(s.as_bytes());
-        }
+        use crate::gguf::test_support::{build, Meta};
 
-        let mut data = Vec::new();
-        data.extend_from_slice(b"GGUF");
-        data.extend_from_slice(&3u32.to_le_bytes()); // version
-        data.extend_from_slice(&(tensors.len() as u64).to_le_bytes());
-        data.extend_from_slice(&2u64.to_le_bytes()); // metadata_count
-
-        // general.architecture = "llama"
-        push_string(&mut data, "general.architecture");
-        data.extend_from_slice(&GGUF_STRING.to_le_bytes());
-        push_string(&mut data, "llama");
-
-        // tokenizer.ggml.tokens = ["a", "bb"]
-        push_string(&mut data, "tokenizer.ggml.tokens");
-        data.extend_from_slice(&GGUF_ARRAY.to_le_bytes());
-        data.extend_from_slice(&GGUF_STRING.to_le_bytes());
-        data.extend_from_slice(&2u64.to_le_bytes());
-        push_string(&mut data, "a");
-        push_string(&mut data, "bb");
-
-        for (name, dims, ggml_type) in tensors {
-            push_string(&mut data, name);
-            data.extend_from_slice(&(dims.len() as u32).to_le_bytes());
-            for d in *dims {
-                data.extend_from_slice(&d.to_le_bytes());
-            }
-            data.extend_from_slice(&ggml_type.to_le_bytes());
-            data.extend_from_slice(&0u64.to_le_bytes()); // offset
-        }
-
-        data
+        build(
+            &[
+                ("general.architecture", Meta::Str("llama")),
+                ("tokenizer.ggml.tokens", Meta::StrArray(&["a", "bb"])),
+            ],
+            tensors,
+        )
     }
 
     #[test]

@@ -25,6 +25,7 @@ pub mod evaluation;
 pub mod federation;
 pub mod formats;
 pub mod gc;
+pub mod gguf;
 pub mod interop;
 pub mod kms;
 pub mod license_scan;
