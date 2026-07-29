@@ -23,5 +23,14 @@ pub fn handle_vault_import(
     println!("  Models: {}", report.models_imported);
     println!("  Versions imported: {}", report.versions_imported);
     println!("  Versions skipped: {}", report.versions_skipped);
+    if report.checksum_verified {
+        println!("  Integrity: payload checksum verified");
+    } else {
+        // Do not let silence read as a passing check.
+        println!(
+            "  Integrity: NOT VERIFIED — this bundle predates reproducible \
+             checksums (format version 1)"
+        );
+    }
     Ok(())
 }
