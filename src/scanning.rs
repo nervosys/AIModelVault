@@ -16,6 +16,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 
+/// Ceiling on bytes decompressed out of a ZIP while scanning, so a zip bomb
+/// cannot turn a scan into an out-of-memory abort.
+const MAX_SCAN_INFLATE_BYTES: u64 = 512 * 1024 * 1024;
+
+/// Ceiling on ZIP members inspected per file.
+const MAX_SCAN_ZIP_MEMBERS: usize = 4096;
+
 // ── Dangerous pickle opcodes ─────────────────────────────────────────────────
 
 /// Pickle opcodes that can trigger arbitrary code execution.
@@ -176,9 +183,7 @@ impl PickleScanner {
         let file_size = data.len() as u64;
         let file_path = path.display().to_string();
 
-        let is_zip = data.len() >= 4
-            && (data[0..2] == [0x50, 0x4B]   // PK zip magic
-                || data[0..4] == [0x80, 0x02, 0x7D, 0x71]); // pickle proto 2
+        let is_zip = data.len() >= 2 && data[0..2] == [0x50, 0x4B]; // PK zip magic
 
         // Check for pickle magic bytes (protocol markers \x80\x02 through \x80\x05)
         let is_pickle = data.len() >= 2 && data[0] == 0x80 && (2..=5).contains(&data[1]);
@@ -186,14 +191,7 @@ impl PickleScanner {
         let is_pickle_format = is_pickle || is_zip || Self::has_pickle_extension(path);
 
         let mut findings = Vec::new();
-
-        // Scan for dangerous opcodes
-        if is_pickle_format {
-            Self::scan_opcodes(&data, &mut findings);
-        }
-
-        // Always scan for dangerous string patterns
-        Self::scan_patterns(&data, &mut findings);
+        Self::scan_container(&data, is_zip, is_pickle_format, &mut findings);
 
         // Sort findings by severity (critical first)
         findings.sort_by_key(|f| std::cmp::Reverse(f.severity));
@@ -248,10 +246,7 @@ impl PickleScanner {
         let is_zip = data.len() >= 2 && data[0..2] == [0x50, 0x4B];
         let is_pickle_format = is_pickle || is_zip;
 
-        if is_pickle_format {
-            Self::scan_opcodes(data, &mut findings);
-        }
-        Self::scan_patterns(data, &mut findings);
+        Self::scan_container(data, is_zip, is_pickle_format, &mut findings);
 
         findings.sort_by_key(|f| std::cmp::Reverse(f.severity));
 
@@ -293,6 +288,134 @@ impl PickleScanner {
                     "pt" | "pth" | "bin" | "pkl" | "pickle"
                 )
             })
+    }
+
+    /// Scan a file's contents, descending into a ZIP container when there is
+    /// one so that compressed members are examined as the loader will see them.
+    fn scan_container(
+        data: &[u8],
+        is_zip: bool,
+        is_pickle_format: bool,
+        findings: &mut Vec<ScanFinding>,
+    ) {
+        if is_zip {
+            let members = Self::zip_members(data);
+            if members.is_empty() {
+                // Unparseable as a ZIP despite the magic — fall back to the
+                // raw bytes rather than silently scanning nothing.
+                Self::scan_payload(data, None, is_pickle_format, findings);
+                return;
+            }
+            for (name, bytes) in members {
+                let treat_as_pickle = Self::looks_like_pickle(&bytes, &name);
+                Self::scan_payload(&bytes, Some(&name), treat_as_pickle, findings);
+            }
+            Self::merge_findings(findings);
+        } else {
+            Self::scan_payload(data, None, is_pickle_format, findings);
+        }
+    }
+
+    /// Collapse findings that share a code, summing counts.
+    ///
+    /// A container yields one finding per member; the report is about the file.
+    fn merge_findings(findings: &mut Vec<ScanFinding>) {
+        let mut merged: Vec<ScanFinding> = Vec::new();
+        for f in findings.drain(..) {
+            if let Some(existing) = merged.iter_mut().find(|e| e.code == f.code) {
+                existing.count += f.count;
+                existing.severity = existing.severity.max(f.severity);
+                if existing.offsets.len() < 10 {
+                    let room = 10 - existing.offsets.len();
+                    existing.offsets.extend(f.offsets.into_iter().take(room));
+                }
+            } else {
+                merged.push(f);
+            }
+        }
+        *findings = merged;
+    }
+
+    /// Run the opcode and pattern scans over one logical payload.
+    ///
+    /// `label` is `None` for the file itself and `Some(member)` for a ZIP
+    /// member, so a finding can say where inside the container it came from.
+    fn scan_payload(
+        data: &[u8],
+        label: Option<&str>,
+        treat_as_pickle: bool,
+        findings: &mut Vec<ScanFinding>,
+    ) {
+        let before = findings.len();
+        if treat_as_pickle {
+            Self::scan_opcodes(data, findings);
+        }
+        Self::scan_patterns(data, findings);
+
+        if let Some(member) = label {
+            for f in &mut findings[before..] {
+                f.description = format!("{} (in ZIP member `{member}`)", f.description);
+            }
+        }
+    }
+
+    /// Decompress the members of a ZIP container so their contents can be
+    /// scanned.
+    ///
+    /// `torch.save` writes *stored* (uncompressed) members, so a raw-byte scan
+    /// happens to see the payload. But `torch.load` accepts a DEFLATE-compressed
+    /// archive just as happily, and then nothing in the file literally contains
+    /// the pickle opcodes or the `os\nsystem` string — a scanner that only reads
+    /// raw bytes declares such a file clean. Anything that decides whether a
+    /// model is safe to load has to look at what will actually be unpickled.
+    fn zip_members(data: &[u8]) -> Vec<(String, Vec<u8>)> {
+        Self::zip_members_bounded(data, MAX_SCAN_INFLATE_BYTES, MAX_SCAN_ZIP_MEMBERS)
+    }
+
+    /// [`Self::zip_members`] with explicit limits, so the bounds can be tested
+    /// without inflating half a gigabyte.
+    fn zip_members_bounded(
+        data: &[u8],
+        mut budget: u64,
+        max_members: usize,
+    ) -> Vec<(String, Vec<u8>)> {
+        use std::io::Read;
+
+        let mut out = Vec::new();
+        let Ok(mut archive) = zip::ZipArchive::new(std::io::Cursor::new(data)) else {
+            return out;
+        };
+
+        for i in 0..archive.len().min(max_members) {
+            let Ok(entry) = archive.by_index(i) else {
+                continue;
+            };
+            if entry.is_dir() {
+                continue;
+            }
+            let name = entry.name().to_string();
+
+            // Read at most the remaining budget, so a zip bomb cannot make the
+            // scanner allocate without bound.
+            let mut buf = Vec::new();
+            if entry.take(budget).read_to_end(&mut buf).is_err() {
+                continue;
+            }
+            budget = budget.saturating_sub(buf.len() as u64);
+            out.push((name, buf));
+
+            if budget == 0 {
+                break;
+            }
+        }
+
+        out
+    }
+
+    /// Does this payload look like a pickle stream worth opcode-scanning?
+    fn looks_like_pickle(data: &[u8], name: &str) -> bool {
+        let proto = data.len() >= 2 && data[0] == 0x80 && (2..=5).contains(&data[1]);
+        proto || name.ends_with(".pkl") || name.ends_with(".pickle") || name.ends_with("data.pkl")
     }
 
     fn scan_opcodes(data: &[u8], findings: &mut Vec<ScanFinding>) {
@@ -380,6 +503,141 @@ mod tests {
         let report = PickleScanner::scan_bytes(&data, "model.pt");
         assert!(report.is_pickle_format);
         assert!(report.findings.iter().any(|f| f.code == "REDUCE"));
+    }
+
+    /// Build a PyTorch-shaped ZIP (`archive/data.pkl` plus a tensor blob) with
+    /// a chosen compression method.
+    fn torch_zip(pickle: &[u8], method: zip::CompressionMethod) -> Vec<u8> {
+        use std::io::Write;
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut zw = zip::ZipWriter::new(&mut buf);
+            let opts = zip::write::SimpleFileOptions::default().compression_method(method);
+            zw.start_file("archive/data.pkl", opts).unwrap();
+            zw.write_all(pickle).unwrap();
+            zw.start_file("archive/data/0", opts).unwrap();
+            zw.write_all(&[0u8; 64]).unwrap();
+            zw.finish().unwrap();
+        }
+        buf.into_inner()
+    }
+
+    /// A malicious pickle: protocol 2, a GLOBAL naming `os.system`, and REDUCE.
+    fn malicious_pickle() -> Vec<u8> {
+        let mut p = vec![0x80, 0x02];
+        p.push(0x63); // GLOBAL
+        p.extend_from_slice(b"os\nsystem\n");
+        p.push(0x52); // REDUCE
+        p.push(0x2e); // STOP
+        p
+    }
+
+    /// `torch.save` writes uncompressed ZIP members, so the payload is visible
+    /// in the raw bytes. But `torch.load` accepts a DEFLATE-compressed archive
+    /// just the same, and then the payload is not literally present anywhere in
+    /// the file — a scanner reading raw bytes sees nothing and reports the file
+    /// as clean.
+    #[test]
+    fn test_scan_sees_payload_inside_a_compressed_zip_member() {
+        let stored = torch_zip(&malicious_pickle(), zip::CompressionMethod::Stored);
+        let deflated = torch_zip(&malicious_pickle(), zip::CompressionMethod::Deflated);
+
+        let stored_report = PickleScanner::scan_bytes(&stored, "stored.pt");
+        assert!(
+            stored_report
+                .findings
+                .iter()
+                .any(|f| f.code == "os module import"),
+            "uncompressed payload must be caught"
+        );
+
+        let deflated_report = PickleScanner::scan_bytes(&deflated, "deflated.pt");
+        assert!(
+            deflated_report
+                .findings
+                .iter()
+                .any(|f| f.code == "os module import"),
+            "a DEFLATE-compressed member hides the payload from a raw-byte scan; \
+             the scanner must decompress before deciding a file is clean"
+        );
+        assert!(!deflated_report.safe);
+    }
+
+    /// Decompressing to scan must stay bounded: a small archive that inflates
+    /// far beyond the budget has to stop at it rather than exhaust memory.
+    /// Exercised with small limits so the test costs milliseconds.
+    #[test]
+    fn test_zip_bomb_is_bounded() {
+        use std::io::Write;
+
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut zw = zip::ZipWriter::new(&mut buf);
+            let opts = zip::write::SimpleFileOptions::default()
+                .compression_method(zip::CompressionMethod::Deflated);
+            // 1 MiB of zeroes per member compresses to ~1 KiB.
+            for i in 0..8 {
+                zw.start_file(format!("m{i}.pkl"), opts).unwrap();
+                zw.write_all(&vec![0u8; 1024 * 1024]).unwrap();
+            }
+            zw.finish().unwrap();
+        }
+        let bomb = buf.into_inner();
+        assert!(
+            bomb.len() < 64 * 1024,
+            "8 MiB of zeroes should compress small; got {} bytes",
+            bomb.len()
+        );
+
+        // Budget of 100 KiB against 8 MiB of content.
+        let budget = 100 * 1024;
+        let members = PickleScanner::zip_members_bounded(&bomb, budget, MAX_SCAN_ZIP_MEMBERS);
+        let total: u64 = members.iter().map(|(_, b)| b.len() as u64).sum();
+        assert!(
+            total <= budget,
+            "inflated {total} bytes, over the {budget}-byte budget"
+        );
+
+        // The member cap is enforced independently of the byte budget.
+        let capped = PickleScanner::zip_members_bounded(&bomb, u64::MAX, 3);
+        assert_eq!(capped.len(), 3);
+
+        // And a bomb still yields a report rather than hanging or aborting.
+        let report = PickleScanner::scan_bytes(&bomb, "bomb.pt");
+        assert!(report.is_zip_archive);
+    }
+
+    /// Findings from several members collapse into one entry per code, so the
+    /// report describes the file rather than listing the same issue N times.
+    #[test]
+    fn test_findings_merge_across_zip_members() {
+        use std::io::Write;
+
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut zw = zip::ZipWriter::new(&mut buf);
+            let opts = zip::write::SimpleFileOptions::default()
+                .compression_method(zip::CompressionMethod::Deflated);
+            for i in 0..3 {
+                zw.start_file(format!("archive/{i}/data.pkl"), opts)
+                    .unwrap();
+                zw.write_all(&malicious_pickle()).unwrap();
+            }
+            zw.finish().unwrap();
+        }
+
+        let report = PickleScanner::scan_bytes(&buf.into_inner(), "multi.pt");
+        let os_findings: Vec<_> = report
+            .findings
+            .iter()
+            .filter(|f| f.code == "os module import")
+            .collect();
+        assert_eq!(os_findings.len(), 1, "one finding per code, not per member");
+        assert_eq!(
+            os_findings[0].count, 3,
+            "but the count reflects all members"
+        );
+        assert!(!report.safe);
     }
 
     #[test]
