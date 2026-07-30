@@ -78,6 +78,12 @@ pub enum StorageConfig {
 
 impl StorageConfig {
     /// Create a storage backend from configuration
+    ///
+    /// `async` is not redundant: the `s3` and `azure` arms below await their
+    /// backend constructors. Clippy only sees an unused `async` in a build
+    /// where both features are off and those arms are compiled out — dropping
+    /// it would break every feature-enabled build and every caller.
+    #[allow(clippy::unused_async)]
     pub async fn create_backend(&self) -> Result<Box<dyn StorageBackend>> {
         match self {
             StorageConfig::Local { path } => {

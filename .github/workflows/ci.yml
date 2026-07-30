@@ -59,6 +59,13 @@ jobs:
 
     - name: Run clippy
       run: cargo clippy --features "full,graphql" --all-targets -- -D warnings
+      # Gate on stable only. Beta ships new lints every six weeks, so gating on
+      # it turns CI red on a schedule for reasons unrelated to the change being
+      # tested — `chunks_exact_to_as_chunks` and `unused_async` did exactly
+      # that here. The beta run still happens and its findings still show up in
+      # the log, which is the early warning worth having; it just does not
+      # block. Build and tests are gated on beta as normal.
+      continue-on-error: ${{ matrix.rust != 'stable' }}
 
     - name: Check formatting
       run: cargo fmt -- --check

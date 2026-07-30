@@ -316,9 +316,10 @@ impl SQLiteDatabase {
                 serde_json::from_str(&metadata_json).unwrap_or_default();
 
             let embedding = embedding_blob.map(|blob| {
-                blob.chunks_exact(4)
-                    .map(|bytes| f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-                    .collect()
+                // `as_chunks` yields `[u8; 4]` directly, so there is no manual
+                // indexing to get wrong and no per-element bounds check.
+                let (whole, _trailing) = blob.as_chunks::<4>();
+                whole.iter().copied().map(f32::from_le_bytes).collect()
             });
 
             let chunk_info = if let (Some(parent), Some(idx), Some(total), Some(overlap)) =
@@ -394,9 +395,10 @@ impl SQLiteDatabase {
                 serde_json::from_str(&metadata_json).unwrap_or_default();
 
             let embedding = embedding_blob.map(|blob| {
-                blob.chunks_exact(4)
-                    .map(|bytes| f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-                    .collect()
+                // `as_chunks` yields `[u8; 4]` directly, so there is no manual
+                // indexing to get wrong and no per-element bounds check.
+                let (whole, _trailing) = blob.as_chunks::<4>();
+                whole.iter().copied().map(f32::from_le_bytes).collect()
             });
 
             documents.push(Document {

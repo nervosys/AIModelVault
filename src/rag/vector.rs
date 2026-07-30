@@ -121,6 +121,11 @@ pub struct QdrantVectorStore {
 #[cfg(feature = "vector-db")]
 impl QdrantVectorStore {
     /// Create a new Qdrant vector store
+    ///
+    /// `async` is kept deliberately: it is public API, every other constructor
+    /// in this module is async, and dropping it would break callers for a
+    /// cosmetic lint.
+    #[allow(clippy::unused_async)]
     pub async fn new(url: &str, collection_name: String) -> Result<Self> {
         let client = qdrant_client::Qdrant::from_url(url)
             .build()
