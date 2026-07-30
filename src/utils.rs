@@ -10,6 +10,31 @@ use std::path::{Path, PathBuf};
 use crate::error::{Result, VaultError};
 use crate::formats::{ModelFormat, ModelMetadata};
 
+/// Reject an archive member name that would escape the extraction directory.
+///
+/// Archive member names are attacker-controlled for any archive the user did
+/// not produce. `extract_zip` returned them verbatim and `handle_extract` fed
+/// them to `Path::join`, which discards its base when given an absolute path
+/// and walks upward on `..` — so a member named `../../evil` wrote outside the
+/// `--output` directory ("zip slip", CWE-22). A longer prefix or a drive
+/// letter reaches anywhere the invoking user can write.
+///
+/// Both `create_tar` and `create_zip` write bare model names, so requiring a
+/// single ordinary component rejects nothing this crate produces.
+fn safe_archive_name(raw: &str) -> Result<String> {
+    use std::path::Component;
+
+    let mut components = Path::new(raw).components();
+    match (components.next(), components.next()) {
+        (Some(Component::Normal(name)), None) => Ok(name.to_string_lossy().into_owned()),
+        _ => Err(VaultError::InvalidInput(format!(
+            "Refusing to extract archive member {raw:?}: member names must be a \
+             single file name, with no directory separators, parent references, \
+             or drive/root prefix"
+        ))),
+    }
+}
+
 /// Model archival utilities
 pub struct ModelArchive;
 
@@ -45,11 +70,11 @@ impl ModelArchive {
         for entry in ar.entries()? {
             let mut entry = entry?;
             let path = entry.path()?;
-            let name = path
-                .file_name()
-                .and_then(|s| s.to_str())
-                .ok_or_else(|| VaultError::InvalidInput("Invalid filename in archive".to_string()))?
-                .to_string();
+            // tar entries were previously reduced with `file_name()`, which is
+            // safe but silent: `../../etc/passwd` became `passwd` and quietly
+            // overwrote a legitimate member of the same name. Reject instead,
+            // matching the zip path.
+            let name = safe_archive_name(&path.to_string_lossy())?;
 
             let mut data = Vec::new();
             entry.read_to_end(&mut data)?;
@@ -90,7 +115,10 @@ impl ModelArchive {
 
         for i in 0..zip.len() {
             let mut file = zip.by_index(i)?;
-            let name = file.name().to_string();
+            // Validated before any data is read, and the whole archive is
+            // collected before the caller writes anything — so a hostile
+            // member aborts the extraction rather than leaving files behind.
+            let name = safe_archive_name(file.name())?;
 
             let mut data = Vec::new();
             file.read_to_end(&mut data)?;
@@ -914,5 +942,146 @@ mod tests {
         assert!(analysis.estimated_parameters.is_some());
         // base_estimate = 1024 / 4 = 256
         assert_eq!(analysis.estimated_parameters.unwrap(), 256);
+    }
+    // ── Archive extraction path traversal (zip slip, CWE-22) ────────────────
+
+    #[test]
+    fn test_safe_archive_name_accepts_ordinary_names() {
+        assert_eq!(
+            safe_archive_name("model.safetensors").unwrap(),
+            "model.safetensors"
+        );
+        assert_eq!(safe_archive_name("llama-7b.bin").unwrap(), "llama-7b.bin");
+    }
+
+    #[test]
+    fn test_safe_archive_name_rejects_escapes() {
+        for hostile in [
+            "../evil",
+            "../../evil",
+            "a/b",
+            r"a\b",
+            "/etc/passwd",
+            "..",
+            ".",
+            "",
+        ] {
+            assert!(
+                safe_archive_name(hostile).is_err(),
+                "{hostile:?} must be rejected"
+            );
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_safe_archive_name_rejects_windows_drive_paths() {
+        for hostile in [r"C:\Windows\evil", "C:/Windows/evil", r"\\server\share\x"] {
+            assert!(
+                safe_archive_name(hostile).is_err(),
+                "{hostile:?} must be rejected"
+            );
+        }
+    }
+
+    /// A ZIP whose member name climbs out of the extraction directory must be
+    /// refused outright, not extracted and not silently renamed.
+    #[test]
+    fn test_extract_zip_refuses_a_member_that_escapes() {
+        let dir = tempfile::tempdir().unwrap();
+        let archive = dir.path().join("evil.zip");
+
+        {
+            let file = std::fs::File::create(&archive).unwrap();
+            let mut zip = zip::ZipWriter::new(file);
+            let opts = zip::write::SimpleFileOptions::default();
+            zip.start_file("legit.bin", opts).unwrap();
+            zip.write_all(b"harmless").unwrap();
+            zip.start_file("../../ESCAPED.txt", opts).unwrap();
+            zip.write_all(b"pwned").unwrap();
+            zip.finish().unwrap();
+        }
+
+        let err = ModelArchive::extract_zip(&archive).unwrap_err();
+        assert!(
+            matches!(err, VaultError::InvalidInput(_)),
+            "expected InvalidInput, got {err:?}"
+        );
+        assert!(err.to_string().contains("ESCAPED.txt"), "got: {err}");
+    }
+
+    /// The same for TAR, which previously reduced the name with `file_name()`
+    /// — safe from traversal, but it silently turned `../../x` into `x`.
+    #[test]
+    fn test_extract_tar_refuses_a_member_that_escapes() {
+        let dir = tempfile::tempdir().unwrap();
+        let archive = dir.path().join("evil.tar");
+
+        {
+            let file = std::fs::File::create(&archive).unwrap();
+            let mut ar = tar::Builder::new(file);
+            let payload = b"pwned";
+
+            // `append_data` refuses a `..` path, which is exactly the point:
+            // tar-rs will not *produce* a hostile archive, so one has to be
+            // forged by writing the header's name field directly — which is
+            // what an attacker does. The reader must not trust it.
+            let mut header = tar::Header::new_gnu();
+            let hostile = b"../../ESCAPED.txt";
+            {
+                let gnu = header.as_gnu_mut().expect("new_gnu is a GNU header");
+                gnu.name[..hostile.len()].copy_from_slice(hostile);
+            }
+            header.set_size(payload.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+
+            ar.append(&header, &payload[..]).unwrap();
+            ar.finish().unwrap();
+        }
+
+        // Confirm the forged name really is in the archive, so a future change
+        // to tar-rs that sanitises on read cannot make this test vacuous.
+        {
+            let file = std::fs::File::open(&archive).unwrap();
+            let mut probe = tar::Archive::new(file);
+            let names: Vec<String> = probe
+                .entries()
+                .unwrap()
+                .map(|e| e.unwrap().path().unwrap().to_string_lossy().into_owned())
+                .collect();
+            assert!(
+                names.iter().any(|n| n.contains("..")),
+                "forged archive lost its traversal: {names:?}"
+            );
+        }
+
+        let err = ModelArchive::extract_tar(&archive).unwrap_err();
+        assert!(
+            matches!(err, VaultError::InvalidInput(_)),
+            "expected InvalidInput, got {err:?}"
+        );
+    }
+
+    /// Archives this crate produces must still round-trip.
+    #[test]
+    fn test_round_trip_still_works_for_both_formats() {
+        let dir = tempfile::tempdir().unwrap();
+        let models = vec![
+            ("alpha.safetensors".to_string(), b"aaa".to_vec()),
+            ("beta.gguf".to_string(), b"bbb".to_vec()),
+        ];
+
+        let tar_path = dir.path().join("a.tar");
+        ModelArchive::create_tar(models.clone(), &tar_path).unwrap();
+        let mut out = ModelArchive::extract_tar(&tar_path).unwrap();
+        out.sort();
+        assert_eq!(out, models);
+
+        let zip_path = dir.path().join("a.zip");
+        ModelArchive::create_zip(models.clone(), &zip_path).unwrap();
+        let mut out = ModelArchive::extract_zip(&zip_path).unwrap();
+        out.sort();
+        assert_eq!(out, models);
     }
 }
