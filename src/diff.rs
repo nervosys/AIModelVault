@@ -277,7 +277,14 @@ impl ModelDiffer {
 
         let header_size = u64::from_le_bytes(data[0..8].try_into().unwrap_or_default()) as usize;
 
-        if data.len() < 8 + header_size || header_size > 100_000_000 {
+        // Order matters. This was `data.len() < 8 + header_size || header_size
+        // > MAX`, and `||` evaluates left to right — so a file declaring a
+        // header near `usize::MAX` overflowed the addition and panicked
+        // before the cap could reject it. Found by fuzzing `diff_engine`.
+        //
+        // `data.len() >= 8` is guaranteed above, so the subtraction is safe.
+        const MAX_HEADER_BYTES: usize = 100_000_000;
+        if header_size > MAX_HEADER_BYTES || data.len() - 8 < header_size {
             return map;
         }
 
@@ -632,5 +639,58 @@ mod tests {
         let display = diff.display();
         assert!(display.contains("model@v1"));
         assert!(display.contains("model@v2"));
+    }
+    // ── SafeTensors header bounds ───────────────────────────────────────────
+
+    /// A declared header size near `usize::MAX` must not overflow the bounds
+    /// check. The guard used to read `data.len() < 8 + header_size ||
+    /// header_size > MAX`; `||` evaluates left to right, so the addition
+    /// panicked with "attempt to add with overflow" before the cap applied.
+    /// Found by the `diff_engine` fuzz target.
+    #[test]
+    fn test_safetensors_header_size_near_usize_max_does_not_overflow() {
+        for declared in [u64::MAX, u64::MAX - 7, u64::MAX - 8, i64::MAX as u64] {
+            let mut data = declared.to_le_bytes().to_vec();
+            data.extend_from_slice(br#"{"a":{"dtype":"F32","shape":[1]}}"#);
+
+            // Must return an empty map rather than panicking.
+            let map = ModelDiffer::parse_safetensors_header(&data);
+            assert!(
+                map.is_empty(),
+                "a header of {declared} bytes cannot be present in {} bytes of input",
+                data.len()
+            );
+        }
+    }
+
+    /// The cap still rejects an oversized-but-non-overflowing header, and a
+    /// header longer than the data is still refused.
+    #[test]
+    fn test_safetensors_header_size_bounds_are_enforced() {
+        // Over the 100 MB cap.
+        let mut over_cap = 200_000_000u64.to_le_bytes().to_vec();
+        over_cap.extend_from_slice(b"{}");
+        assert!(ModelDiffer::parse_safetensors_header(&over_cap).is_empty());
+
+        // Within the cap but longer than the file.
+        let mut truncated = 4096u64.to_le_bytes().to_vec();
+        truncated.extend_from_slice(b"{}");
+        assert!(ModelDiffer::parse_safetensors_header(&truncated).is_empty());
+    }
+
+    /// ...and a well-formed header still parses, so the guard is not simply
+    /// rejecting everything.
+    #[test]
+    fn test_safetensors_well_formed_header_still_parses() {
+        let json = br#"{"blk.0.weight":{"dtype":"F32","shape":[2,3]}}"#;
+        let mut data = (json.len() as u64).to_le_bytes().to_vec();
+        data.extend_from_slice(json);
+        data.extend_from_slice(&[0u8; 24]);
+
+        let map = ModelDiffer::parse_safetensors_header(&data);
+        assert_eq!(map.len(), 1, "expected one tensor, got {map:?}");
+        let t = map.get("blk.0.weight").expect("tensor missing");
+        assert_eq!(t.shape, vec![2, 3]);
+        assert_eq!(t.dtype, "F32");
     }
 }
