@@ -262,8 +262,10 @@ fn verify_directories(config: &VaultConfig) -> Result<(), Box<dyn std::error::Er
         if exists {
             #[cfg(unix)]
             {
+                // Fully qualified: the import above brings in the
+                // `PermissionsExt` trait, not the `std::fs` module.
                 use std::os::unix::fs::PermissionsExt;
-                let metadata = fs::metadata(path)?;
+                let metadata = std::fs::metadata(path)?;
                 let mode = metadata.permissions().mode();
                 let perms = format!("{:o}", mode & 0o777);
                 println!(
@@ -429,7 +431,7 @@ fn show_compliance_checklist(config: &VaultConfig) -> Result<(), Box<dyn std::er
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
-                let metadata = fs::metadata(&config.dirs.config_dir)?;
+                let metadata = std::fs::metadata(&config.dirs.config_dir)?;
                 let mode = metadata.permissions().mode();
                 (mode & 0o777) == 0o700
             }
