@@ -111,7 +111,14 @@ impl From<ConversionError> for VaultError {
 // ── Top-level error ─────────────────────────────────────────────────────────
 
 /// AI Model Vault error types
+///
+/// Marked `#[non_exhaustive]` so that adding a category later is not a breaking
+/// change for downstream matches. Inside this crate the enum is still
+/// exhaustive, which is what forces [`VaultError::exit_code`] to assign every
+/// new variant a code rather than letting it fall through a wildcard — the
+/// omission that let the published exit-code tables drift from reality.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum VaultError {
     /// Cryptographic operation failed
     #[error("Cryptographic error: {0}")]
@@ -136,6 +143,14 @@ pub enum VaultError {
     /// Version not found
     #[error("Version {0} not found for model {1}")]
     VersionNotFound(u32, String),
+
+    /// A named resource that is not a model or a version does not exist —
+    /// a profile, a registered vault, a backup schedule, a document.
+    ///
+    /// Carries a full message rather than a bare name so the caller can say
+    /// which kind of thing was missing.
+    #[error("Not found: {0}")]
+    NotFound(String),
 
     /// Format conversion error
     #[error("Format conversion error: {0}")]
@@ -180,6 +195,79 @@ pub enum VaultError {
     /// Storage/database error
     #[error("Storage error: {0}")]
     StorageError(String),
+}
+
+/// Process exit code for a successful run.
+pub const EXIT_SUCCESS: u8 = 0;
+/// An error that does not fall into any more specific category below.
+pub const EXIT_GENERAL: u8 = 1;
+/// Wrong passphrase, or ciphertext that failed its authentication tag.
+pub const EXIT_AUTH: u8 = 2;
+/// A named model, version, or resource does not exist.
+pub const EXIT_NOT_FOUND: u8 = 3;
+/// The OS refused access, or a security policy did.
+pub const EXIT_PERMISSION: u8 = 4;
+/// A checksum or signature did not match — corruption or tampering.
+pub const EXIT_INTEGRITY: u8 = 5;
+/// The caller supplied something this command cannot act on.
+pub const EXIT_INVALID_INPUT: u8 = 6;
+/// The configuration file is missing, malformed, or invalid.
+pub const EXIT_CONFIG: u8 = 7;
+/// A compliance policy check failed.
+pub const EXIT_COMPLIANCE: u8 = 8;
+
+impl VaultError {
+    /// The process exit code this error maps to.
+    ///
+    /// This is a **stability contract**: agents and CI pipelines branch on
+    /// these numbers, so the mapping from category to code must not change
+    /// once published. It is mirrored in `README.md`, `AGENTS.md`,
+    /// `docs/CLI.md`, `.well-known/agents.json`, and
+    /// `.well-known/ontology.jsonld` — change all of them together, and only
+    /// ever by assigning a *new* code to a category that had none.
+    ///
+    /// Codes 0–5 match the table those manifests already published. 6–8 are
+    /// additions for categories that previously fell through to `1`.
+    ///
+    /// `IoError` is split: the kernel refusing access is a distinct,
+    /// actionable outcome (fix the permissions) from a disk or network
+    /// failure, so `PermissionDenied` earns [`EXIT_PERMISSION`] while every
+    /// other I/O failure stays [`EXIT_GENERAL`].
+    #[must_use]
+    pub fn exit_code(&self) -> u8 {
+        match self {
+            VaultError::AuthenticationFailed => EXIT_AUTH,
+
+            VaultError::ModelNotFound(_)
+            | VaultError::VersionNotFound(_, _)
+            | VaultError::NotFound(_) => EXIT_NOT_FOUND,
+
+            VaultError::SecurityViolation(_) => EXIT_PERMISSION,
+            VaultError::IoError(err) if err.kind() == io::ErrorKind::PermissionDenied => {
+                EXIT_PERMISSION
+            }
+
+            VaultError::IntegrityError(_) => EXIT_INTEGRITY,
+
+            VaultError::InvalidInput(_) | VaultError::UnsupportedFormat(_) => EXIT_INVALID_INPUT,
+
+            VaultError::ConfigError(_) => EXIT_CONFIG,
+
+            VaultError::ComplianceViolation(_) => EXIT_COMPLIANCE,
+
+            // Everything else is a genuine failure with no more specific
+            // handling an agent could apply. Listed exhaustively rather than
+            // with a wildcard so that adding a variant forces a decision here.
+            VaultError::CryptoError(_)
+            | VaultError::VersionError(_)
+            | VaultError::ConversionError(_)
+            | VaultError::IoError(_)
+            | VaultError::SerializationError(_)
+            | VaultError::CompressionError(_)
+            | VaultError::AuditError(_)
+            | VaultError::StorageError(_) => EXIT_GENERAL,
+        }
+    }
 }
 
 impl From<serde_json::Error> for VaultError {
@@ -436,5 +524,85 @@ mod tests {
             VaultError::from(other),
             VaultError::ConversionError(_)
         ));
+    }
+
+    // ── Exit codes ──────────────────────────────────────────────────────────
+
+    /// Pins the published contract. If this test needs editing to pass, the
+    /// change is breaking for every agent and CI pipeline that branches on
+    /// these numbers — update the manifests in the same commit, or don't.
+    #[test]
+    fn test_exit_codes_match_the_published_contract() {
+        let cases: &[(VaultError, u8)] = &[
+            (VaultError::AuthenticationFailed, 2),
+            (VaultError::ModelNotFound("m".into()), 3),
+            (VaultError::VersionNotFound(2, "m".into()), 3),
+            (VaultError::NotFound("profile 'p'".into()), 3),
+            (VaultError::SecurityViolation("policy".into()), 4),
+            (VaultError::IntegrityError("checksum".into()), 5),
+            (VaultError::InvalidInput("bad".into()), 6),
+            (VaultError::UnsupportedFormat("xyz".into()), 6),
+            (VaultError::ConfigError("malformed".into()), 7),
+            (VaultError::ComplianceViolation("weak".into()), 8),
+            (VaultError::CryptoError("aead".into()), 1),
+            (VaultError::VersionError("index".into()), 1),
+            (VaultError::ConversionError("path".into()), 1),
+            (VaultError::SerializationError("json".into()), 1),
+            (VaultError::CompressionError("zstd".into()), 1),
+            (VaultError::AuditError("log".into()), 1),
+            (VaultError::StorageError("db".into()), 1),
+        ];
+
+        for (err, expected) in cases {
+            assert_eq!(
+                err.exit_code(),
+                *expected,
+                "{err:?} must exit {expected} — this mapping is a published contract"
+            );
+        }
+    }
+
+    #[test]
+    fn test_permission_denied_io_error_is_distinguished_from_other_io_failures() {
+        // The kernel refusing access is actionable (fix the permissions);
+        // a disk or network failure is not, so they must not share a code.
+        let denied = VaultError::IoError(io::Error::from(io::ErrorKind::PermissionDenied));
+        assert_eq!(denied.exit_code(), EXIT_PERMISSION);
+
+        let not_found = VaultError::IoError(io::Error::from(io::ErrorKind::NotFound));
+        assert_eq!(not_found.exit_code(), EXIT_GENERAL);
+
+        let broken = VaultError::IoError(io::Error::other("disk on fire"));
+        assert_eq!(broken.exit_code(), EXIT_GENERAL);
+    }
+
+    #[test]
+    fn test_success_is_the_only_zero_code() {
+        // A failure that exits 0 is the bug class this mapping exists to
+        // prevent, so assert no error can ever produce one.
+        let all = [
+            VaultError::AuthenticationFailed,
+            VaultError::ModelNotFound("m".into()),
+            VaultError::VersionNotFound(1, "m".into()),
+            VaultError::NotFound("thing".into()),
+            VaultError::SecurityViolation("p".into()),
+            VaultError::IntegrityError("c".into()),
+            VaultError::InvalidInput("i".into()),
+            VaultError::UnsupportedFormat("f".into()),
+            VaultError::ConfigError("c".into()),
+            VaultError::ComplianceViolation("v".into()),
+            VaultError::CryptoError("c".into()),
+            VaultError::VersionError("v".into()),
+            VaultError::ConversionError("c".into()),
+            VaultError::IoError(io::Error::other("io")),
+            VaultError::SerializationError("s".into()),
+            VaultError::CompressionError("c".into()),
+            VaultError::AuditError("a".into()),
+            VaultError::StorageError("s".into()),
+        ];
+        for err in &all {
+            assert_ne!(err.exit_code(), EXIT_SUCCESS, "{err:?} must not exit 0");
+        }
+        assert_eq!(EXIT_SUCCESS, 0);
     }
 }

@@ -1,7 +1,7 @@
 //! Archive and extract command handlers.
 
 use ai_model_vault::utils::ModelArchive;
-use ai_model_vault::{Result, VaultConfig};
+use ai_model_vault::{Result, VaultConfig, VaultError};
 
 use crate::cli::helpers::{build_vault, prompt_passphrase};
 
@@ -31,9 +31,10 @@ pub fn handle_archive(
     let total = match format.to_lowercase().as_str() {
         "tar" => ModelArchive::create_tar(archive_data, &output)?,
         "zip" => ModelArchive::create_zip(archive_data, &output)?,
-        _ => {
-            eprintln!("Unknown format: {}. Use 'tar' or 'zip'", format);
-            std::process::exit(1);
+        other => {
+            return Err(VaultError::InvalidInput(format!(
+                "Unknown archive format {other:?}. Use 'tar' or 'zip'"
+            )))
         }
     };
 
@@ -52,9 +53,10 @@ pub fn handle_extract(archive: std::path::PathBuf, output: std::path::PathBuf) -
     let models = match ext {
         "tar" => ModelArchive::extract_tar(&archive)?,
         "zip" => ModelArchive::extract_zip(&archive)?,
-        _ => {
-            eprintln!("Unknown archive format. Expected .tar or .zip");
-            std::process::exit(1);
+        other => {
+            return Err(VaultError::InvalidInput(format!(
+                "Unknown archive format {other:?}. Expected .tar or .zip"
+            )))
         }
     };
 

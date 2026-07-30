@@ -25,6 +25,7 @@ fn to_py_err(e: VaultError) -> PyErr {
         VaultError::IoError(_) => PyIOError::new_err(e.to_string()),
         VaultError::ModelNotFound(_) => PyValueError::new_err(e.to_string()),
         VaultError::VersionNotFound(_, _) => PyValueError::new_err(e.to_string()),
+        VaultError::NotFound(_) => PyValueError::new_err(e.to_string()),
         VaultError::UnsupportedFormat(_) => PyValueError::new_err(e.to_string()),
         _ => PyRuntimeError::new_err(e.to_string()),
     }

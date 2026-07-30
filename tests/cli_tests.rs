@@ -38,10 +38,10 @@ fn test_cli_version() {
 
 #[test]
 fn test_cli_no_args_shows_help() {
-    // Running with no subcommand should show help or error gracefully
-    let result = aim().assert();
-    // clap exits with code 2 when no subcommand given (or 0 if default help)
-    result.code(predicate::in_iter([0, 2]));
+    // With no subcommand, clap prints help as a convenience — but the command
+    // line was still incomplete, so this is invalid input (6), not success.
+    // It must not be 2 either: that code means authentication failed.
+    aim().assert().code(6);
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -2113,4 +2113,283 @@ fn test_cli_diff_truncated_gguf_is_handled() {
         .args(["diff", full.to_str().unwrap(), cut.to_str().unwrap()])
         .assert()
         .success();
+}
+
+// ──────────────────────────────────────────────────────────────
+// Exit codes
+//
+// README.md, AGENTS.md, docs/CLI.md, .well-known/agents.json and
+// .well-known/ontology.jsonld all publish an exit-code table, and agents are
+// told to branch on it. These tests assert the binary actually honours it —
+// previously `main` returned `Result`, so every failure collapsed to 1.
+// ──────────────────────────────────────────────────────────────
+
+/// Exit 6 — invalid input. An unknown `--format` is a caller mistake, not a
+/// generic failure, and it must not exit 1.
+#[test]
+fn test_cli_exit_code_invalid_input() {
+    aim()
+        .args(["introspect", "--format", "not-a-format"])
+        .assert()
+        .code(6)
+        .stderr(predicate::str::contains("Unknown format"));
+}
+
+/// Exit 3 — not found. Asking for a model that does not exist is the single
+/// most common branch an agent needs to distinguish.
+#[test]
+fn test_cli_exit_code_not_found() {
+    let dir = tempdir().unwrap();
+
+    aim()
+        .args(["init"])
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
+        .assert()
+        .success();
+
+    aim()
+        .args(["versions", "no-such-model"])
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
+        .env("aimodelvault_PASSPHRASE", "correct horse battery staple")
+        .timeout(std::time::Duration::from_secs(30))
+        .assert()
+        .code(3);
+}
+
+/// A mistyped subcommand must not exit 2. clap's default usage-error code is
+/// 2, which this table assigns to "authentication failed" — so left alone, an
+/// agent would read a typo as a wrong passphrase. Usage errors are invalid
+/// input (6).
+#[test]
+fn test_cli_exit_code_usage_error_is_not_confused_with_auth_failure() {
+    aim()
+        .args(["no-such-subcommand"])
+        .assert()
+        .code(6)
+        .stderr(predicate::str::contains("unrecognized subcommand"));
+
+    aim().args(["versions", "--no-such-flag"]).assert().code(6);
+
+    // A required argument left off, and no subcommand at all, are the same
+    // category — clap prints help for both, but the command line was still
+    // incomplete.
+    aim().args(["versions"]).assert().code(6);
+    aim().assert().code(6);
+}
+
+/// `--help` and `--version` route through the same error path inside clap, but
+/// they are successes, not usage errors.
+#[test]
+fn test_cli_exit_code_help_and_version_are_success() {
+    aim().args(["--help"]).assert().code(0);
+    aim().args(["--version"]).assert().code(0);
+    aim().args(["versions", "--help"]).assert().code(0);
+}
+
+/// Exit 7 — configuration error. A malformed `--config` file is distinct from
+/// a missing one and from a general failure.
+#[test]
+fn test_cli_exit_code_config_error() {
+    let dir = tempdir().unwrap();
+    let bad = dir.path().join("config.yaml");
+    // Tab indentation is invalid YAML.
+    std::fs::write(&bad, "dirs:\n\t data_dir: /tmp\n").unwrap();
+
+    aim()
+        .args(["--config", bad.to_str().unwrap(), "list"])
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
+        .timeout(std::time::Duration::from_secs(30))
+        .assert()
+        .code(7);
+
+    // A `--config` path that does not exist is also a config error, not a
+    // generic I/O failure.
+    aim()
+        .args([
+            "--config",
+            dir.path().join("absent.yaml").to_str().unwrap(),
+            "list",
+        ])
+        .env("aimodelvault_HOME", dir.path().to_str().unwrap())
+        .timeout(std::time::Duration::from_secs(30))
+        .assert()
+        .code(7);
+}
+
+/// Exit 5 — integrity/verification failure. `aim verify` is what a pipeline
+/// gates on, so its failure code is the one that matters most.
+#[test]
+fn test_cli_exit_code_verify_failure() {
+    let dir = tempdir().unwrap();
+    let model = dir.path().join("model.bin");
+    std::fs::write(&model, b"the real payload").unwrap();
+    let key = dir.path().join("signing_key.json");
+
+    aim()
+        .args([
+            "sign",
+            "model",
+            "--file",
+            model.to_str().unwrap(),
+            "--key",
+            key.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let sig = dir.path().join("model.sig");
+    assert!(sig.exists(), "expected a detached signature at {sig:?}");
+
+    // Tamper with the payload, leaving the signature alone.
+    std::fs::write(&model, b"the WRONG payload").unwrap();
+
+    aim()
+        .args([
+            "verify",
+            "model",
+            "--signature",
+            sig.to_str().unwrap(),
+            "--file",
+            model.to_str().unwrap(),
+            "--key",
+            key.to_str().unwrap(),
+        ])
+        .assert()
+        .code(5)
+        .stdout(predicate::str::contains("FAILED"));
+}
+
+/// Verification with no `--key` must also fail, and for the same reason: it
+/// checked nothing. This is the case that used to print PASSED and exit 0.
+#[test]
+fn test_cli_exit_code_verify_without_key_is_not_success() {
+    let dir = tempdir().unwrap();
+    let model = dir.path().join("model.bin");
+    std::fs::write(&model, b"payload").unwrap();
+    let key = dir.path().join("signing_key.json");
+
+    aim()
+        .args([
+            "sign",
+            "model",
+            "--file",
+            model.to_str().unwrap(),
+            "--key",
+            key.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let sig = dir.path().join("model.sig");
+
+    aim()
+        .args([
+            "verify",
+            "model",
+            "--signature",
+            sig.to_str().unwrap(),
+            "--file",
+            model.to_str().unwrap(),
+        ])
+        .assert()
+        .code(5)
+        .stdout(predicate::str::contains("NOT CHECKED"));
+}
+
+/// Success must stay 0 — the mapping must not make ordinary runs look failed.
+#[test]
+fn test_cli_exit_code_success_is_zero() {
+    aim().args(["--version"]).assert().code(0);
+    aim()
+        .args(["introspect", "--format", "json"])
+        .assert()
+        .code(0);
+}
+
+/// The exit-code table is published in five places. It drifted into four
+/// mutually contradictory versions once already, so this test makes the
+/// machine-readable manifests answer to the implementation.
+#[test]
+fn test_published_exit_code_tables_match_the_implementation() {
+    use ai_model_vault::{
+        EXIT_AUTH, EXIT_COMPLIANCE, EXIT_CONFIG, EXIT_GENERAL, EXIT_INTEGRITY, EXIT_INVALID_INPUT,
+        EXIT_NOT_FOUND, EXIT_PERMISSION, EXIT_SUCCESS,
+    };
+
+    let expected: Vec<(String, u8)> = vec![
+        ("0".to_string(), EXIT_SUCCESS),
+        ("1".to_string(), EXIT_GENERAL),
+        ("2".to_string(), EXIT_AUTH),
+        ("3".to_string(), EXIT_NOT_FOUND),
+        ("4".to_string(), EXIT_PERMISSION),
+        ("5".to_string(), EXIT_INTEGRITY),
+        ("6".to_string(), EXIT_INVALID_INPUT),
+        ("7".to_string(), EXIT_CONFIG),
+        ("8".to_string(), EXIT_COMPLIANCE),
+    ];
+    // The keys are the codes, so each must equal the constant it documents.
+    for (key, code) in &expected {
+        assert_eq!(key, &code.to_string(), "constant drifted from its own key");
+    }
+
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    let agents: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join(".well-known/agents.json")).unwrap(),
+    )
+    .unwrap();
+    let cli_iface = agents["agent_interfaces"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["type"] == "cli")
+        .expect("agents.json must describe the cli interface");
+    let published = cli_iface["exit_codes"].as_object().unwrap();
+    assert_eq!(
+        published.len(),
+        expected.len(),
+        "agents.json publishes {} codes, the implementation defines {}",
+        published.len(),
+        expected.len()
+    );
+    for (key, _) in &expected {
+        assert!(
+            published.contains_key(key),
+            "agents.json is missing exit code {key}"
+        );
+    }
+
+    let ontology: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join(".well-known/ontology.jsonld")).unwrap(),
+    )
+    .unwrap();
+    let contract = ontology["aimv:errors"]["@exitCodeContract"]
+        .as_object()
+        .expect("ontology.jsonld must publish aimv:errors.@exitCodeContract");
+    for (key, _) in &expected {
+        assert!(
+            contract.contains_key(key),
+            "ontology.jsonld is missing exit code {key}"
+        );
+    }
+
+    // Every error type in the taxonomy must claim a code the implementation
+    // can actually produce.
+    let taxonomy = ontology["aimv:errors"]["errorTypes"]
+        .as_array()
+        .expect("ontology.jsonld must list aimv:errors.errorTypes");
+    let valid: Vec<u8> = expected.iter().map(|(_, c)| *c).collect();
+    for entry in taxonomy {
+        let code = u8::try_from(entry["exit_code"].as_u64().unwrap()).unwrap();
+        assert!(
+            valid.contains(&code),
+            "{} claims exit code {code}, which is not in the contract",
+            entry["rdfs:label"]
+        );
+        assert_ne!(
+            code, EXIT_SUCCESS,
+            "{} is an error and must not claim exit 0",
+            entry["rdfs:label"]
+        );
+    }
 }

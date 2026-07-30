@@ -1,7 +1,7 @@
 //! CLI handler for multi-vault management (aim vaults).
 
 use ai_model_vault::multi_vault::{VaultEntry, VaultRegistry};
-use ai_model_vault::{Result, VaultConfig};
+use ai_model_vault::{Result, VaultConfig, VaultError};
 
 use crate::cli::args::VaultsCommands;
 
@@ -24,11 +24,12 @@ pub fn handle_vaults(command: VaultsCommands, config: VaultConfig) -> Result<()>
             println!("Vault '{}' registered", name);
         }
         VaultsCommands::Unregister { name } => {
-            if reg.unregister(&name)? {
-                println!("Vault '{}' unregistered", name);
-            } else {
-                println!("Vault '{}' not found", name);
+            if !reg.unregister(&name)? {
+                // Reporting success for a no-op removal makes a script that
+                // checks the exit code believe the vault is gone.
+                return Err(VaultError::NotFound(format!("registered vault '{name}'")));
             }
+            println!("Vault '{}' unregistered", name);
         }
         VaultsCommands::Activate { name } => {
             reg.activate(&name)?;

@@ -68,6 +68,10 @@ pub use crypto::streaming::{
     HEADER_SIZE, STREAM_MAGIC, STREAM_VERSION,
 };
 pub use error::{ConversionError, CryptoError, Result, StorageError, VaultError};
+pub use error::{
+    EXIT_AUTH, EXIT_COMPLIANCE, EXIT_CONFIG, EXIT_GENERAL, EXIT_INTEGRITY, EXIT_INVALID_INPUT,
+    EXIT_NOT_FOUND, EXIT_PERMISSION, EXIT_SUCCESS,
+};
 pub use model_card::{
     CaveatsAndRecommendations, EnvironmentalImpact, EthicalConsiderations, Evaluation, IntendedUse,
     Metric, ModelCard, ModelDetails, TrainingData,

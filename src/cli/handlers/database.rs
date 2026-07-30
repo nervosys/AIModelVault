@@ -213,7 +213,7 @@ pub fn handle_database(command: DatabaseCommands) -> Result<()> {
                             }
                         }
                     } else {
-                        println!("❌ Document not found");
+                        return Err(VaultError::NotFound(format!("document {id:?}")));
                     }
                 }
                 #[cfg(not(feature = "sqlite"))]
@@ -232,7 +232,7 @@ pub fn handle_database(command: DatabaseCommands) -> Result<()> {
                         println!("   ID: {}", doc.id);
                         println!("   Content: {}", doc.content);
                     } else {
-                        println!("❌ Document not found");
+                        return Err(VaultError::NotFound(format!("document {id:?}")));
                     }
                 }
                 #[cfg(not(feature = "kv-store"))]
@@ -528,9 +528,14 @@ pub fn handle_database(command: DatabaseCommands) -> Result<()> {
                 .collect();
 
             if docs_with_embeddings.is_empty() {
+                // No index was built. Exiting 0 told the caller one exists, and
+                // the next search against it would be the thing that failed.
                 println!("⚠️  No documents with embeddings found");
-                println!("   Add embeddings to documents before building index");
-                return Ok(());
+                return Err(VaultError::InvalidInput(
+                    "no documents have embeddings, so no index was built — \
+                     add embeddings to documents first"
+                        .to_string(),
+                ));
             }
 
             let mut store = SimpleVectorStore::new();

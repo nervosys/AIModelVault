@@ -1,6 +1,6 @@
 //! CLI handler for model validation (aim validate).
 
-use ai_model_vault::{Result, ValidationStore, VaultConfig};
+use ai_model_vault::{Result, ValidationStore, VaultConfig, VaultError};
 
 pub fn handle_validate(
     name: String,
@@ -20,25 +20,42 @@ pub fn handle_validate(
         versions.iter().find(|v| v.version == ver)
     };
 
-    match target {
-        Some(v) => {
-            let file_path = std::path::PathBuf::from(&v.file_path);
-            let report = store.validate(&name, &file_path)?;
-            println!("Validation for '{}' (v{}):", name, v.version);
-            for r in &report.results {
-                let icon = if r.passed { "✓" } else { "✗" };
-                println!("  {} {}: {}", icon, r.probe_label, r.message);
-            }
-            if report.overall_pass {
-                println!("All checks passed.");
-            } else {
-                println!("Some checks failed.");
-            }
-        }
-        None => {
-            println!("No version found for '{}'", name);
+    let Some(v) = target else {
+        return Err(match version {
+            Some(requested) => VaultError::VersionNotFound(requested, name),
+            None => VaultError::ModelNotFound(name),
+        });
+    };
+
+    let file_path = std::path::PathBuf::from(&v.file_path);
+    let report = store.validate(&name, &file_path)?;
+    println!("Validation for '{}' (v{}):", name, v.version);
+    let mut failures = Vec::new();
+    for r in &report.results {
+        let icon = if r.passed { "✓" } else { "✗" };
+        println!("  {} {}: {}", icon, r.probe_label, r.message);
+        if !r.passed {
+            failures.push(r.probe_label.clone());
         }
     }
 
+    if !report.overall_pass {
+        // `aim validate` is an integrity gate. Printing "Some checks failed"
+        // and exiting 0 meant every pipeline that ran it treated a failing
+        // model as valid.
+        println!("Some checks failed.");
+        return Err(VaultError::IntegrityError(format!(
+            "validation failed for '{}' v{}: {}",
+            name,
+            v.version,
+            if failures.is_empty() {
+                "see the report above".to_string()
+            } else {
+                failures.join(", ")
+            }
+        )));
+    }
+
+    println!("All checks passed.");
     Ok(())
 }

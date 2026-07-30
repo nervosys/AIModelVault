@@ -21,28 +21,67 @@ use cli::handlers::{
     vault_bundle as vault_bundle_handler, webhooks as webhooks_handler,
 };
 
-use ai_model_vault::{telemetry, Result, VaultConfig};
+use ai_model_vault::{telemetry, Result, VaultConfig, VaultError};
 
-fn main() -> Result<()> {
+fn main() -> std::process::ExitCode {
     // Increase stack size for large clap enum on Windows
-    std::thread::Builder::new()
+    let result = std::thread::Builder::new()
         .stack_size(4 * 1024 * 1024) // 4 MB
         .spawn(run)
         .expect("Failed to spawn main thread")
         .join()
-        .expect("Main thread panicked")
+        .expect("Main thread panicked");
+
+    // Map the error category to its documented exit code. Returning `Result`
+    // from `main` collapsed every failure to 1 and printed the `Debug` form,
+    // so the exit codes published in README.md, AGENTS.md, docs/CLI.md and
+    // `.well-known/` described behaviour the binary never had.
+    match result {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("Error: {err}");
+            std::process::ExitCode::from(err.exit_code())
+        }
+    }
 }
 
 fn run() -> Result<()> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
-    let cli = Cli::parse();
+    // Parsed by hand rather than with `Cli::parse()`, which exits 2 on a usage
+    // error. Code 2 is `EXIT_AUTH` in the published table, so a mistyped
+    // subcommand would be indistinguishable from a wrong passphrase to any
+    // agent branching on the exit code. A usage error is invalid input.
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(err) => {
+            // `--help` and `--version` arrive here too, and both are successes:
+            // clap has already written the text to stdout. A *missing*
+            // subcommand is not in that set — clap prints help for it as a
+            // convenience, but the command line was still incomplete, and
+            // reporting success for it is the bug class this mapping exists
+            // to remove.
+            let requested_output = matches!(
+                err.kind(),
+                clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion
+            );
+            let _ = err.print();
+            if requested_output {
+                return Ok(());
+            }
+            return Err(VaultError::InvalidInput(
+                "invalid command line — see the usage message above".to_string(),
+            ));
+        }
+    };
 
     // Load or create config
     let config = if let Some(config_path) = &cli.config {
-        let contents = std::fs::read_to_string(config_path)?;
-        serde_yaml_ng::from_str(&contents)?
+        let contents = std::fs::read_to_string(config_path)
+            .map_err(|e| VaultError::ConfigError(format!("{}: {e}", config_path.display())))?;
+        serde_yaml_ng::from_str(&contents)
+            .map_err(|e| VaultError::ConfigError(format!("{}: {e}", config_path.display())))?
     } else {
         VaultConfig::new()?
     };

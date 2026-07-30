@@ -25,11 +25,12 @@ pub fn handle_quantize(command: QuantizeCommands, config: VaultConfig) -> Result
             println!("Quantization profile '{}' set (method: {})", name, method);
         }
         QuantizeCommands::Remove { name } => {
-            if store.remove(&name)? {
-                println!("Profile '{}' removed", name);
-            } else {
-                println!("Profile '{}' not found", name);
+            if !store.remove(&name)? {
+                return Err(VaultError::NotFound(format!(
+                    "quantization profile '{name}'"
+                )));
             }
+            println!("Profile '{}' removed", name);
         }
         QuantizeCommands::List => {
             let profiles = store.list();

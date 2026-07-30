@@ -47,9 +47,10 @@ pub fn handle_introspect(format: String, compact: bool) -> Result<()> {
                 .map_err(|e| ai_model_vault::VaultError::SerializationError(e.to_string()))?;
             println!("{output}");
         }
-        _ => {
-            eprintln!("Unknown format '{format}'. Supported: json, yaml, jsonld");
-            std::process::exit(1);
+        other => {
+            return Err(ai_model_vault::VaultError::InvalidInput(format!(
+                "Unknown format {other:?}. Supported: json, yaml, jsonld"
+            )))
         }
     }
 

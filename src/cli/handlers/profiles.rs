@@ -1,7 +1,7 @@
 //! CLI handler for config profiles (aim profile).
 
 use ai_model_vault::profiles::Profile;
-use ai_model_vault::{ProfileStore, Result, VaultConfig};
+use ai_model_vault::{ProfileStore, Result, VaultConfig, VaultError};
 
 use crate::cli::args::ProfileCommands;
 
@@ -54,13 +54,12 @@ pub fn handle_profile(command: ProfileCommands, config: VaultConfig) -> Result<(
             }
         }
         ProfileCommands::Show { name } => {
-            if let Some(p) = store.get(&name) {
-                println!("Profile '{}':", p.name);
-                for (k, v) in &p.overrides {
-                    println!("  {} = {}", k, v);
-                }
-            } else {
-                println!("Profile '{}' not found", name);
+            let Some(p) = store.get(&name) else {
+                return Err(VaultError::NotFound(format!("profile '{name}'")));
+            };
+            println!("Profile '{}':", p.name);
+            for (k, v) in &p.overrides {
+                println!("  {} = {}", k, v);
             }
         }
         ProfileCommands::Delete { name } => {

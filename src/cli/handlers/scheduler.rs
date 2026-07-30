@@ -29,11 +29,10 @@ pub fn handle_backup(command: BackupCommands, config: VaultConfig) -> Result<()>
             println!("Backup schedule '{}' set ({})", name, freq);
         }
         BackupCommands::Remove { name } => {
-            if mgr.remove_schedule(&name)? {
-                println!("Schedule '{}' removed", name);
-            } else {
-                println!("Schedule '{}' not found", name);
+            if !mgr.remove_schedule(&name)? {
+                return Err(VaultError::NotFound(format!("backup schedule '{name}'")));
             }
+            println!("Schedule '{}' removed", name);
         }
         BackupCommands::List => {
             let schedules = mgr.list_schedules();

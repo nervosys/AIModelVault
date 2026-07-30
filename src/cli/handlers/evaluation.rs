@@ -111,7 +111,14 @@ pub fn handle_eval(command: EvalCommands, config: VaultConfig) -> Result<()> {
                     }
                 }
                 None => {
-                    println!("No matching evaluation runs found for comparison.");
+                    // `eval compare` is a regression gate. Printing a line and
+                    // exiting 0 with no comparison output told a CI job that
+                    // nothing regressed, when in fact nothing was compared.
+                    return Err(VaultError::NotFound(format!(
+                        "no evaluation runs on suite '{suite}' for both \
+                         {model_a} v{version_a} and {model_b} v{version_b} \
+                         — nothing was compared"
+                    )));
                 }
             }
         }

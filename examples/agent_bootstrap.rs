@@ -84,10 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ])?;
     let code = out.status.code().unwrap_or(-1);
     let stderr = String::from_utf8_lossy(&out.stderr);
-    println!(
-        "   ✓ exit code: {} (2 = not-found per stability contract)",
-        code
-    );
+    println!("   ✓ exit code: {code} (3 = not-found per stability contract)");
     if let Ok(env) = serde_json::from_str::<Value>(stderr.trim()) {
         println!("   ✓ error envelope: {}", env);
     } else {

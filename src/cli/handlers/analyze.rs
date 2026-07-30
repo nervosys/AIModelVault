@@ -2,7 +2,7 @@
 
 use ai_model_vault::formats::{ModelFormat, ModelMetadata};
 use ai_model_vault::utils::{CompressionAnalyzer, ModelAnalyzer, ModelDeduplicator, ModelExporter};
-use ai_model_vault::{Result, VaultConfig};
+use ai_model_vault::{Result, VaultConfig, VaultError};
 
 use crate::cli::helpers::{build_vault, prompt_passphrase};
 
@@ -69,7 +69,10 @@ pub fn handle_analyze(
             println!("  Task: {}", task);
         }
     } else {
-        println!("Version not found");
+        return Err(match version {
+            Some(v) => VaultError::VersionNotFound(v, name),
+            None => VaultError::ModelNotFound(name),
+        });
     }
     Ok(())
 }
@@ -163,7 +166,10 @@ pub fn handle_export(
         println!("  Model file: {}.{}", name, model_format.extension());
         println!("  Metadata: {}.meta.json", name);
     } else {
-        println!("Version not found");
+        return Err(match version {
+            Some(v) => VaultError::VersionNotFound(v, name),
+            None => VaultError::ModelNotFound(name),
+        });
     }
     Ok(())
 }

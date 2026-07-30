@@ -77,9 +77,9 @@ impl IntoResponse for ApiError {
 impl From<VaultError> for ApiError {
     fn from(err: VaultError) -> Self {
         match &err {
-            VaultError::ModelNotFound(_) | VaultError::VersionNotFound(_, _) => {
-                ApiError::not_found(err.to_string())
-            }
+            VaultError::ModelNotFound(_)
+            | VaultError::VersionNotFound(_, _)
+            | VaultError::NotFound(_) => ApiError::not_found(err.to_string()),
             VaultError::AuthenticationFailed => ApiError::unauthorized(err.to_string()),
             VaultError::SecurityViolation(_) => ApiError::unauthorized("Access denied"),
             VaultError::InvalidInput(_) | VaultError::UnsupportedFormat(_) => {
@@ -163,6 +163,22 @@ mod tests {
     fn test_from_vault_error_auth_failed() {
         let err: ApiError = VaultError::AuthenticationFailed.into();
         assert_eq!(err.status, StatusCode::UNAUTHORIZED);
+    }
+
+    /// Every not-found category must reach 404. The wildcard arm below maps
+    /// anything unlisted to 500, so a new variant added without touching that
+    /// match would silently report a missing resource as a server fault.
+    #[test]
+    fn test_all_not_found_variants_map_to_404() {
+        for err in [
+            VaultError::ModelNotFound("m".into()),
+            VaultError::VersionNotFound(3, "m".into()),
+            VaultError::NotFound("profile 'p'".into()),
+        ] {
+            let text = err.to_string();
+            let api: ApiError = err.into();
+            assert_eq!(api.status, StatusCode::NOT_FOUND, "{text} must be 404");
+        }
     }
 
     #[test]
