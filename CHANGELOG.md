@@ -60,6 +60,20 @@ Findings from a security and privacy audit against CVE, MITRE ATT&CK, NIST FIPS 
 - **File permissions hold on both platforms.** Verified on Windows that vault directories and config get inheritance stripped and are restricted to the owner.
 - **The telemetry event schema is privacy-conscious** — size *buckets* rather than sizes, no model names, no paths — and the tracking functions that take free-text `context`/`detail` are currently dead code.
 
+### Fixed
+
+- **`aim diff` panicked on a crafted SafeTensors header (found by fuzzing).** `parse_safetensors_header` guarded with `data.len() < 8 + header_size || header_size > 100_000_000`. `||` evaluates left to right, so a file declaring a header size near `usize::MAX` overflowed the addition — `attempt to add with overflow` — before the cap could reject it. Any untrusted `.safetensors` file could abort the process. The cap is now checked first and the comparison uses subtraction against a length already known to be ≥ 8.
+
+  This was found by the `diff_engine` fuzz target on its first ever execution — see below.
+
+- **No fuzz target had ever run in CI.** Three of the eight steps invoked `crypto_roundtrip`, `format_detection` and `model_metadata`, but the targets are named `fuzz_crypto_roundtrip` and so on. The job aborted on the first step, so none of the eight targets the README advertises had executed. With the names corrected, six passed and the seventh immediately found the overflow above.
+
+- **Benchmarks never ran in CI.** `cargo bench -- --output-format bencher` passes the argument to every bench target, including the built-in libtest harness for the lib and the binary, which rejects it with `Unrecognized option: 'output-format'` before any benchmark starts. The criterion benches already set `harness = false`; the lib and bin now set `bench = false`. The results-storage step also pushed to a `gh-pages` branch that does not exist, failing every run — `auto-push` is now off, so benchmarks run and in-run regression alerts work, without inventing a published branch.
+
+- **`examples/xdg_demo.rs` never compiled on Unix.** `use std::os::unix::fs::PermissionsExt` imports the trait, not the `std::fs` module, so two `fs::metadata` calls in `#[cfg(unix)]` blocks were unresolved (E0433). It broke the whole Test Suite matrix, every Feature Combinations job, and the Security Audit workflow on Linux and macOS, while compiling cleanly on Windows where the blocks are stripped.
+
+- **Two tests asserted platform- or environment-specific behaviour as universal.** `test_check_cve_enabled` asserted a CVE scan always "passes", documenting in its own comment that an unavailable `cargo-audit` counted as a non-failure — the exact bug removed in this release; it went green locally because cargo-audit is installed and would have gone green on CI because it is not. `test_safe_archive_name_rejects_escapes` required `a\b` to be rejected, which is right on Windows and wrong on Unix, where a backslash is an ordinary filename character and such a member is one legal file rather than a path. Both now assert the invariant that actually holds, with the Windows/Unix split made explicit.
+
 ## [3.0.0] - 2026-07-29
 
 A follow-on to 2.0.0 in the same vein, and for the same reason: the audit that produced 2.0.0 kept turning up the same defect — code that reported a confident result where it should have reported that it could not do what was asked. 2.0.0 fixed that in the signing, scanning, bundle and metadata paths. This release fixes it in the **process exit code**, which is the one channel every non-interactive caller actually reads.

@@ -343,7 +343,14 @@ jobs:
         tool: cargo
         output-file-path: bench-output.txt
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        auto-push: true
+        # `auto-push: true` pushes history to a `gh-pages` branch, which this
+        # repository does not have — the step failed every run with
+        # "couldn't find remote ref gh-pages", so the benchmarks ran and their
+        # results were thrown away. Benchmarks still execute and regressions
+        # are still detected within a run; only cross-run history is off.
+        # To turn history back on, create an orphan `gh-pages` branch and set
+        # this to true.
+        auto-push: false
         alert-threshold: "150%"
         comment-on-alert: true
         fail-on-alert: false
