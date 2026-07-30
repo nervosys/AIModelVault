@@ -954,13 +954,15 @@ mod tests {
         assert_eq!(safe_archive_name("llama-7b.bin").unwrap(), "llama-7b.bin");
     }
 
+    /// Rejected on every platform: `/` is a separator everywhere, and `..`,
+    /// `.` and the empty string are never ordinary file names.
     #[test]
     fn test_safe_archive_name_rejects_escapes() {
         for hostile in [
             "../evil",
             "../../evil",
             "a/b",
-            r"a\b",
+            "a/../b",
             "/etc/passwd",
             "..",
             ".",
@@ -973,15 +975,41 @@ mod tests {
         }
     }
 
+    /// Backslash is a separator on Windows and an ordinary character on Unix,
+    /// so the correct answer genuinely differs by platform. `std::path`
+    /// already encodes that, and `safe_archive_name` inherits it — these two
+    /// tests pin both halves rather than assuming Windows rules everywhere.
     #[cfg(windows)]
     #[test]
-    fn test_safe_archive_name_rejects_windows_drive_paths() {
-        for hostile in [r"C:\Windows\evil", "C:/Windows/evil", r"\\server\share\x"] {
+    fn test_safe_archive_name_rejects_windows_separators_and_prefixes() {
+        for hostile in [
+            r"a\b",
+            r"..\..\evil",
+            r"C:\Windows\evil",
+            "C:/Windows/evil",
+            r"\\server\share\x",
+        ] {
             assert!(
                 safe_archive_name(hostile).is_err(),
-                "{hostile:?} must be rejected"
+                "{hostile:?} must be rejected on Windows"
             );
         }
+    }
+
+    /// On Unix a member literally named `a\b` is one legal file, not a path.
+    /// Extracting it creates a single oddly-named file inside the output
+    /// directory, which is not an escape — so accepting it is correct.
+    #[cfg(unix)]
+    #[test]
+    fn test_safe_archive_name_treats_backslash_as_an_ordinary_character() {
+        assert_eq!(safe_archive_name(r"a\b").unwrap(), r"a\b");
+        assert_eq!(
+            safe_archive_name(r"C:\Windows\evil").unwrap(),
+            r"C:\Windows\evil"
+        );
+
+        // ...but a real Unix traversal is still refused.
+        assert!(safe_archive_name("../evil").is_err());
     }
 
     /// A ZIP whose member name climbs out of the extraction directory must be
