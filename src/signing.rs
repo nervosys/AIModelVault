@@ -7,6 +7,7 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -42,7 +43,7 @@ pub struct ModelSignature {
 ///
 /// Keys are stored as hex-encoded strings.  The secret key is 64 bytes
 /// (seed + public key) as returned by the Ed25519 expand step.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SigningKeyPair {
     /// Hex-encoded 32-byte secret seed
     pub secret_seed: String,
@@ -52,6 +53,23 @@ pub struct SigningKeyPair {
     pub identity: Option<String>,
     /// When the key was created
     pub created_at: String,
+}
+
+/// Redacts the secret seed.
+///
+/// The derived `Debug` printed the seed verbatim, so any `{:?}` of a keypair —
+/// a `tracing` call, an `unwrap` panic, an error report — would have put
+/// signing key material into a log. `Serialize` is deliberately left intact:
+/// writing the seed is the whole point of `save_keypair`.
+impl std::fmt::Debug for SigningKeyPair {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SigningKeyPair")
+            .field("secret_seed", &"<redacted>")
+            .field("public_key", &self.public_key)
+            .field("identity", &self.identity)
+            .field("created_at", &self.created_at)
+            .finish()
+    }
 }
 
 // ── Signer ───────────────────────────────────────────────────────────────────
@@ -167,16 +185,27 @@ impl ModelSigner {
     }
 
     /// Save a key pair to a JSON file with restrictive permissions.
+    ///
+    /// This file holds the secret seed — the only thing standing between an
+    /// attacker and the ability to forge signatures for this identity. It is
+    /// created with restrictive permissions *before* the seed is written, and
+    /// tightened again afterwards for Windows, where ACLs can only be set on
+    /// an existing file.
     pub fn save_keypair(keypair: &SigningKeyPair, path: &Path) -> Result<()> {
         let json = serde_json::to_string_pretty(keypair)?;
-        fs::write(path, json)?;
 
-        // Restrictive permissions on Unix
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
-        }
+        // Previously `fs::write` + a `#[cfg(unix)]` chmod. That left the seed
+        // world-readable for the window between creation and the chmod on
+        // Unix, and on Windows left it with fully inherited ACLs — granting
+        // BUILTIN\Administrators access the vault's own files do not.
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+        crate::permissions::set_create_mode(&mut options);
+
+        let mut file = options.open(path)?;
+        crate::permissions::restrict_file(path)?;
+        file.write_all(json.as_bytes())?;
+        file.sync_all()?;
 
         Ok(())
     }
@@ -627,5 +656,62 @@ mod tests {
             result.valid,
             "seed-sourced key must verify against the original"
         );
+    }
+    /// The secret seed must never reach a log through `{:?}`.
+    #[test]
+    fn test_keypair_debug_redacts_the_secret_seed() {
+        let kp = ModelSigner::generate_keypair(Some("ML Team")).unwrap();
+        let rendered = format!("{kp:?}");
+
+        assert!(
+            !rendered.contains(&kp.secret_seed),
+            "Debug output leaked the secret seed: {rendered}"
+        );
+        assert!(rendered.contains("<redacted>"), "got: {rendered}");
+        // The non-secret fields stay useful for diagnostics.
+        assert!(rendered.contains(&kp.public_key), "got: {rendered}");
+        assert!(rendered.contains("ML Team"), "got: {rendered}");
+    }
+
+    /// The key file holds the only thing that can forge signatures for this
+    /// identity, so it must not be readable by other accounts.
+    #[test]
+    fn test_saved_keypair_is_not_world_readable() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("signing_key.json");
+        let kp = ModelSigner::generate_keypair(None).unwrap();
+        ModelSigner::save_keypair(&kp, &path).unwrap();
+
+        // The seed really is in there — otherwise this test proves nothing.
+        let on_disk = std::fs::read_to_string(&path).unwrap();
+        assert!(on_disk.contains(&kp.secret_seed));
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+            assert_eq!(
+                mode & 0o077,
+                0,
+                "group/other bits set on the signing key: {:o}",
+                mode
+            );
+        }
+
+        #[cfg(windows)]
+        {
+            // `icacls` reports inherited ACEs with "(I)". The key must not
+            // simply inherit whatever the parent directory grants — that is
+            // how BUILTIN\Administrators ended up with FullControl.
+            let out = std::process::Command::new("icacls")
+                .arg(&path)
+                .output()
+                .expect("icacls should be available on Windows");
+            let text = String::from_utf8_lossy(&out.stdout);
+            assert!(
+                !text.contains("(I)"),
+                "signing key still has inherited ACLs: {text}"
+            );
+        }
     }
 }
