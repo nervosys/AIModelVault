@@ -1,10 +1,20 @@
 # AI Model Vault — Roadmap
 
 > Last updated: 2026-07-29
-> Current version: **2.0.0** (signature, scanner, bundle and metadata-parsing security fixes)
-> Status: Production release — 2,131 Rust tests + 84 Python tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, clippy clean across every feature combination the crate declares, `cargo audit` / `cargo deny` clean with zero suppressions
+> Current version: **3.0.0** (one honest exit-code contract, enforced)
+> Status: Production release — 2,160+ Rust tests + 84 Python tests, 11 proptest strategies, 8 fuzz targets, 5 benchmark suites, clippy clean across every feature combination the crate declares, `cargo audit` / `cargo deny` clean with zero suppressions
 
 ---
+
+## v3.0.0 — Exit-Code Contract (complete)
+
+The project published four mutually contradictory exit-code tables and
+implemented none of them, while telling agents to branch on them.
+
+- [x] **One contract, implemented** — `VaultError::exit_code` maps every variant to `0`–`8`; `README.md`, `AGENTS.md`, `docs/CLI.md`, `.well-known/agents.json` and `.well-known/ontology.jsonld` were all rewritten to match, and a test fails if they drift again
+- [x] **Twelve commands no longer exit 0 for work that did not happen** — including `aim validate` (an integrity gate that printed "Some checks failed." and succeeded) and `aim eval compare` (a regression gate that compared nothing and succeeded)
+- [x] **A mistyped subcommand no longer exits 2**, which the table defines as "authentication failed"
+- [x] **`VaultError` is `#[non_exhaustive]`** — future variants are non-breaking downstream, but still force an exit-code decision inside the crate
 
 ## v2.0.0 — Security (complete)
 

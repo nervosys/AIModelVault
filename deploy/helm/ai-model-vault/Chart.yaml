@@ -2,8 +2,8 @@ apiVersion: v2
 name: ai-model-vault
 description: Universal secure vault for AI model formats (Neural & Neurosymbolic)
 type: application
-version: 2.0.0
-appVersion: "2.0.0"
+version: 3.0.0
+appVersion: "3.0.0"
 keywords:
   - ai
   - ml

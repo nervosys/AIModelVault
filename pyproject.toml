@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "aimodelvault"
-version = "2.0.0"
+version = "3.0.0"
 description = "Universal cross-platform XDG-compliant secure vault for AI model formats"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -28,7 +28,7 @@ classifiers = [
 # `project.urls.dependencies` — the package then declares no runtime
 # dependencies at all and maturin rejects the manifest.
 dependencies = [
-    "cryptography>=42.0.0", # FIPS 140-3 compliant crypto
+    "cryptography>=42.0.0", # FIPS-approved algorithms (not a CMVP-validated module)
     "pyyaml>=6.0",
     "click>=8.0",
     "tqdm>=4.65.0",

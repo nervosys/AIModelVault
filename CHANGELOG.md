@@ -5,6 +5,111 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Findings from a security and privacy audit against CVE, MITRE ATT&CK, NIST FIPS and CMMC 2.0.
+
+### Security
+
+- **`aim extract` wrote files outside the `--output` directory (zip slip, CWE-22, ATT&CK T1574).** `ModelArchive::extract_zip` returned each member's name verbatim from the archive, and `handle_extract` passed it to `Path::join` — which discards its base when handed an absolute path and walks upward on `..`. Demonstrated against the built binary: a ZIP containing `../../ESCAPED.txt`, extracted to `out/deep/nested`, wrote the file two directories above the target, printed `✓ Extracted`, and exited 0. A longer prefix or a drive letter reaches anywhere the invoking user can write — a shell rc file, a startup folder, `authorized_keys`. Triggered simply by extracting an untrusted model archive.
+
+  Member names must now be a single ordinary file name, which is all `create_tar` and `create_zip` have ever produced. Validation happens while the archive is read, before the caller writes anything, so a hostile archive aborts the whole extraction rather than leaving a partial result — verified: the same exploit now writes nothing at all and exits `6`.
+
+  The TAR path was not exploitable — it reduced names with `file_name()` — but it did so *silently*, so `../../etc/passwd` became `passwd` and could quietly overwrite a legitimate member of that name. It now rejects rather than renames.
+
+- **The API accepted any non-empty JWT signing secret.** Only emptiness was checked, so `--jwt-secret hunter2` started a server whose HS256 tokens could be forged after recovering the key offline from a single issued token. RFC 7518 §3.2 requires an HMAC key at least as large as the hash output — 256 bits for HS256. Secrets shorter than 32 bytes are now refused at startup with an actionable message.
+
+  The rest of the JWT path audited clean: `Validation::default()` pins the algorithm allowlist to HS256 (so `alg: none` and RS256 key-confusion are not possible) and requires `exp`, and the secret is zeroized on drop.
+
+- **`aim compliance` spawned `cargo` from an untrusted working directory (CWE-426).** The CVE check ran `Command::new("cargo")`, resolved from `PATH` — and on Windows `CreateProcess` searches the current directory first, so a `cargo.exe` dropped in whatever directory the user happened to be in would execute. It also audited that directory's manifest, which says nothing about the vault's own dependencies. The check now runs only when a `Cargo.toml` is actually present, and reports `NOT VERIFIED` otherwise, stating plainly that it inspects the current project rather than the installed binary.
+
+- **The signing private key was written with inherited ACLs on Windows (CWE-276, ATT&CK T1552.001).** `save_keypair` tightened permissions under `#[cfg(unix)]` only, so on Windows the secret seed — the one thing that lets an attacker forge signatures for an identity — inherited whatever the parent directory granted. Observed on a real run: `BUILTIN\Administrators` held `FullControl` with inheritance enabled, while the vault's *own* config had inheritance stripped and was owner-only. The key was less protected than the config describing it. Every other module in the crate already used the cross-platform `permissions::restrict_file`; `signing.rs` was the lone outlier.
+
+  It also used `fs::write` followed by a chmod, leaving the seed briefly world-readable on Unix. The file is now created with restrictive permissions *before* the seed is written, then tightened again for Windows. Verified end-to-end: the key file is now owner-only with inheritance disabled.
+
+- **`SigningKeyPair`'s derived `Debug` printed the secret seed verbatim.** Nothing logged it today, but any `{:?}` — a `tracing` call, an `unwrap` panic, an error report — would have put signing key material into a log. `Debug` is now hand-written and redacts the seed while keeping the public fields useful. `Serialize` is deliberately unchanged: writing the seed is what `save_keypair` is for.
+
+- **`aim compliance` could not fail, and said so in the language of certification.** Three of its four checks were hardcoded (`check_fips_140_3` → `true`, `check_mitre_attack` → `true`, `check_cmmc` → `2`) and every one was printed as `✓ PASS`. An organisation putting the command in a CI gate for CMMC evidence would collect a green result regardless of the state of the system.
+
+  Worse, the CVE check — the only one that does real work — returned **pass** when `cargo audit` could not run. That is the normal case for an installed binary, where there is no `Cargo.toml` in the working directory to audit. A scan that never happened reported as clean.
+
+  Checks now report a `CheckOutcome`: `Verified` (tested this run), `AssertedByDesign` (a property of how the software is built, not evidence of certification), `NotVerified` (the check could not run — explicitly *not* a pass), or `Failed`. Only a verified failure is blocking, and it exits `8`.
+
+### Fixed
+
+- **FIPS 140-3 and CMMC 2.0 were claimed as achieved status across the documentation.** `AGENTS.md` stated CMMC 2.0 Level 2 **"Certified"**; `README.md`, `docs/index.md`, `docs/EXECUTIVE_SUMMARY.md` and others stated "FIPS 140-3 compliant"; the README carried a `security-FIPS 140-3` badge. None of this is true, and none of it can be:
+
+  - FIPS 140-3 validates a *cryptographic module* through NIST's CMVP, which issues a certificate number. The RustCrypto implementations (`aes-gcm`, `sha2`, `argon2`) hold no CMVP certificate.
+  - **Argon2id is not a FIPS-approved KDF.** SP 800-132 approves PBKDF2. Argon2 is the better choice against modern cracking hardware, which is why it is used — but it puts the KDF outside FIPS regardless of the module question. "FIPS 140-3 compliant … Argon2id" was self-contradictory.
+  - CMMC certification is granted to an *organisation* by a C3PAO. No software product can be CMMC certified, and a contractor relying on that claim in an assessment would fail it.
+
+  Claims are now stated accurately: FIPS-*approved algorithms*, not a validated module; CMMC controls *supported*, not certified; MITRE ATT&CK mitigations *by design*, not a penetration test. The `.well-known/ontology.jsonld` crypto description and the `Cargo.toml` / `pyproject.toml` comments were corrected too, since agents read the first and developers the others. Historical `CHANGELOG` entries and `docs/archived/` were deliberately left alone — rewriting them would falsify the record.
+
+- **Two structs named "telemetry enabled" had opposite defaults.** `config::TelemetrySettings::enabled` defaulted to `true` with a comment saying so, while `telemetry::TelemetryConfig::enabled` defaulted to `false`. The effective behaviour is the one the README promises — a default install transmits nothing, confirmed empirically by running `aim init` in an isolated home and reading the generated `telemetry.yaml` — but the arrangement is one well-meaning "fix" away from silently beaconing a persistent device UUID to `telemetry.nervosys.ai`. The outer field is now documented as a permission gate that defers to the inner switch, and a test pins the opt-in default.
+
+### Breaking Changes
+
+- **Archive members with directory separators are rejected.** `aim extract`, `ModelArchive::extract_tar` and `ModelArchive::extract_zip` now fail on any member name that is not a single file name. Archives produced by `aim archive` are unaffected. Third-party archives with nested directories, previously flattened (TAR) or written out (ZIP), now error.
+- **`aim serve` refuses a JWT secret shorter than 32 bytes.** Existing deployments using a short secret will fail to start until it is replaced — which is the point.
+
+### Audit notes (no change required)
+
+- **No secrets in the repository or its history.** The only credential-shaped string is `AKIAIOSFODNN7EXAMPLE`, AWS's published documentation placeholder. The Helm `secret.yaml` template generates a random JWT secret rather than shipping one.
+- **`cargo audit` / `cargo deny`: no vulnerabilities.** Three unmaintained-crate advisories (`fxhash` RUSTSEC-2025-0057, `instant` RUSTSEC-2024-0384, `rustls-pemfile` RUSTSEC-2025-0134), all transitive and none with a known exploit path.
+- **Crypto primitives are sound.** AES-256-GCM with 96-bit nonces from `OsRng`, Argon2id at 64 MiB / t=3 / p=1 (above the OWASP minimum), keys held in a `ZeroizeOnDrop` container.
+- **File permissions hold on both platforms.** Verified on Windows that vault directories and config get inheritance stripped and are restricted to the owner.
+- **The telemetry event schema is privacy-conscious** — size *buckets* rather than sizes, no model names, no paths — and the tracking functions that take free-text `context`/`detail` are currently dead code.
+
+## [3.0.0] - 2026-07-29
+
+A follow-on to 2.0.0 in the same vein, and for the same reason: the audit that produced 2.0.0 kept turning up the same defect — code that reported a confident result where it should have reported that it could not do what was asked. 2.0.0 fixed that in the signing, scanning, bundle and metadata paths. This release fixes it in the **process exit code**, which is the one channel every non-interactive caller actually reads.
+
+Twelve commands exited `0` for work that did not happen, including three integrity and regression gates. If you script `aim`, the exit codes you were branching on were not the ones documented, and several failures were indistinguishable from success. Re-run anything you gated on `aim validate` or `aim eval compare`.
+
+### Security
+
+- **Commands that could not do what was asked reported success.** `main` returned `Result`, so every failure collapsed to exit code 1 — and separately, a dozen handlers printed a "not found" message to stdout and then returned `Ok(())`, exiting **0**. The affected commands are worse than merely imprecise:
+
+  - **`aim validate` printed "Some checks failed." and exited 0.** It is an integrity gate, so every pipeline running it treated a failing model as valid. It now exits `5`.
+  - **`aim vaults unregister`, `aim quantize remove` and `aim backup remove` exited 0 having removed nothing** when the named resource did not exist. A script checking the exit code concluded the deletion had happened.
+  - **`aim versions`, `aim lineage`, `aim validate`, `aim analyze`, `aim export`, `aim profile show` and `aim database get` exited 0** for names that do not exist.
+
+  - **`aim eval compare` exited 0 printing "No matching evaluation runs found for comparison."** It is a regression gate; a CI job reading that exit code concluded nothing had regressed when in fact nothing had been compared.
+  - **`aim database build-index` exited 0 having built no index** when no document had an embedding. The next search against the index it claimed to build was the thing that failed.
+
+  All of these now return an error and exit with the documented code. `VaultError` gains a `NotFound(String)` variant for named resources that are not models or versions, because reporting a missing profile as `ModelNotFound` would have been its own small lie.
+
+- **A mistyped subcommand exited 2, which the published table defines as "authentication failed."** clap's default usage-error code is 2, so `aim versoins my-model` was indistinguishable from a wrong passphrase to any agent branching on the exit code — and would plausibly trigger a credential-refresh path. The CLI now parses with `try_parse` and maps usage errors to `6` (invalid input), while keeping `--help` and `--version` at 0.
+
+### Fixed
+
+- **Four mutually contradictory exit-code contracts were published, and none of them was implemented.** `README.md` and `AGENTS.md` said `2` = not found, `3` = integrity, `4` = permission denied. `docs/CLI.md` and `.well-known/agents.json` said `2` = authentication failed, `3` = not found, `5` = integrity. `.well-known/ontology.jsonld` used a fourth scheme keyed by error type, `1`–`8`, with `1` = crypto and no catch-all. `examples/agent_bootstrap.rs` asserted a fifth reading in a comment. The binary implemented none of them: it emitted only `0` and `1`, and printed the `Debug` form of the error rather than its message.
+
+  This mattered more than an ordinary docs bug because the project advertises `.well-known/` and `aim introspect` as authoritative, machine-readable interfaces and instructs agents to branch on them.
+
+  There is now one contract — `0` ok, `1` general, `2` auth, `3` not found, `4` permission, `5` integrity, `6` invalid input, `7` config, `8` compliance — implemented by `VaultError::exit_code`, and all five documents were rewritten to match it. Codes `0`–`5` keep the meanings the two machine-readable manifests already agreed on; `6`–`8` are new codes for categories that previously fell through to `1`, so no published meaning changed. The mapping is pinned by unit tests, by end-to-end tests that run the real binary, and by a test that parses both `.well-known/` manifests and fails if they drift from the implementation again.
+
+- **Three `std::process::exit(1)` calls skipped the telemetry flush** and bypassed the exit-code mapping. They were invalid-input cases in `aim archive`, `aim extract` and `aim introspect`, and now return `VaultError::InvalidInput` like every other argument error.
+
+- **`--config` failures were reported as generic I/O or serialization errors.** A missing or malformed config file now returns `ConfigError` with the path attached, and exits `7`.
+
+### Changed
+
+- **`VaultError` is now `#[non_exhaustive]`.** Adding a category is no longer a breaking change for downstream matches. Inside the crate the enum stays exhaustive, which is what forces `exit_code` to assign every future variant a code instead of letting it fall through a wildcard — the omission that let the published tables drift from reality in the first place.
+
+### Breaking Changes
+
+- **`VaultError` gained a `NotFound(String)` variant and is `#[non_exhaustive]`.** Downstream `match` expressions over it need a wildcard arm.
+- **Commands that previously exited 0 on a missing resource or a failed validation now exit non-zero.** Any script that relied on `aim validate`, `aim versions`, `aim lineage`, `aim analyze`, `aim export`, `aim vaults unregister`, `aim quantize remove`, `aim backup remove`, `aim profile show`, `aim database get`, `aim database build-index` or `aim eval compare` succeeding for absent or invalid input will now see a failure. That is the point: the previous behaviour reported success for work that did not happen.
+
+  Deliberately left at `0`: `aim deduplicate` finding no duplicates and `aim benchmark` listing no records for a model are genuine empty results, not failures.
+- **Exit codes `6`, `7` and `8` are now returned** where `1` was returned before. Callers testing `== 1` for those categories need updating; callers testing `!= 0` are unaffected.
+- **A usage error now exits `6` rather than clap's `2`**, including a mistyped subcommand, an unknown flag, a missing required argument, and `aim` with no subcommand at all. `--help` and `--version` remain `0`.
+
+### Version
+
+- **2.0.0 → 3.0.0** (Python package and Helm chart synced to 3.0.0). A major bump because the exit-code changes and the `VaultError` additions are both breaking. Note that 2.0.0 was tagged but never reached crates.io or PyPI — all release jobs were blocked on GitHub billing — so 3.0.0 is still the first release either registry would see.
+
 ## [2.0.0] - 2026-07-29
 
 A security release. Five defects are fixed here, and they share one shape: code that emitted a confident, plausible answer where it should have said it could not tell. `aim verify` called forged models valid, the license scanner reported non-commercial models as MIT, `aim diff` saw a full-precision model and its 4-bit quantization as identical, the pickle scanner called a malicious checkpoint clean, and `aim vault-import` trusted a path out of an untrusted manifest. Anyone relying on those commands as a gate should treat prior results as unverified and re-run them.
