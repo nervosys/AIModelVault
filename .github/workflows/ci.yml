@@ -199,13 +199,13 @@ jobs:
         key: ${{ runner.os }}-fuzz-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Fuzz crypto_roundtrip
-      run: cargo +nightly fuzz run crypto_roundtrip -- -max_total_time=30
+      run: cargo +nightly fuzz run fuzz_crypto_roundtrip -- -max_total_time=30
 
     - name: Fuzz format_detection
-      run: cargo +nightly fuzz run format_detection -- -max_total_time=30
+      run: cargo +nightly fuzz run fuzz_format_detection -- -max_total_time=30
 
     - name: Fuzz model_metadata
-      run: cargo +nightly fuzz run model_metadata -- -max_total_time=30
+      run: cargo +nightly fuzz run fuzz_model_metadata -- -max_total_time=30
 
     - name: Fuzz version_parsing
       run: cargo +nightly fuzz run fuzz_version_parsing -- -max_total_time=30

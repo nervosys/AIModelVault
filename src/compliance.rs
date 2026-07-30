@@ -689,12 +689,38 @@ mod tests {
 
     #[test]
     fn test_check_cve_enabled() {
-        // check_cve runs cargo-audit; whether or not it's installed,
-        // the function returns (true, ...) — either audit passes or
-        // cargo-audit is not available (both are treated as non-failures).
+        // This test used to assert `passed == true` unconditionally, on the
+        // grounds that "cargo-audit is not available" was a non-failure. That
+        // was the bug: a scan that never ran reported as clean. It passed on
+        // a developer machine with cargo-audit installed and would have
+        // passed on CI without it, for opposite reasons.
+        //
+        // Whether cargo-audit is installed is a property of the machine, so
+        // assert the invariant instead: `passed` is true only when a scan
+        // actually ran and found nothing, and a non-pass always explains why.
         let checker = ComplianceChecker::new();
-        let (passed, _cves) = checker.check_cve();
-        assert!(passed);
+        let (passed, findings) = checker.check_cve();
+
+        if passed {
+            assert!(
+                findings.is_empty(),
+                "a passing scan must report no findings, got: {findings:?}"
+            );
+        } else {
+            assert!(
+                !findings.is_empty(),
+                "a non-passing scan must say why it did not pass"
+            );
+        }
+
+        // And the outcome must agree with the boolean.
+        match checker.cve_outcome() {
+            CheckOutcome::Verified { .. } => assert!(passed),
+            CheckOutcome::NotVerified { .. } | CheckOutcome::Failed { .. } => assert!(!passed),
+            CheckOutcome::AssertedByDesign { .. } => {
+                panic!("a CVE scan is either run or not; it is never by design")
+            }
+        }
     }
 
     #[test]

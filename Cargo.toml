@@ -256,13 +256,20 @@ strip = true
 [profile.dev]
 opt-level = 0
 
+# `bench = false` on both: without it `cargo bench` also runs the built-in
+# libtest harness for the lib and the binary, which does not understand
+# criterion's `--output-format bencher` and aborts with "Unrecognized option"
+# before any benchmark runs. The criterion benches below set `harness = false`
+# and are the only intended bench targets.
 [[bin]]
 name = "aim"
 path = "src/main.rs"
+bench = false
 
 [lib]
 name = "ai_model_vault"
 path = "src/lib.rs"
+bench = false
 
 [[bench]]
 name = "crypto_bench"
