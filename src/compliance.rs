@@ -11,6 +11,58 @@ use std::collections::HashMap;
 
 use crate::error::Result;
 
+/// What a compliance check actually established.
+///
+/// Most of these checks cannot be *verified* by a program inspecting itself.
+/// Reporting all of them as "PASS" made `aim compliance` look like an
+/// assessment when it was mostly a set of constants — an organisation putting
+/// it in a CI gate for CMMC evidence would collect a green result no matter
+/// what state the system was in. This distinguishes the three cases.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+pub enum CheckOutcome {
+    /// Checked at runtime, and it held.
+    Verified { detail: String },
+    /// A property of how the software is built, established by design review
+    /// rather than by this program. Not evidence of certification.
+    AssertedByDesign { detail: String },
+    /// The check could not be run, so nothing is known either way. This is
+    /// *not* a pass.
+    NotVerified { reason: String },
+    /// Checked at runtime, and it failed.
+    Failed { detail: String },
+}
+
+impl CheckOutcome {
+    /// Whether this outcome should block a compliance gate.
+    #[must_use]
+    pub fn is_blocking(&self) -> bool {
+        matches!(self, CheckOutcome::Failed { .. })
+    }
+
+    /// Short label for terminal output.
+    #[must_use]
+    pub fn label(&self) -> &'static str {
+        match self {
+            CheckOutcome::Verified { .. } => "✓ VERIFIED",
+            CheckOutcome::AssertedByDesign { .. } => "• BY DESIGN (not verified at runtime)",
+            CheckOutcome::NotVerified { .. } => "? NOT VERIFIED",
+            CheckOutcome::Failed { .. } => "✗ FAILED",
+        }
+    }
+
+    /// The explanatory text carried by this outcome.
+    #[must_use]
+    pub fn detail(&self) -> &str {
+        match self {
+            CheckOutcome::Verified { detail }
+            | CheckOutcome::AssertedByDesign { detail }
+            | CheckOutcome::Failed { detail } => detail,
+            CheckOutcome::NotVerified { reason } => reason,
+        }
+    }
+}
+
 /// Compliance status
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplianceStatus {
@@ -19,6 +71,13 @@ pub struct ComplianceStatus {
     pub mitre_attack_aligned: bool,
     pub cmmc_level: u8,
     pub violations: Vec<ComplianceViolation>,
+    /// Per-check outcomes, in the order they are reported.
+    ///
+    /// The booleans above are kept for API compatibility, but they cannot
+    /// express "not verified" — read this instead when the distinction
+    /// matters, which for an audit it always does.
+    #[serde(default)]
+    pub outcomes: Vec<(String, CheckOutcome)>,
 }
 
 /// Compliance violation
@@ -58,15 +117,26 @@ impl ComplianceChecker {
         Self { enabled_checks }
     }
 
-    /// Check FIPS 140-3 compliance
+    /// Report the vault's relationship to FIPS 140-3.
     ///
-    /// Verifies that the vault uses only FIPS-approved cryptographic algorithms:
-    /// - AES-256-GCM (FIPS 197, NIST SP 800-38D)
-    /// - Argon2id (RFC 9106, acceptable KDF per NIST)
-    /// - SHA-256 (FIPS 180-4)
+    /// **This is not a compliance determination, and cannot be one.** FIPS
+    /// 140-3 certifies a *cryptographic module* through NIST's CMVP, which
+    /// issues a certificate number. This crate uses the RustCrypto
+    /// implementations (`aes-gcm`, `sha2`, `argon2`), none of which hold a
+    /// CMVP certificate, so no configuration of this software is FIPS 140-3
+    /// validated.
     ///
-    /// Note: This is a static analysis of the algorithms configured, not a
-    /// runtime verification by a FIPS-certified module.
+    /// What is true:
+    /// - AES-256-GCM is a FIPS-approved algorithm (FIPS 197, SP 800-38D)
+    /// - SHA-256 is a FIPS-approved algorithm (FIPS 180-4)
+    /// - **Argon2id is not FIPS-approved.** SP 800-132 approves PBKDF2 for
+    ///   password-based key derivation; Argon2 is not on the approved list.
+    ///   It is the better choice against modern cracking hardware, which is
+    ///   why it is used — but it means the KDF is outside FIPS regardless of
+    ///   the module question.
+    ///
+    /// Deployments with a genuine FIPS obligation need a validated module
+    /// (AWS-LC-FIPS, BoringCrypto, or an HSM) and a FIPS-approved KDF.
     pub fn check_fips_140_3(&self) -> bool {
         if !self.is_check_enabled("fips_140_3") {
             return true;
@@ -86,6 +156,26 @@ impl ComplianceChecker {
         if !self.is_check_enabled("cve") {
             return (true, Vec::new());
         }
+
+        // Only shell out inside a Cargo project. `cargo audit` audits the
+        // manifest in the working directory, which for an installed binary is
+        // whatever the user happened to `cd` into — meaningless as a statement
+        // about this vault, and it spawned a `cargo` resolved from PATH (and,
+        // on Windows, from the current directory) in a location the user may
+        // not control. No manifest, no subprocess.
+        if !std::path::Path::new("Cargo.toml").exists() {
+            return (
+                false,
+                vec![
+                    "no Cargo.toml in the working directory, so there was nothing to \
+                     audit; dependencies were not scanned. Note that `cargo audit` \
+                     inspects the current directory's project, not the installed \
+                     binary's own dependency tree — that is fixed at build time"
+                        .to_string(),
+                ],
+            );
+        }
+
         // Attempt to run cargo-audit for real CVE scanning
         match std::process::Command::new("cargo")
             .args(["audit", "--json"])
@@ -124,15 +214,50 @@ impl ComplianceChecker {
                 (true, Vec::new())
             }
             _ => {
-                // cargo-audit not installed or not runnable — report as advisory
+                // cargo-audit could not run, so nothing is known about the
+                // dependency tree. This used to return `true` — a pass for a
+                // scan that never happened, and the common case for an
+                // installed binary, where there is no Cargo.toml in the
+                // working directory to audit.
                 (
-                    true,
+                    false,
                     vec![
-                        "cargo-audit not available; install with: cargo install cargo-audit"
+                        "cargo-audit could not be run, so dependencies were not scanned; \
+                         install with: cargo install cargo-audit"
                             .to_string(),
                     ],
                 )
             }
+        }
+    }
+
+    /// Whether `check_cve` was able to scan at all.
+    ///
+    /// Separates "scanned, found nothing" from "could not scan", which the
+    /// `(bool, Vec<String>)` return cannot express on its own.
+    fn cve_outcome(&self) -> CheckOutcome {
+        if !self.is_check_enabled("cve") {
+            return CheckOutcome::NotVerified {
+                reason: "CVE checking is disabled in this configuration".to_string(),
+            };
+        }
+        match self.check_cve() {
+            (true, _) => CheckOutcome::Verified {
+                detail: "cargo-audit reported no known vulnerabilities in the dependency tree"
+                    .to_string(),
+            },
+            (false, findings)
+                if findings
+                    .iter()
+                    .any(|f| f.contains("could not be run") || f.contains("nothing to audit")) =>
+            {
+                CheckOutcome::NotVerified {
+                    reason: findings.join("; "),
+                }
+            }
+            (false, findings) => CheckOutcome::Failed {
+                detail: findings.join("; "),
+            },
         }
     }
 
@@ -204,12 +329,47 @@ impl ComplianceChecker {
             }
         }
 
+        let cve_outcome = self.cve_outcome();
+        let cmmc_level = self.check_cmmc();
+
+        let outcomes = vec![
+            (
+                "FIPS 140-3".to_string(),
+                CheckOutcome::AssertedByDesign {
+                    detail: "AES-256-GCM and SHA-256 are FIPS-approved algorithms, but the \
+                             implementations are not CMVP-validated and Argon2id is not a \
+                             FIPS-approved KDF. This software is not FIPS 140-3 validated."
+                        .to_string(),
+                },
+            ),
+            ("CVE scan".to_string(), cve_outcome),
+            (
+                "MITRE ATT&CK".to_string(),
+                CheckOutcome::AssertedByDesign {
+                    detail: "Design-level mitigations for T1552, T1486, T1078 and T1005. \
+                             Not a runtime assessment and not a penetration test."
+                        .to_string(),
+                },
+            ),
+            (
+                "CMMC 2.0".to_string(),
+                CheckOutcome::AssertedByDesign {
+                    detail: format!(
+                        "Level {cmmc_level} control families (AC, AU, IA, SC) have supporting \
+                         features. Certification is granted by a C3PAO assessment of an \
+                         organisation, not by this tool."
+                    ),
+                },
+            ),
+        ];
+
         Ok(ComplianceStatus {
             fips_140_3: fips,
             cve_scan_passed: cve_passed,
             mitre_attack_aligned: self.check_mitre_attack(),
-            cmmc_level: self.check_cmmc(),
+            cmmc_level,
             violations,
+            outcomes,
         })
     }
 }
@@ -230,9 +390,101 @@ mod tests {
         let status = checker.run_all_checks().unwrap();
 
         assert!(status.fips_140_3);
-        assert!(status.cve_scan_passed);
         assert!(status.mitre_attack_aligned);
         assert_eq!(status.cmmc_level, 2);
+        // `cve_scan_passed` is deliberately not asserted: whether cargo-audit
+        // is installed is a property of the machine running the tests, not of
+        // this crate. `test_cve_outcome_distinguishes_unscannable_from_clean`
+        // covers the meaningful part.
+    }
+
+    /// The three design-level checks must not claim to have been verified.
+    ///
+    /// They return constants — that is defensible, because no program can
+    /// verify its own certification status — but reporting them as "PASS" made
+    /// `aim compliance` usable as CMMC evidence it cannot support.
+    #[test]
+    fn test_design_level_checks_are_not_reported_as_verified() {
+        let status = ComplianceChecker::new().run_all_checks().unwrap();
+
+        for name in ["FIPS 140-3", "MITRE ATT&CK", "CMMC 2.0"] {
+            let (_, outcome) = status
+                .outcomes
+                .iter()
+                .find(|(n, _)| n == name)
+                .unwrap_or_else(|| panic!("{name} missing from outcomes"));
+
+            assert!(
+                matches!(outcome, CheckOutcome::AssertedByDesign { .. }),
+                "{name} must be reported as asserted-by-design, got {outcome:?}"
+            );
+            assert!(
+                !matches!(outcome, CheckOutcome::Verified { .. }),
+                "{name} cannot be verified at runtime"
+            );
+        }
+    }
+
+    /// The FIPS text must not claim validation the software does not have.
+    #[test]
+    fn test_fips_outcome_states_it_is_not_validated() {
+        let status = ComplianceChecker::new().run_all_checks().unwrap();
+        let (_, fips) = status
+            .outcomes
+            .iter()
+            .find(|(n, _)| n == "FIPS 140-3")
+            .unwrap();
+
+        let detail = fips.detail();
+        assert!(
+            detail.contains("not CMVP-validated") || detail.contains("not FIPS 140-3 validated"),
+            "FIPS detail must disclaim validation, got: {detail}"
+        );
+        // Argon2 is not on the FIPS-approved KDF list; saying so is the point.
+        assert!(
+            detail.contains("Argon2id is not a FIPS-approved KDF"),
+            "FIPS detail must disclose the KDF gap, got: {detail}"
+        );
+    }
+
+    /// "Could not scan" must never be reported as a pass.
+    #[test]
+    fn test_cve_outcome_distinguishes_unscannable_from_clean() {
+        let mut checker = ComplianceChecker::new();
+
+        // Disabled is "nothing was checked", not "everything is fine".
+        checker.set_check_enabled("cve", false);
+        assert!(matches!(
+            checker.cve_outcome(),
+            CheckOutcome::NotVerified { .. }
+        ));
+
+        // Whatever this machine reports, an unscannable result must not be
+        // Verified, and a clean result must not be Failed.
+        checker.set_check_enabled("cve", true);
+        let outcome = checker.cve_outcome();
+        match &outcome {
+            CheckOutcome::Verified { .. } | CheckOutcome::Failed { .. } => {
+                let (passed, _) = checker.check_cve();
+                assert_eq!(passed, matches!(outcome, CheckOutcome::Verified { .. }));
+            }
+            CheckOutcome::NotVerified { reason } => {
+                assert!(reason.contains("cargo-audit"), "got: {reason}");
+            }
+            CheckOutcome::AssertedByDesign { .. } => {
+                panic!("a CVE scan is either run or not; it is never by design")
+            }
+        }
+    }
+
+    /// Only a real failure blocks a gate. "Not verified" is loud but does not
+    /// pretend to be a failure, and "by design" must never block.
+    #[test]
+    fn test_only_failures_are_blocking() {
+        assert!(CheckOutcome::Failed { detail: "x".into() }.is_blocking());
+        assert!(!CheckOutcome::NotVerified { reason: "x".into() }.is_blocking());
+        assert!(!CheckOutcome::AssertedByDesign { detail: "x".into() }.is_blocking());
+        assert!(!CheckOutcome::Verified { detail: "x".into() }.is_blocking());
     }
 
     #[test]
@@ -245,7 +497,10 @@ mod tests {
 
     #[test]
     fn test_check_disabled_cve() {
-        // Covers line 94-96 — check_cve disabled path
+        // A disabled check short-circuits to (true, []) so it raises no
+        // violations — but `cve_outcome` reports it as NotVerified rather
+        // than as a pass. See
+        // `test_cve_outcome_distinguishes_unscannable_from_clean`.
         let mut checker = ComplianceChecker::new();
         checker.set_check_enabled("cve", false);
         let (passed, cves) = checker.check_cve();
@@ -343,6 +598,7 @@ mod tests {
             mitre_attack_aligned: true,
             cmmc_level: 2,
             violations: vec![],
+            outcomes: Vec::new(),
         };
         let json = serde_json::to_string(&status).unwrap();
         let d: ComplianceStatus = serde_json::from_str(&json).unwrap();
@@ -374,6 +630,12 @@ mod tests {
                     remediation: Some("Update dep".to_string()),
                 },
             ],
+            outcomes: vec![(
+                "CVE scan".to_string(),
+                CheckOutcome::Failed {
+                    detail: "CVE-2024-1234".to_string(),
+                },
+            )],
         };
         let json = serde_json::to_string(&status).unwrap();
         let d: ComplianceStatus = serde_json::from_str(&json).unwrap();
@@ -470,6 +732,7 @@ mod tests {
                 description: "CVE-2024-9999".to_string(),
                 remediation: Some("upgrade".to_string()),
             }],
+            outcomes: Vec::new(),
         };
         let cloned = status.clone();
         assert_eq!(cloned.violations.len(), 1);

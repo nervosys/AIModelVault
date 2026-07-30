@@ -145,18 +145,20 @@ pub fn handle_versions(name: String, config: VaultConfig, use_sqlite: bool) -> R
     let versions = vault.list_versions(&name);
 
     if versions.is_empty() {
-        println!("No versions found for model '{}'", name);
-    } else {
-        println!("Versions of '{}':", name);
-        for v in versions {
-            println!(
-                "  v{} - {} - {} bytes ({})",
-                v.version,
-                v.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
-                v.size_bytes,
-                v.format
-            );
-        }
+        // A model with no versions is not in this vault. Printing and exiting
+        // 0 told every script that the lookup succeeded.
+        return Err(VaultError::ModelNotFound(name));
+    }
+
+    println!("Versions of '{}':", name);
+    for v in versions {
+        println!(
+            "  v{} - {} - {} bytes ({})",
+            v.version,
+            v.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
+            v.size_bytes,
+            v.format
+        );
     }
     Ok(())
 }
@@ -171,18 +173,18 @@ pub fn handle_lineage(
     let lineage = vault.get_lineage(&name, version);
 
     if lineage.is_empty() {
-        println!("Version {} not found for model '{}'", version, name);
-    } else {
-        println!("Lineage for '{}' v{}:", name, version);
-        for (i, v) in lineage.iter().enumerate() {
-            println!(
-                "  {}v{} - {} - {}",
-                "  ".repeat(i),
-                v.version,
-                v.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
-                v.checkpoint_id
-            );
-        }
+        return Err(VaultError::VersionNotFound(version, name));
+    }
+
+    println!("Lineage for '{}' v{}:", name, version);
+    for (i, v) in lineage.iter().enumerate() {
+        println!(
+            "  {}v{} - {} - {}",
+            "  ".repeat(i),
+            v.version,
+            v.timestamp.format("%Y-%m-%d %H:%M:%S UTC"),
+            v.checkpoint_id
+        );
     }
     Ok(())
 }
@@ -246,43 +248,47 @@ pub fn handle_compliance() -> Result<()> {
     let status = checker.run_all_checks()?;
 
     println!("Compliance Status:");
-    println!(
-        "  FIPS 140-3: {}",
-        if status.fips_140_3 {
-            "✓ PASS"
-        } else {
-            "✗ FAIL"
-        }
-    );
-    println!(
-        "  CVE Scan: {}",
-        if status.cve_scan_passed {
-            "✓ PASS"
-        } else {
-            "✗ FAIL"
-        }
-    );
-    println!(
-        "  MITRE ATT&CK: {}",
-        if status.mitre_attack_aligned {
-            "✓ PASS"
-        } else {
-            "✗ FAIL"
-        }
-    );
-    println!("  CMMC Level: {}", status.cmmc_level);
+    for (name, outcome) in &status.outcomes {
+        println!("  {name}: {}", outcome.label());
+        println!("      {}", outcome.detail());
+    }
 
     if !status.violations.is_empty() {
         println!("\nViolations:");
-        for violation in status.violations {
+        for violation in &status.violations {
             println!(
                 "  [{:?}] {} - {}: {}",
                 violation.severity, violation.standard, violation.control, violation.description
             );
         }
-    } else {
-        println!("\n✓ No violations detected");
     }
+
+    println!(
+        "\nNote: only checks marked VERIFIED were tested by this run. \
+         BY DESIGN entries describe how the software is built and are not \
+         evidence of certification — FIPS 140-3 validation is issued by NIST's \
+         CMVP for a cryptographic module, and CMMC certification by a C3PAO \
+         assessment of an organisation. Neither is something this tool can grant."
+    );
+
+    let blocking: Vec<&String> = status
+        .outcomes
+        .iter()
+        .filter(|(_, o)| o.is_blocking())
+        .map(|(n, _)| n)
+        .collect();
+
+    if !blocking.is_empty() {
+        return Err(VaultError::ComplianceViolation(format!(
+            "compliance checks failed: {}",
+            blocking
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )));
+    }
+
     Ok(())
 }
 

@@ -229,13 +229,29 @@ aim compliance
 Running compliance checks...
 
 Compliance Status:
-  FIPS 140-3: ✓ PASS
-  CVE Scan: ✓ PASS
-  MITRE ATT&CK: ✓ PASS
-  CMMC Level: 2
-
-✓ No violations detected
+  FIPS 140-3: • BY DESIGN (not verified at runtime)
+      AES-256-GCM and SHA-256 are FIPS-approved algorithms, but the
+      implementations are not CMVP-validated and Argon2id is not a
+      FIPS-approved KDF. This software is not FIPS 140-3 validated.
+  CVE scan: ✓ VERIFIED
+      cargo-audit reported no known vulnerabilities in the dependency tree
+  MITRE ATT&CK: • BY DESIGN (not verified at runtime)
+      Design-level mitigations for T1552, T1486, T1078 and T1005.
+      Not a runtime assessment and not a penetration test.
+  CMMC 2.0: • BY DESIGN (not verified at runtime)
+      Level 2 control families (AC, AU, IA, SC) have supporting features.
+      Certification is granted by a C3PAO assessment of an organisation,
+      not by this tool.
 ```
+
+Only `VERIFIED` entries were tested by the run. `BY DESIGN` entries describe how
+the software is built and are **not** evidence of certification. `NOT VERIFIED`
+means the check could not run at all — for the CVE scan that happens when
+`cargo-audit` is not installed, which is the normal case for a binary installed
+via `cargo install`. It is reported as unverified rather than as a pass.
+
+The command exits non-zero (`8`, compliance violation) only on a *verified*
+failure — a CVE scan that actually ran and found something.
 
 ---
 
@@ -667,12 +683,26 @@ Use S3 or Azure instead
 
 ## Exit Codes
 
-- `0` - Success
-- `1` - General error
-- `2` - Authentication failed
-- `3` - Model not found
-- `4` - Permission denied
-- `5` - Integrity check failed
+| Code | Meaning | Typical cause |
+| --- | --- | --- |
+| `0` | Success | — |
+| `1` | General error | Crypto, I/O, serialization, compression, storage, audit-log failure |
+| `2` | Authentication failed | Wrong passphrase, or ciphertext that failed its authentication tag |
+| `3` | Not found | No such model, version, profile, registered vault, schedule, or document |
+| `4` | Permission denied | The OS refused access, or a security policy did |
+| `5` | Integrity check failed | `aim verify` / `aim validate` failed, or a checksum did not match |
+| `6` | Invalid input | Unusable argument value — including a mistyped subcommand or flag |
+| `7` | Configuration error | `--config` file missing, malformed, or invalid |
+| `8` | Compliance violation | `aim compliance` policy check failed |
+
+This is a stability contract: the mapping from category to code will not change,
+and new categories only ever get previously unused codes. It is implemented by
+`VaultError::exit_code` in [src/error.rs](https://github.com/nervosys/AIModelVault/blob/master/src/error.rs)
+and pinned by tests in that file plus `tests/cli_tests.rs`.
+
+Note that `6` covers usage errors. clap's own default for a bad command line is
+`2`, which would be indistinguishable from an authentication failure, so the CLI
+overrides it.
 
 ---
 
