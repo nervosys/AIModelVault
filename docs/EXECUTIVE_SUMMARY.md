@@ -9,12 +9,12 @@
 
 ## Executive Summary
 
-AI Model Vault is a **production-ready**, **FIPS 140-3 compliant** secure storage system for AI models with comprehensive features, extensive testing, and complete documentation. All critical systems are operational and ready for immediate deployment.
+AI Model Vault is a **production-ready**, **FIPS-approved algorithms** (not a CMVP-validated module) secure storage system for AI models with comprehensive features, extensive testing, and complete documentation. All critical systems are operational and ready for immediate deployment.
 
 ### Key Highlights
 - ✅ **148 tests passing** (100% success rate)
 - ✅ **23+ AI model formats** supported
-- ✅ **FIPS 140-3 compliant** security
+- ✅ **FIPS-approved algorithms** (not a CMVP-validated module) security
 - ✅ **5,000+ lines** of documentation
 - ✅ **8 model utilities** fully implemented
 - ✅ **Cloud storage** (S3, Azure, GCS)
@@ -72,8 +72,8 @@ AI Model Vault is a **production-ready**, **FIPS 140-3 compliant** secure storag
 - **Type-safe APIs** preventing misuse
 
 ### 2. Enterprise-Grade Security
-- **FIPS 140-3 compliant** cryptography (AES-256-GCM, Argon2id)
-- **CMMC 2.0 Level 2** certified (17 security controls)
+- **FIPS-approved algorithms** (not a CMVP-validated module) cryptography (AES-256-GCM, Argon2id)
+- **CMMC 2.0 Level 2** — supporting features for 17 controls; certification is granted to an organisation by a C3PAO
 - **MITRE ATT&CK** aligned defenses
 - **CVE scanning** automated
 - **Audit logging** for compliance

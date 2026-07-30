@@ -41,7 +41,10 @@
         "2": "Authentication failed",
         "3": "Not found",
         "4": "Permission denied",
-        "5": "Integrity check failed"
+        "5": "Integrity check failed",
+        "6": "Invalid input, including a mistyped subcommand or flag",
+        "7": "Configuration error",
+        "8": "Compliance violation"
       },
       "environment_variables": [
         {"name": "aimodelvault_CONFIG", "description": "Config directory override"},

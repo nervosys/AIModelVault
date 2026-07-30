@@ -263,7 +263,7 @@ By running all 5 examples, you'll understand:
 ✅ How to build RAG systems  
 ✅ How to integrate MCP tools  
 ✅ How to optimize performance  
-✅ How to ensure FIPS 140-3 compliance  
+✅ Which FIPS-approved algorithms are used, and why that is not FIPS 140-3 validation  
 
 **Time investment**: 30-40 minutes to run all examples  
 **Knowledge gain**: Complete understanding of AI Model Vault  

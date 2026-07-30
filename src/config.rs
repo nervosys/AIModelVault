@@ -111,7 +111,15 @@ pub struct ComplianceSettings {
 /// Telemetry and analytics settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelemetrySettings {
-    /// Whether telemetry is enabled (default: true)
+    /// Whether this config *permits* telemetry (default: true).
+    ///
+    /// This is a gate, not the switch. Setting it `false` disables telemetry
+    /// outright; leaving it `true` defers to `telemetry.yaml`, whose own
+    /// `enabled` defaults to **false**. A default install therefore sends
+    /// nothing — `aim` is opt-in, as the README states.
+    ///
+    /// The gate defaults open on purpose: flipping it to `false` would
+    /// override users who opted in via `telemetry.yaml`.
     pub enabled: bool,
     /// Anonymous device ID (auto-generated)
     #[serde(default = "default_device_id")]
@@ -426,9 +434,26 @@ mod tests {
     #[test]
     fn test_telemetry_settings_default() {
         // Covers line 126 — TelemetrySettings::default()
+        // This is the permission gate, which defaults open; the effective
+        // switch is `telemetry::TelemetryConfig::enabled`, asserted below.
         let ts = TelemetrySettings::default();
         assert!(ts.enabled);
         assert!(!ts.device_id.is_empty());
+    }
+
+    /// A default install must transmit nothing.
+    ///
+    /// Two structs are both called "telemetry enabled" with opposite defaults:
+    /// the gate here (open) and `telemetry::TelemetryConfig` (closed). Only
+    /// their combination is opt-in, so a well-meaning change to either could
+    /// silently start beaconing. This pins the property the README promises.
+    #[test]
+    fn test_telemetry_is_opt_in_by_default() {
+        let effective = crate::telemetry::TelemetryConfig::default();
+        assert!(
+            !effective.enabled,
+            "telemetry must be off by default — the README promises opt-in"
+        );
     }
 
     #[test]

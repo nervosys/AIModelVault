@@ -6,15 +6,15 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.89%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
-[![Security](https://img.shields.io/badge/security-FIPS%20140--3-green.svg)](SECURITY.md)
-[![CMMC](https://img.shields.io/badge/CMMC-2.0%20Level%202-green.svg)](docs/SECURITY_HARDENING.md)
-[![Tests](https://img.shields.io/badge/tests-2%2C131%2B%20passing-brightgreen.svg)](reports/)
+[![Security](https://img.shields.io/badge/crypto-AES--256--GCM%20%2B%20Argon2id-green.svg)](SECURITY.md)
+[![CMMC](https://img.shields.io/badge/CMMC%202.0%20L2-controls%20supported-blue.svg)](docs/SECURITY_HARDENING.md)
+[![Tests](https://img.shields.io/badge/tests-2%2C160%2B%20passing-brightgreen.svg)](reports/)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
 [![Clippy](https://img.shields.io/badge/clippy-clean-brightgreen.svg)](validate.ps1)
 [![Agent-ready](https://img.shields.io/badge/agent--ready-AGENTS.md-blueviolet.svg)](AGENTS.md)
 
-A production-ready, FIPS 140-3 compliant secure vault for storing and managing AI models. Every capability is exposed through **three parallel surfaces — CLI, REST/GraphQL, and MCP** — with a single source of truth (`aim introspect`) and self-describing manifests in [`.well-known/`](.well-known/). Built for autonomous agents, scriptable for CI, friendly for humans.
+A production-ready secure vault, built on FIPS-approved cryptographic algorithms, for storing and managing AI models. Every capability is exposed through **three parallel surfaces — CLI, REST/GraphQL, and MCP** — with a single source of truth (`aim introspect`) and self-describing manifests in [`.well-known/`](.well-known/). Built for autonomous agents, scriptable for CI, friendly for humans.
 
 ---
 
@@ -54,7 +54,7 @@ curl  http://host:8080/api/v1/...     # REST (see openapi.yaml)
 ### Stability contract for agents
 
 - **JSON output:** every read-style subcommand accepts `--format json`. Output schema versioned alongside the crate.
-- **Exit codes:** `0` success · `1` user error · `2` not found · `3` integrity / verification failure · `4` permission denied. Non-zero ⇒ failure, always.
+- **Exit codes:** `0` success · `1` general error · `2` authentication failed · `3` not found · `4` permission denied · `5` integrity / verification failure · `6` invalid input (including usage errors) · `7` configuration error · `8` compliance violation. Non-zero ⇒ failure, always. Enforced by [`VaultError::exit_code`](src/error.rs) and pinned by tests.
 - **Idempotent reads:** `list`, `get`, `search`, `versions`, `lineage`, `stats`, `compliance`, `introspect`, `*/show`, `*/list` are side-effect free.
 - **Destructive ops gated:** `delete`, `policy apply`, `gc`, `vault-import` accept `--dry-run` (where applicable) or require an explicit name argument.
 - **Self-describing errors:** error JSON includes `code`, `message`, and `hint`; never just a string.
@@ -82,12 +82,12 @@ Every one of the 29 features in [AGENTS.md](AGENTS.md) is reachable from **all t
 ## Why AI Model Vault?
 
 - **Agent-first** — three coequal surfaces (CLI / REST+GraphQL / MCP), one schema, self-describing via `introspect` and `.well-known/`
-- **Secure by default** — AES-256-GCM with Argon2id KDF, FIPS 140-3 / CMMC 2.0 L2 / MITRE ATT&CK aligned
+- **Secure by default** — AES-256-GCM with Argon2id KDF; aligned to CMMC 2.0 L2 and MITRE ATT&CK control families. Not a FIPS-validated module — see [Security & Compliance](#security--compliance)
 - **Format-agnostic** — auto-detect 23+ formats; convert natively between SafeTensors, PyTorch, and raw. Conversions that need a Python toolchain (→ ONNX, → TensorRT, → Core ML, → GGUF) return a runnable plan rather than a silently wrong file
 - **Provenance built-in** — SHA-256 checksums, HMAC signatures, blockchain audit trail, license & pickle scanning
 - **Operational** — version control, retention policies, garbage collection, multi-vault, profiles, plugins, scheduled backups
 - **Integrated** — REST + GraphQL APIs, 86 MCP tools, Python bindings, Ollama / LM Studio interop, HuggingFace / Ollama / URL pull
-- **Quality** — 2,088 Rust + 84 Python tests, 0 clippy warnings, fuzz targets, property-based tests, criterion benchmarks
+- **Quality** — 2,160+ Rust + 84 Python tests, 0 clippy warnings, fuzz targets, property-based tests, criterion benchmarks
 
 ---
 
@@ -393,10 +393,13 @@ Full guide: [docs/CLOUD_STORAGE.md](docs/CLOUD_STORAGE.md) · CLI: [docs/CLOUD_C
 
 | Standard         | Status                                        |
 | ---------------- | --------------------------------------------- |
-| **FIPS 140-3**   | Compliant — AES-256-GCM, SHA-256, Argon2id    |
-| **CMMC 2.0 L2**  | 17 controls implemented (AC, AU, IA, SC)      |
-| **MITRE ATT&CK** | Mitigates T1552, T1486, T1078, T1005          |
+| **FIPS 140-3**   | **Not validated.** Uses FIPS-approved AES-256-GCM (FIPS 197 / SP 800-38D) and SHA-256 (FIPS 180-4). The RustCrypto implementations hold no CMVP certificate, and Argon2id is not a FIPS-approved KDF — SP 800-132 approves PBKDF2. A genuine FIPS obligation needs a validated module (AWS-LC-FIPS, BoringCrypto, or an HSM). |
+| **CMMC 2.0 L2**  | **Not certified.** Supporting features for 17 controls (AC, AU, IA, SC). CMMC certification is granted to an *organisation* by a C3PAO, never to a software product. |
+| **MITRE ATT&CK** | Design-level mitigations for T1552, T1486, T1078, T1005. Not a penetration test. |
 | **OWASP Top 10** | Reviewed; no known issues in first-party code |
+
+`aim compliance` distinguishes what it actually verified at runtime from what
+is asserted by design, and exits non-zero only on a real, verified failure.
 
 ### Dependency security
 

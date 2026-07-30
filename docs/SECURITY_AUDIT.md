@@ -310,7 +310,7 @@ src/rag.rs:96           similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap
 4. Monitor security advisories continuously
 
 ### Overall Assessment
-AI Model Vault demonstrates **strong security fundamentals** with FIPS 140-3 compliant cryptography and comprehensive security controls. The identified vulnerabilities are primarily in optional development dependencies and transitive dependencies, not in core security code.
+AI Model Vault demonstrates **strong security fundamentals** with cryptography built on FIPS-approved algorithms (not a CMVP-validated module) and comprehensive security controls. The identified vulnerabilities are primarily in optional development dependencies and transitive dependencies, not in core security code.
 
 **Risk Level**: LOW to MEDIUM  
 **Launch Readiness**: ✅ APPROVED (with minor updates)

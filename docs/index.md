@@ -6,7 +6,7 @@
 
 ## What is AI Model Vault?
 
-AI Model Vault (`aim`) is a production-ready, FIPS 140-3 compliant encrypted storage system for AI/ML models. It provides:
+AI Model Vault (`aim`) is a production-ready, FIPS-approved-algorithm encrypted storage system for AI/ML models. It provides:
 
 - **Encrypted Storage** — AES-256-GCM encryption with Argon2id key derivation
 - **Version Control** — Sequential versioning with parent lineage trees and instant rollback

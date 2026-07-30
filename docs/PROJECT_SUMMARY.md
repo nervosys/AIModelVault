@@ -9,7 +9,7 @@ A universal, cross-platform, XDG-compliant secure vault for AI model storage and
 ## 🎯 What Has Been Built
 
 ### Core Features ✅
-- ✅ **FIPS 140-3 Compliant Cryptography** - AES-256-GCM, Argon2id, SHA-256
+- ✅ **FIPS-approved cryptographic algorithms** (not CMVP-validated) - AES-256-GCM, Argon2id, SHA-256
 - ✅ **Version Control System** - Complete checkpoint history with lineage tracking
 - ✅ **Multi-Format Support** - PyTorch, TensorFlow, ONNX, Safetensors, HDF5, NumPy
 - ✅ **Smart Compression** - Gzip/LZMA with configurable levels

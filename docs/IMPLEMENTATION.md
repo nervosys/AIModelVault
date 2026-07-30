@@ -9,7 +9,7 @@
 ### ✅ Completed Core Features
 
 1. **Cryptography Module** (`src/crypto/`)
-   - FIPS 140-3 compliant AES-256-GCM encryption
+   - AES-256-GCM encryption (a FIPS-approved algorithm; the implementation is not CMVP-validated)
    - Argon2id key derivation function
    - SHA-256 integrity verification
    - Compression support (gzip, lzma, zlib)

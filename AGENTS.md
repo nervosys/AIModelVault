@@ -52,7 +52,7 @@ passphrase. See [docs/KMS.md](docs/KMS.md) for the URI table and backend setup.
 | Guarantee         | Detail                                                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | JSON output       | Every read subcommand accepts `--format json`. Schemas evolve with semver; breaking changes bump the major version of `ai-model-vault`. |
-| Exit codes        | `0` success · `1` user error · `2` not found · `3` integrity / verification failure · `4` permission denied                             |
+| Exit codes        | `0` ok · `1` general · `2` auth failed · `3` not found · `4` permission denied · `5` integrity · `6` invalid input · `7` config · `8` compliance |
 | Idempotent reads  | `list`, `get`, `search`, `versions`, `lineage`, `stats`, `compliance`, `introspect`, every `*/show` and `*/list` are side-effect free   |
 | Destructive gates | `delete`, `policy apply`, `gc`, `vault-import` either require explicit names or accept `--dry-run`                                      |
 | Error envelope    | Errors emit JSON `{ "code": "...", "message": "...", "hint": "..." }` on stderr; never bare strings                                     |
@@ -67,7 +67,7 @@ passphrase. See [docs/KMS.md](docs/KMS.md) for the URI table and backend setup.
 | **Name**       | AI Model Vault                           |
 | **Binary**     | `aim`                                    |
 | **Crate**      | `ai-model-vault`                         |
-| **Version**    | 2.0.0                                    |
+| **Version**    | 3.0.0                                    |
 | **Language**   | Rust (edition 2021, MSRV 1.89)           |
 | **License**    | AGPL-3.0-or-later                        |
 | **Repository** | https://github.com/nervosys/AIModelVault |
@@ -412,11 +412,15 @@ src/
 
 ## Compliance
 
-| Standard         | Status                                     |
-| ---------------- | ------------------------------------------ |
-| FIPS 140-3       | Compliant (AES-256-GCM, SHA-256, Argon2id) |
-| CMMC 2.0 Level 2 | Certified (17 controls: AC, AU, IA, SC)    |
-| MITRE ATT&CK     | Mitigated (T1552, T1486, T1078, T1005)     |
+| Standard         | Status                                                                          |
+| ---------------- | ------------------------------------------------------------------------------- |
+| FIPS 140-3       | **Not validated.** Uses FIPS-approved AES-256-GCM and SHA-256, but the RustCrypto implementations hold no CMVP certificate, and Argon2id is not a FIPS-approved KDF |
+| CMMC 2.0 Level 2 | **Not certified.** Supporting features for 17 controls (AC, AU, IA, SC); certification is granted to an organisation by a C3PAO |
+| MITRE ATT&CK     | Design-level mitigations for T1552, T1486, T1078, T1005 (not a pentest)          |
+
+Certification claims are deliberately absent: no software product can grant
+itself FIPS 140-3 validation or CMMC certification. `aim compliance` reports
+which checks it actually verified and which are design assertions.
 
 ## Agent Interaction Patterns
 

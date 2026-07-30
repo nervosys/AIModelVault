@@ -205,7 +205,7 @@
         "@id": "aimv:CryptoModule",
         "@type": "rdfs:Class",
         "rdfs:label": "CryptoModule",
-        "rdfs:comment": "FIPS 140-3 compliant cryptographic layer providing authenticated encryption, key derivation, integrity hashing, and secure memory management.",
+        "rdfs:comment": "Cryptographic layer built on FIPS-approved algorithms (AES-256-GCM, SHA-256) but not a CMVP-validated module; Argon2id is not a FIPS-approved KDF. Provides authenticated encryption, key derivation, integrity hashing, and secure memory management.",
         "aimv:algorithms": {
           "encryption": {"name": "AES-256-GCM", "nonce_size": 12, "tag_size": 16, "key_size": 32},
           "key_derivation": {"name": "Argon2id", "memory_cost_bytes": 67108864, "iterations": 3, "salt_size": 32, "output_size": 32},
@@ -1201,7 +1201,7 @@
         "severity": "high",
         "causes": ["disk full", "permission denied", "network timeout", "bucket not found", "file not found"],
         "recovery": ["free disk space", "fix permissions (700/600)", "check network", "verify cloud credentials"],
-        "exit_code": 2
+        "exit_code": 1
       },
       {
         "@id": "aimv:VersionError",
@@ -1210,7 +1210,7 @@
         "severity": "medium",
         "causes": ["model not found", "version not found", "corrupt versions.json", "concurrent access conflict"],
         "recovery": ["check model name spelling", "list available versions", "rebuild version index"],
-        "exit_code": 3
+        "exit_code": 1
       },
       {
         "@id": "aimv:FormatError",
@@ -1219,7 +1219,7 @@
         "severity": "medium",
         "causes": ["unsupported format", "corrupted model file", "no conversion path", "quantization not supported for target"],
         "recovery": ["specify format explicitly with -f", "check supported formats (aim list-conversions)", "use intermediate format"],
-        "exit_code": 4
+        "exit_code": 6
       },
       {
         "@id": "aimv:ComplianceError",
@@ -1228,7 +1228,7 @@
         "severity": "high",
         "causes": ["weak encryption config", "missing audit log", "permission too broad", "key derivation below minimum"],
         "recovery": ["run aim compliance --verbose for details", "reconfigure vault", "fix file permissions"],
-        "exit_code": 5
+        "exit_code": 8
       },
       {
         "@id": "aimv:IntegrityError",
@@ -1237,7 +1237,7 @@
         "severity": "critical",
         "causes": ["bit rot", "incomplete write", "malicious modification", "disk hardware failure"],
         "recovery": ["restore from backup", "re-store model from original source", "check disk health"],
-        "exit_code": 6
+        "exit_code": 5
       },
       {
         "@id": "aimv:ConfigError",
@@ -1255,9 +1255,49 @@
         "severity": "high",
         "causes": ["wrong passphrase", "expired JWT token", "invalid cloud credentials", "revoked access key"],
         "recovery": ["re-enter passphrase", "refresh JWT token", "update cloud credentials in environment"],
-        "exit_code": 8
+        "exit_code": 2
+      },
+      {
+        "@id": "aimv:NotFoundError",
+        "rdfs:label": "NotFoundError",
+        "description": "A named resource does not exist — model, version, profile, registered vault, backup schedule, or document",
+        "severity": "low",
+        "causes": ["misspelled name", "wrong vault active", "resource already deleted", "version never stored"],
+        "recovery": ["aim list to enumerate models", "aim versions <name> to enumerate versions", "aim vaults list to check the active vault"],
+        "exit_code": 3
+      },
+      {
+        "@id": "aimv:PermissionError",
+        "rdfs:label": "PermissionError",
+        "description": "Access refused by the operating system or by a vault security policy",
+        "severity": "high",
+        "causes": ["file mode too restrictive for the current user", "directory owned by another account", "ACL denies the operation", "security policy violation"],
+        "recovery": ["fix file permissions (700 for directories, 600 for files)", "run as the owning user", "aim acl to review access control"],
+        "exit_code": 4
+      },
+      {
+        "@id": "aimv:InvalidInputError",
+        "rdfs:label": "InvalidInputError",
+        "description": "An argument value this command cannot act on, including a mistyped subcommand or flag",
+        "severity": "low",
+        "causes": ["unknown --format value", "unrecognized subcommand", "unsupported model format", "out-of-range numeric argument"],
+        "recovery": ["aim introspect --format json for the full command schema", "aim <command> --help", "aim list-conversions for supported formats"],
+        "exit_code": 6
       }
-    ]
+    ],
+
+    "@exitCodeContract": {
+      "@comment": "Stability contract. Every code below is produced by VaultError::exit_code in src/error.rs and pinned by tests. The mapping from category to code will not change; new categories only ever receive previously unused codes.",
+      "0": "Success",
+      "1": "General error",
+      "2": "Authentication failed",
+      "3": "Not found",
+      "4": "Permission denied",
+      "5": "Integrity check failed",
+      "6": "Invalid input, including a mistyped subcommand or flag",
+      "7": "Configuration error",
+      "8": "Compliance violation"
+    }
   },
 
   "aimv:causalModels": {
