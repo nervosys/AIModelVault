@@ -8596,9 +8596,11 @@ mod deep_coverage_tests {
             let checker = ComplianceChecker::new();
             let report = checker.run_all_checks().unwrap();
             assert!(report.fips_140_3);
-            assert!(report.cve_scan_passed);
             assert!(report.mitre_attack_aligned);
-            // violations should be empty for a clean system
+            // `cve_scan_passed` is deliberately not asserted: it depends on
+            // whether cargo-audit is installed on the machine running the
+            // tests, which is not a property of this crate. A scan that could
+            // not run is reported as not-verified rather than as a pass.
         }
     }
 }
@@ -11294,9 +11296,16 @@ mod full_coverage_tests {
 
         #[test]
         fn check_cve_returns_tuple() {
+            // Whether cargo-audit is installed is a property of the machine,
+            // not of this crate, so assert the invariant instead: a pass means
+            // a scan ran and found nothing, and a non-pass always says why.
             let checker = ComplianceChecker::new();
-            let (passed, _cves) = checker.check_cve();
-            assert!(passed);
+            let (passed, findings) = checker.check_cve();
+            if passed {
+                assert!(findings.is_empty());
+            } else {
+                assert!(!findings.is_empty());
+            }
         }
 
         #[test]
@@ -11339,9 +11348,10 @@ mod full_coverage_tests {
             let checker = ComplianceChecker::new();
             let status = checker.run_all_checks().unwrap();
             assert!(status.fips_140_3);
-            assert!(status.cve_scan_passed);
             assert!(status.mitre_attack_aligned);
             assert_eq!(status.cmmc_level, 2);
+            // `cve_scan_passed` depends on cargo-audit being installed; see
+            // `check_cve_returns_tuple`.
         }
 
         #[test]

@@ -336,6 +336,21 @@ jobs:
     - name: Run benchmarks
       run: cargo bench --features "full,graphql" -- --output-format bencher | tee bench-output.txt
 
+    # History lives in a cached JSON file rather than a `gh-pages` branch.
+    # `benchmark-data-dir-path` makes the action fetch `gh-pages` to read and
+    # write its data — and this repository has no such branch, so the step
+    # failed every run with "couldn't find remote ref gh-pages". The
+    # benchmarks ran and their results were discarded. `auto-push: false`
+    # alone does not help: it stops the push, not the fetch.
+    #
+    # Creating a published branch is a repository decision, not a build fix,
+    # so this uses the action's documented alternative instead.
+    - name: Restore benchmark history
+      uses: actions/cache@v4
+      with:
+        path: ./cache
+        key: ${{ runner.os }}-benchmark-history
+
     - name: Store benchmark results
       uses: benchmark-action/github-action-benchmark@v1
       with:
@@ -343,18 +358,10 @@ jobs:
         tool: cargo
         output-file-path: bench-output.txt
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        # `auto-push: true` pushes history to a `gh-pages` branch, which this
-        # repository does not have — the step failed every run with
-        # "couldn't find remote ref gh-pages", so the benchmarks ran and their
-        # results were thrown away. Benchmarks still execute and regressions
-        # are still detected within a run; only cross-run history is off.
-        # To turn history back on, create an orphan `gh-pages` branch and set
-        # this to true.
-        auto-push: false
+        external-data-json-path: ./cache/benchmark-data.json
         alert-threshold: "150%"
         comment-on-alert: true
         fail-on-alert: false
-        benchmark-data-dir-path: dev/bench
 
   mkdocs:
     name: MkDocs Build
