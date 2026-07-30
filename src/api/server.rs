@@ -209,15 +209,41 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .layer(TraceLayer::new_for_http())
 }
 
-/// Start the API server.
+/// Minimum HS256 signing key length.
 ///
-/// This is a blocking call that runs until the process is terminated.
-pub async fn serve(vault_config: VaultConfig, api_config: ApiConfig) -> Result<()> {
-    if api_config.jwt_secret.is_empty() {
+/// RFC 7518 §3.2: an HMAC key "of the same size as the hash output (for
+/// instance, 256 bits for HS256) or larger MUST be used".
+pub const MIN_JWT_SECRET_BYTES: usize = 32;
+
+/// Reject a JWT signing secret too weak for HS256.
+///
+/// Tokens are signed with HS256, so anyone holding a single issued token can
+/// brute-force a short secret offline and then mint tokens for any subject.
+/// Only emptiness was checked before, which accepted `--jwt-secret hunter2`.
+pub fn validate_jwt_secret(secret: &str) -> Result<()> {
+    if secret.is_empty() {
         return Err(VaultError::ConfigError(
             "JWT secret must not be empty. Set --jwt-secret or AIM_JWT_SECRET.".into(),
         ));
     }
+
+    if secret.len() < MIN_JWT_SECRET_BYTES {
+        return Err(VaultError::ConfigError(format!(
+            "JWT secret is {} bytes; HS256 requires at least {MIN_JWT_SECRET_BYTES} \
+             (RFC 7518 §3.2). A shorter secret can be recovered offline from a \
+             single issued token. Generate one with: openssl rand -base64 48",
+            secret.len(),
+        )));
+    }
+
+    Ok(())
+}
+
+/// Start the API server.
+///
+/// This is a blocking call that runs until the process is terminated.
+pub async fn serve(vault_config: VaultConfig, api_config: ApiConfig) -> Result<()> {
+    validate_jwt_secret(&api_config.jwt_secret)?;
 
     let vault = Vault::new(Some(vault_config))?;
     let state = Arc::new(AppState {
@@ -321,5 +347,44 @@ mod tests {
         limiter.prune();
         let state = limiter.state.lock().unwrap();
         assert_eq!(state.len(), 1); // still active
+    }
+    /// A short JWT secret must be refused at startup.
+    ///
+    /// Tokens are HS256; RFC 7518 §3.2 requires a key at least as large as
+    /// the hash output. Only emptiness used to be checked, so
+    /// `--jwt-secret hunter2` started a server whose secret could be
+    /// recovered offline from one issued token.
+    #[test]
+    fn test_weak_jwt_secrets_are_rejected() {
+        for weak in [
+            "",
+            "hunter2",
+            "secret",
+            "0123456789abcdef0123456789abcde", // 31 bytes — one short
+        ] {
+            let err = validate_jwt_secret(weak).expect_err(&format!("{weak:?} must be refused"));
+            assert!(
+                matches!(err, VaultError::ConfigError(_)),
+                "expected ConfigError for {weak:?}, got {err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_sufficient_jwt_secret_is_accepted() {
+        let exact = "0123456789abcdef0123456789abcdef";
+        assert_eq!(exact.len(), MIN_JWT_SECRET_BYTES);
+        assert!(validate_jwt_secret(exact).is_ok());
+
+        let longer = "0123456789abcdef0123456789abcdef0123456789";
+        assert!(validate_jwt_secret(longer).is_ok());
+    }
+
+    /// The message must tell the operator what to do about it.
+    #[test]
+    fn test_weak_secret_error_is_actionable() {
+        let err = validate_jwt_secret("short").unwrap_err().to_string();
+        assert!(err.contains("RFC 7518"), "got: {err}");
+        assert!(err.contains("openssl rand"), "got: {err}");
     }
 }
