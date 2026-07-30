@@ -1,4 +1,6 @@
-# AI Model Vault
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nervosys/AIModelVault/master/media/banner.png" alt="AI Model Vault — Secure Deployment Hub" width="900">
+</p>
 
 > Universal cross-platform encrypted vault for AI/ML model storage, versioning, conversion, and lifecycle management — **agent-first by design**, military-grade security, 23+ formats, 29 production features.
 

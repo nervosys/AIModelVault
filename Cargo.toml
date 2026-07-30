@@ -25,6 +25,7 @@ exclude = [
     "fuzz/",
     ".github/",
     "videos/",
+    "media/",
     "htmlcov/",
     ".venv/",
     ".cache/",
