@@ -62,6 +62,36 @@ spec:
                   key: jwt-secret
             - name: AIM_TOKEN_EXPIRY
               value: "{{ .Values.api.tokenExpiry }}"
+            {{- with .Values.api.revocationStore }}
+            - name: AIM_REVOCATION_STORE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.telemetry.enabled }}
+            - name: AIM_TELEMETRY_ENABLED
+              value: "true"
+            {{- with .Values.telemetry.otlp.endpoint }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ . | quote }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: {{ $.Values.telemetry.otlp.protocol | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ $.Values.telemetry.otlp.serviceName | quote }}
+            {{- end }}
+            {{- with .Values.telemetry.otlp.headersSecret.existingSecret }}
+            # Credential comes from a Secret created out of band, never from
+            # values.yaml -- `helm get values` prints that back in clear text.
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . | quote }}
+                  key: {{ $.Values.telemetry.otlp.headersSecret.key | quote }}
+            {{- end }}
+            {{- else }}
+            # Telemetry off: state it explicitly rather than relying on the
+            # binary's default, so `kubectl describe pod` shows the answer.
+            - name: AIM_TELEMETRY_DISABLED
+              value: "1"
             {{- end }}
           ports:
             - name: http

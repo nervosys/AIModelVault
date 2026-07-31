@@ -43,6 +43,41 @@ api:
   tokenExpiry: 3600
   corsPermissive: false
   noDashboard: false
+  # File the JWT revocation list persists to. Must be on a volume that
+  # outlives the pod, or revoked tokens are re-admitted on every restart.
+  revocationStore: "/data/revocations.json"
+
+# Telemetry, and its OTLP export.
+#
+# Scoped to this Deployment's containers -- it never touches the node
+# environment, so two releases in the same cluster can report to different
+# collectors and nothing else on the host inherits these settings.
+telemetry:
+  # Telemetry is opt-in and off by default. Setting an OTLP endpoint below
+  # does NOT turn it on; this must be true as well. Turning it on means this
+  # deployment reports usage to the collector you configure.
+  enabled: false
+
+  otlp:
+    # Standard OpenTelemetry variables. Leave endpoint empty to disable export.
+    endpoint: ""             # e.g. https://collector.example.com/otlp
+    protocol: "http/protobuf" # or http/json
+    serviceName: "ai-model-vault"
+
+    # The Authorization header is a credential and is NEVER set here --
+    # values.yaml is committed, templated into a ConfigMap-shaped object, and
+    # printed by `helm get values`.
+    #
+    # Create the Secret out of band and name it:
+    #
+    #   kubectl create secret generic aim-otlp \
+    #     --from-literal=headers='Authorization=Bearer <token>'
+    #
+    # then set existingSecret to its name. The value is injected as
+    # OTEL_EXPORTER_OTLP_HEADERS at container start.
+    headersSecret:
+      existingSecret: ""     # e.g. aim-otlp
+      key: headers
 
 persistence:
   data:

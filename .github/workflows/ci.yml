@@ -78,7 +78,7 @@ jobs:
       matrix:
         # `full,graphql` is covered by the Test Suite job. These are the
         # combinations it does NOT build — they regressed unnoticed before.
-        features: ["", "s3", "azure", "cloud", "api", "database", "python"]
+        features: ["", "s3", "azure", "cloud", "api", "database", "python", "otel"]
     steps:
     - uses: actions/checkout@v4
 
