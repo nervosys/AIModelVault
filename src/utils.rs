@@ -35,6 +35,68 @@ fn safe_archive_name(raw: &str) -> Result<String> {
     }
 }
 
+/// Largest single archive member `extract_tar` / `extract_zip` will decompress.
+///
+/// Both extractors buffer members in memory, so without a ceiling the process
+/// resident set is whatever the archive says it should be. A compressed member
+/// costs the attacker almost nothing to declare: a zip of a few hundred KiB of
+/// zeroes expands to gigabytes ("zip bomb"), and a tar header can claim any
+/// `u64` length at all. Refusing oversized members turns an out-of-memory kill
+/// — which takes down whatever else shares the process — into an error the
+/// caller can report.
+///
+/// 8 GiB clears the largest model files this crate handles by a wide margin.
+pub const MAX_ARCHIVE_MEMBER_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+
+/// Largest total uncompressed payload a single archive may expand to.
+///
+/// The per-member cap alone does not bound the whole: a million members each
+/// just under the limit still exhausts memory. This bounds the sum.
+pub const MAX_ARCHIVE_TOTAL_BYTES: u64 = 16 * 1024 * 1024 * 1024;
+
+/// Reject a member whose declared size already exceeds the per-member cap, or
+/// whose size would push the archive past the total cap.
+fn check_archive_budget(name: &str, declared: u64, running_total: u64) -> Result<()> {
+    if declared > MAX_ARCHIVE_MEMBER_BYTES {
+        return Err(VaultError::InvalidInput(format!(
+            "Refusing to extract archive member {name:?}: declared size {declared} bytes \
+             exceeds the {MAX_ARCHIVE_MEMBER_BYTES}-byte per-member limit"
+        )));
+    }
+    if running_total.saturating_add(declared) > MAX_ARCHIVE_TOTAL_BYTES {
+        return Err(VaultError::InvalidInput(format!(
+            "Refusing to extract archive member {name:?}: archive expands past the \
+             {MAX_ARCHIVE_TOTAL_BYTES}-byte total limit"
+        )));
+    }
+    Ok(())
+}
+
+/// Read at most `MAX_ARCHIVE_MEMBER_BYTES` from `reader`, erroring if there is
+/// more.
+///
+/// The declared size is only a claim. A tar header can understate the payload
+/// and a zip local header can lie outright, so the read itself is bounded too:
+/// take one byte more than the cap allows and treat a full buffer as proof the
+/// member overran.
+///
+/// `limit` is a parameter rather than the constant so tests can exercise the
+/// overrun path without materialising 8 GiB; callers always pass
+/// [`MAX_ARCHIVE_MEMBER_BYTES`].
+fn read_member_bounded<R: Read>(name: &str, reader: &mut R, limit: u64) -> Result<Vec<u8>> {
+    let mut data = Vec::new();
+    let read = reader.take(limit + 1).read_to_end(&mut data)?;
+
+    if read as u64 > limit {
+        return Err(VaultError::InvalidInput(format!(
+            "Refusing to extract archive member {name:?}: actual contents exceed the \
+             {limit}-byte per-member limit (the declared size understated it)"
+        )));
+    }
+
+    Ok(data)
+}
+
 /// Model archival utilities
 pub struct ModelArchive;
 
@@ -66,6 +128,7 @@ impl ModelArchive {
         let mut ar = tar::Archive::new(file);
 
         let mut models = Vec::new();
+        let mut total: u64 = 0;
 
         for entry in ar.entries()? {
             let mut entry = entry?;
@@ -76,8 +139,9 @@ impl ModelArchive {
             // matching the zip path.
             let name = safe_archive_name(&path.to_string_lossy())?;
 
-            let mut data = Vec::new();
-            entry.read_to_end(&mut data)?;
+            check_archive_budget(&name, entry.size(), total)?;
+            let data = read_member_bounded(&name, &mut entry, MAX_ARCHIVE_MEMBER_BYTES)?;
+            total = total.saturating_add(data.len() as u64);
 
             models.push((name, data));
         }
@@ -112,6 +176,7 @@ impl ModelArchive {
         let mut zip = zip::ZipArchive::new(file)?;
 
         let mut models = Vec::new();
+        let mut total: u64 = 0;
 
         for i in 0..zip.len() {
             let mut file = zip.by_index(i)?;
@@ -120,8 +185,9 @@ impl ModelArchive {
             // member aborts the extraction rather than leaving files behind.
             let name = safe_archive_name(file.name())?;
 
-            let mut data = Vec::new();
-            file.read_to_end(&mut data)?;
+            check_archive_budget(&name, file.size(), total)?;
+            let data = read_member_bounded(&name, &mut file, MAX_ARCHIVE_MEMBER_BYTES)?;
+            total = total.saturating_add(data.len() as u64);
 
             models.push((name, data));
         }
@@ -1111,5 +1177,76 @@ mod tests {
         let mut out = ModelArchive::extract_zip(&zip_path).unwrap();
         out.sort();
         assert_eq!(out, models);
+    }
+
+    #[test]
+    fn test_archive_budget_rejects_an_oversized_member() {
+        let err = check_archive_budget("bomb.bin", MAX_ARCHIVE_MEMBER_BYTES + 1, 0).unwrap_err();
+        assert!(
+            err.to_string().contains("per-member limit"),
+            "expected a per-member limit error, got: {err}"
+        );
+
+        // Exactly at the limit is allowed — the cap is inclusive.
+        check_archive_budget("big.bin", MAX_ARCHIVE_MEMBER_BYTES, 0).unwrap();
+    }
+
+    #[test]
+    fn test_archive_budget_rejects_many_members_that_are_each_legal() {
+        // Each member is under the per-member cap, so only the running total
+        // catches this one.
+        let member = MAX_ARCHIVE_MEMBER_BYTES;
+        let mut total: u64 = 0;
+        let mut rejected_at = None;
+
+        for i in 0..8 {
+            match check_archive_budget("chunk.bin", member, total) {
+                Ok(()) => total += member,
+                Err(err) => {
+                    assert!(
+                        err.to_string().contains("total limit"),
+                        "expected a total-limit error, got: {err}"
+                    );
+                    rejected_at = Some(i);
+                    break;
+                }
+            }
+        }
+
+        assert_eq!(
+            rejected_at,
+            Some(2),
+            "16 GiB of budget should admit exactly two 8 GiB members"
+        );
+    }
+
+    #[test]
+    fn test_archive_budget_does_not_overflow_on_a_u64_max_claim() {
+        // `running_total + declared` would wrap without the saturating add, and
+        // a wrapped sum compares as *under* the limit.
+        let err = check_archive_budget("liar.bin", u64::MAX, u64::MAX).unwrap_err();
+        assert!(err.to_string().contains("limit"), "got: {err}");
+    }
+
+    #[test]
+    fn test_read_member_bounded_rejects_contents_that_overrun_the_declared_size() {
+        // The declared size is only a claim; this is the backstop for a member
+        // whose header understates it.
+        let payload = vec![0u8; 64];
+
+        let mut reader = &payload[..];
+        let err = read_member_bounded("liar.bin", &mut reader, 16).unwrap_err();
+        assert!(
+            err.to_string().contains("understated"),
+            "expected an overrun error, got: {err}"
+        );
+
+        // A member that fits is returned whole, including one exactly at the
+        // limit — the +1 read must not be mistaken for an overrun.
+        let mut reader = &payload[..];
+        assert_eq!(
+            read_member_bounded("ok.bin", &mut reader, 64).unwrap(),
+            payload
+        );
     }
 }
