@@ -12,10 +12,19 @@
 //!
 //! ## Data Collected
 //!
-//! - **Events**: Commands run, features used, errors encountered
-//! - **Environment**: OS, architecture, version, feature flags
-//! - **Performance**: Operation durations (aggregated)
-//! - **Anonymous ID**: Random UUID generated on first run (not linked to user identity)
+//! Only if you opt in. As of this version the sole event that is ever emitted
+//! is [`TelemetryEvent::AppStart`], carrying:
+//!
+//! - **Environment**: version, OS, architecture, enabled feature flags
+//! - **Anonymous ID**: random UUID v4 generated on first run, and a per-run
+//!   session UUID. Neither is derived from anything about the machine or the
+//!   user, so neither can be correlated back to an identity.
+//!
+//! The other [`TelemetryEvent`] variants are defined and their `track_*`
+//! helpers are public, but nothing in this crate calls them — no command,
+//! model operation, conversion, API call, error or feature use is reported
+//! today. This section previously listed all of those as collected, which
+//! overstated it in the direction that matters for a privacy review.
 //!
 //! ## Data NOT Collected
 //!
@@ -24,6 +33,17 @@
 //! - File paths or model names
 //! - Personal information
 //! - IP addresses (anonymized by backend)
+//!
+//! ## Keeping that true
+//!
+//! Three fields are free-form strings and are the only way the guarantees
+//! above can be broken: [`TelemetryEvent::Error::context`],
+//! [`TelemetryEvent::ApiCall::endpoint`] and
+//! [`TelemetryEvent::FeatureUsed::detail`]. Error messages routinely contain
+//! file paths, and a real request path contains the model name, so wiring any
+//! of these to a formatted error or an unparameterised route would silently
+//! start collecting exactly what this module promises it does not. Pass
+//! constants and enum-like discriminants, never a formatted message.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -44,7 +64,11 @@ static TELEMETRY_DISABLED: AtomicBool = AtomicBool::new(false);
 /// Telemetry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelemetryConfig {
-    /// Whether telemetry is enabled (default: true)
+    /// Whether telemetry is enabled (default: **false**).
+    ///
+    /// This said "default: true" while `Default::default` set it to `false`.
+    /// The code was right and the comment was wrong, but it is the sort of
+    /// wrong that gets quoted in a privacy review.
     pub enabled: bool,
 
     /// Anonymous device ID (auto-generated UUID)
@@ -538,7 +562,11 @@ pub fn track_conversion(
     });
 }
 
-/// Track an API call
+/// Track an API call.
+///
+/// `endpoint` must be the *route template* (`/models/:name`), never the
+/// resolved path — a resolved path contains the model name, which this module
+/// documents as not collected.
 pub fn track_api_call(endpoint: &str, method: &str, status_code: u16, duration: Duration) {
     track(TelemetryEvent::ApiCall {
         endpoint: endpoint.to_string(),
@@ -548,7 +576,12 @@ pub fn track_api_call(endpoint: &str, method: &str, status_code: u16, duration: 
     });
 }
 
-/// Track an error
+/// Track an error.
+///
+/// `error_type` is a discriminant (`"integrity"`, `"auth"`), and `context`
+/// must be a constant. Never pass a formatted [`crate::VaultError`]: its
+/// messages embed file paths and model names, which this module documents as
+/// not collected.
 pub fn track_error(error_type: &str, context: Option<&str>) {
     track(TelemetryEvent::Error {
         error_type: error_type.to_string(),
@@ -556,7 +589,10 @@ pub fn track_error(error_type: &str, context: Option<&str>) {
     });
 }
 
-/// Track feature usage
+/// Track feature usage.
+///
+/// `detail` must be a constant, not user data — see the module-level note on
+/// keeping the "not collected" guarantees true.
 pub fn track_feature(feature: &str, detail: Option<&str>) {
     track(TelemetryEvent::FeatureUsed {
         feature: feature.to_string(),

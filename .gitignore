@@ -48,6 +48,17 @@ secrets/
 vault_data/
 .vault_config
 *.enc
+# `env/` above is the virtualenv directory and does not match these. A dotenv
+# file is the single most common way a credential reaches a public repository,
+# and nothing here covered it.
+.env
+.env.*
+!.env.example
+credentials.toml
+*.jks
+*.keystore
+id_rsa
+id_ed25519
 
 # OS
 .DS_Store
