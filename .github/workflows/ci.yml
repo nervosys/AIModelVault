@@ -370,6 +370,39 @@ jobs:
         comment-on-alert: true
         fail-on-alert: false
 
+  helm:
+    name: Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+
+    # Nothing validated the chart before, so a template that failed to parse
+    # would only be discovered at `helm install` time, by whoever was deploying.
+    - name: Lint chart
+      run: helm lint deploy/helm/ai-model-vault
+
+    # `lint` does not fail on a template that renders to invalid YAML, so
+    # render it too and parse the result. `lookup` returns nothing without a
+    # cluster, which is exactly the first-install path this needs to cover.
+    - name: Render chart and check the output parses as YAML
+      run: |
+        helm template test-release deploy/helm/ai-model-vault > /tmp/rendered.yaml
+        python3 -c "import sys, yaml; list(yaml.safe_load_all(open('/tmp/rendered.yaml')))"
+
+    # The generated JWT secret must be carried forward across upgrades rather
+    # than regenerated — a fresh key silently invalidates every issued token.
+    # Rendering twice with an explicit secret must produce identical output.
+    - name: Check an explicit jwtSecret renders deterministically
+      run: |
+        helm template test-release deploy/helm/ai-model-vault \
+          --set api.jwtSecret=fixed-secret-for-this-check > /tmp/a.yaml
+        helm template test-release deploy/helm/ai-model-vault \
+          --set api.jwtSecret=fixed-secret-for-this-check > /tmp/b.yaml
+        diff /tmp/a.yaml /tmp/b.yaml
+
   mkdocs:
     name: MkDocs Build
     runs-on: ubuntu-latest
