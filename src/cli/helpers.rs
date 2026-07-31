@@ -2,6 +2,7 @@
 
 use ai_model_vault::{kms, Result, Vault, VaultBuilder, VaultConfig};
 use std::io::{self, BufRead, IsTerminal, Write};
+use zeroize::Zeroize;
 
 /// Environment variable holding the vault passphrase for unattended use.
 ///
@@ -18,11 +19,23 @@ pub const PASSPHRASE_ENV: &str = "aimodelvault_PASSPHRASE";
 ///
 /// Steps 1 and 2 make every passphrase-gated command usable from CI and from
 /// agents; step 3 preserves the interactive behaviour for humans.
+///
+/// Every intermediate buffer that holds the plaintext is zeroized before it is
+/// dropped. Each of the three paths used to leave a copy behind: `kms::resolve`
+/// returns an owned `String`, `read_line` fills one, and `trim_end_matches` +
+/// `to_vec` copies out of it — so the secret was freed to the allocator intact
+/// and could resurface in a later allocation or a core dump (MITRE ATT&CK
+/// T1552, credentials in process memory). The returned buffer is the caller's
+/// responsibility; it is consumed by `derive_key`, which zeroizes it.
 pub fn prompt_passphrase(prompt: &str) -> Result<Vec<u8>> {
-    if let Ok(value) = std::env::var(PASSPHRASE_ENV) {
+    if let Ok(mut value) = std::env::var(PASSPHRASE_ENV) {
         if !value.is_empty() {
-            let resolved = kms::resolve(&value)?;
-            return Ok(resolved.as_bytes().to_vec());
+            let resolved = kms::resolve(&value);
+            value.zeroize();
+            let mut resolved = resolved?;
+            let bytes = resolved.as_bytes().to_vec();
+            resolved.zeroize();
+            return Ok(bytes);
         }
     }
 
@@ -31,10 +44,21 @@ pub fn prompt_passphrase(prompt: &str) -> Result<Vec<u8>> {
         let mut line = String::new();
         // A closed/empty stdin is not a passphrase — fall through to the prompt
         // rather than silently unlocking with "".
-        if stdin.lock().read_line(&mut line)? > 0 {
-            let trimmed = line.trim_end_matches(['\n', '\r']);
-            if !trimmed.is_empty() {
-                return Ok(trimmed.as_bytes().to_vec());
+        let read = stdin.lock().read_line(&mut line);
+        match read {
+            Ok(n) if n > 0 => {
+                let trimmed = line.trim_end_matches(['\n', '\r']);
+                if !trimmed.is_empty() {
+                    let bytes = trimmed.as_bytes().to_vec();
+                    line.zeroize();
+                    return Ok(bytes);
+                }
+                line.zeroize();
+            }
+            Ok(_) => line.zeroize(),
+            Err(err) => {
+                line.zeroize();
+                return Err(err.into());
             }
         }
     }
@@ -52,6 +76,8 @@ pub fn prompt_passphrase(prompt: &str) -> Result<Vec<u8>> {
              KMS URI), pipe it on stdin, or run interactively."
         )));
     }
+    // `String::into_bytes` hands over the same allocation rather than copying,
+    // so there is no second buffer to clear on this path.
     Ok(passphrase.into_bytes())
 }
 
