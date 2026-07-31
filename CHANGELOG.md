@@ -5,7 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.0.0] - Unreleased
+
+Hardening items that the 3.0.0 audit identified and reported but did not fix. Each was a real weakness left standing; this closes all four.
+
+### Security
+
+- **Revoking a JWT did nothing after a restart, and nothing ever revoked one.** The revocation list was a process-local `HashSet` with no persistence, so restarting the server re-admitted every revoked token that had not yet expired — a leaked token was "revoked" only until the next deploy. It was also unreachable: `revoke_token` had no caller outside its own test, so there was no way to invalidate a single token short of rotating `jwt_secret`, which invalidates every other token at the same time.
+
+  `POST /api/v1/auth/logout` now revokes the presenting token. Revocations persist to the file named by `--revocation-store` / `AIM_REVOCATION_STORE` / `ApiConfig::revocation_store`, written through a temporary file and renamed so a crash mid-write leaves the previous list intact rather than a truncated one — a truncated list is the dangerous failure, because it un-revokes. A store that exists but cannot be parsed aborts startup instead of silently starting with zero revocations. Starting without a store logs a warning naming the consequence.
+
+  Entries now carry the token's `exp` and are pruned once past it, so the list no longer grows for the life of the process. This remains a single-node store: replicas do not share it. That limitation is documented on `configure_revocation_store` rather than left to be discovered.
+
+- **A poisoned revocation lock was read as "not revoked".** `if let Ok(revoked) = REVOKED_TOKENS.read()` fell through on a poisoned lock, so a panic in any thread holding it would have admitted every revoked token for the remaining life of the process. The lock is now recovered with `PoisonError::into_inner`.
+
+- **Archive extraction allocated whatever the archive claimed (uncontrolled resource consumption, CWE-409).** `extract_tar` and `extract_zip` called `read_to_end` on each member with no ceiling, so a compressed archive of a few hundred KiB expanded to as much memory as it declared — an out-of-memory kill for the process and anything sharing it. Members are now capped at 8 GiB each and 16 GiB per archive, and the read is bounded independently of the declared size, so a header that understates its payload is caught too.
+
+- **Passphrases were left in freed memory (ATT&CK T1552).** `prompt_passphrase` copied the secret out of three intermediate buffers — the `String` from `kms::resolve`, the `String` filled by `read_line`, and the `$aimodelvault_PASSPHRASE` value itself — and dropped all three without clearing them, leaving the plaintext in the allocator to resurface in a later allocation or a core dump. Every intermediate is now zeroized on all paths, including the error paths.
+
+### Fixed
+
+- **`helm upgrade` silently rotated the JWT signing key.** `randAlphaNum 64` is evaluated on every render, so any upgrade that did not set `api.jwtSecret` minted a new key and invalidated every token the running deployment had issued: blanket 401s until clients re-authenticated, and any in-flight agent run died mid-task. Nothing in the chart signalled that upgrading was a credential rotation. The template now reads the live Secret with `lookup` and carries the generated key forward.
+
+### Changed
+
+- **`ApiConfig` is now `#[non_exhaustive]`.** Adding `revocation_store` broke every downstream struct literal. Marking it non-exhaustive makes this the last time a field addition is a breaking change; construct with `ApiConfig::default()` and assign the fields you need.
+
+- `auth::revoke_token` is deprecated in favour of `auth::revoke_claims`, which records the token's expiry so the entry can be pruned. The old function stores an entry that can never be retired.
+
+## [3.0.0] - 2026-07-30
 
 Findings from a security and privacy audit against CVE, MITRE ATT&CK, NIST FIPS and CMMC 2.0.
 
