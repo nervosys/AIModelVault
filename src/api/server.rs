@@ -96,6 +96,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     let api = Router::new()
         .route("/health", get(routes::health))
         .route("/auth/token", post(routes::auth_token))
+        .route("/auth/logout", post(routes::auth_logout))
         .route("/models", get(routes::list_models))
         .route(
             "/models/:name",
@@ -244,6 +245,18 @@ pub fn validate_jwt_secret(secret: &str) -> Result<()> {
 /// This is a blocking call that runs until the process is terminated.
 pub async fn serve(vault_config: VaultConfig, api_config: ApiConfig) -> Result<()> {
     validate_jwt_secret(&api_config.jwt_secret)?;
+
+    // Load persisted revocations before the listener binds, so no request can
+    // be served against an empty list. A corrupt or unreadable store aborts
+    // startup rather than starting with revocations silently dropped.
+    if let Some(path) = &api_config.revocation_store {
+        super::auth::configure_revocation_store(path).map_err(VaultError::IoError)?;
+    } else {
+        eprintln!(
+            "warning: no revocation_store configured — revoked tokens will be \
+             honoured only until this process restarts"
+        );
+    }
 
     let vault = Vault::new(Some(vault_config))?;
     let state = Arc::new(AppState {

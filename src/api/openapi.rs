@@ -51,6 +51,23 @@ pub fn openapi_spec() -> serde_json::Value {
                     }
                 }
             },
+            "/auth/logout": {
+                "post": {
+                    "summary": "Revoke the presented JWT",
+                    "description": "Revokes the bearer token used to make this request so it \
+                                    cannot be reused before its expiry. Revocations survive a \
+                                    restart only when the server is started with a revocation \
+                                    store; without one they are process-local, and they never \
+                                    span replicas.",
+                    "tags": ["auth"],
+                    "security": [{ "bearerAuth": [] }],
+                    "responses": {
+                        "200": { "description": "Token revoked" },
+                        "401": { "description": "Missing, malformed, or already invalid token" },
+                        "500": { "description": "Revocation could not be persisted" }
+                    }
+                }
+            },
             "/models": {
                 "get": {
                     "summary": "List models in the vault",

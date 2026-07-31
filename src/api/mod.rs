@@ -23,7 +23,15 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// API server configuration.
+///
+/// Construct with [`ApiConfig::default`] and assign the fields you need.
+/// `#[non_exhaustive]` is deliberate: adding `revocation_store` broke every
+/// downstream struct literal, and security settings will keep being added.
+/// With this attribute, a future addition is a minor release rather than a
+/// major one, and no caller silently ends up with a field they never
+/// considered.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ApiConfig {
     /// Host address to bind to (default: "127.0.0.1").
     pub host: String,
@@ -39,6 +47,16 @@ pub struct ApiConfig {
     pub max_body_size: usize,
     /// Enable the embedded web dashboard (default: true).
     pub enable_dashboard: bool,
+    /// File the JWT revocation list is persisted to (default: none).
+    ///
+    /// Without it, revocation is process-local: restarting the server
+    /// re-admits every revoked token that has not yet expired, so a logout is
+    /// only honoured until the next deploy. Point this at durable storage —
+    /// on Kubernetes, a volume that outlives the pod — to make revocations
+    /// stick. See [`auth::configure_revocation_store`], which also documents
+    /// why this does not extend across replicas.
+    #[serde(default)]
+    pub revocation_store: Option<std::path::PathBuf>,
 }
 
 impl Default for ApiConfig {
@@ -51,6 +69,7 @@ impl Default for ApiConfig {
             cors_permissive: false,
             max_body_size: 512 * 1024 * 1024,
             enable_dashboard: true,
+            revocation_store: None,
         }
     }
 }

@@ -241,6 +241,13 @@ pub enum Commands {
         /// Disable the embedded web dashboard
         #[arg(long)]
         no_dashboard: bool,
+
+        /// File to persist the JWT revocation list to
+        ///
+        /// Without it, revoked tokens are re-admitted when the server
+        /// restarts. Use durable storage that outlives the process.
+        #[arg(long, env = "AIM_REVOCATION_STORE")]
+        revocation_store: Option<std::path::PathBuf>,
     },
 
     /// Cloud storage operations

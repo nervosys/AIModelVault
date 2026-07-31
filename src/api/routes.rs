@@ -103,6 +103,28 @@ pub async fn auth_token(
     }))
 }
 
+/// POST /api/v1/auth/logout
+///
+/// Revokes the presented token so it cannot be used again before it expires.
+///
+/// `auth::revoke_claims` existed but nothing ever called it: there was no way
+/// to invalidate a leaked or finished token short of rotating `jwt_secret`,
+/// which invalidates every other token at the same time.
+pub async fn auth_logout(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let claims = require_auth(&headers, &state)?;
+
+    auth::revoke_claims(&claims)
+        .map_err(|e| ApiError::internal(format!("Could not persist revocation: {e}")))?;
+
+    Ok(Json(serde_json::json!({
+        "revoked": true,
+        "jti": claims.jti,
+    })))
+}
+
 // ── Models ───────────────────────────────────────────────────────────────────
 
 #[derive(Serialize)]

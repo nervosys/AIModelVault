@@ -185,16 +185,20 @@ fn run() -> Result<()> {
             token_expiry,
             cors_permissive,
             no_dashboard,
+            revocation_store,
         } => {
-            let api_config = ai_model_vault::api::ApiConfig {
-                host,
-                port,
-                jwt_secret,
-                token_expiry_secs: token_expiry,
-                cors_permissive,
-                enable_dashboard: !no_dashboard,
-                ..Default::default()
-            };
+            // Assigned field-by-field rather than with `..Default::default()`:
+            // `ApiConfig` implements `Drop` (it zeroizes `jwt_secret`), and
+            // functional update syntax cannot move a non-`Copy` field out of a
+            // `Drop` type.
+            let mut api_config = ai_model_vault::api::ApiConfig::default();
+            api_config.host = host;
+            api_config.port = port;
+            api_config.jwt_secret = jwt_secret;
+            api_config.token_expiry_secs = token_expiry;
+            api_config.cors_permissive = cors_permissive;
+            api_config.enable_dashboard = !no_dashboard;
+            api_config.revocation_store = revocation_store;
             let rt = tokio::runtime::Runtime::new().map_err(ai_model_vault::VaultError::IoError)?;
             rt.block_on(ai_model_vault::api::server::serve(config, api_config))
         }

@@ -34,17 +34,15 @@ fn test_state(dir: &tempfile::TempDir) -> Arc<AppState> {
     let config = VaultConfig::with_dirs(dirs).unwrap();
     let vault = Vault::new(Some(config)).unwrap();
 
+    // `ApiConfig` is `#[non_exhaustive]`: start from `default()` and override.
+    let mut api_config = ApiConfig::default();
+    api_config.port = 0;
+    api_config.jwt_secret = "test-secret-for-integration-tests".into();
+    api_config.cors_permissive = true;
+
     Arc::new(AppState {
         vault: RwLock::new(vault),
-        config: ApiConfig {
-            host: "127.0.0.1".into(),
-            port: 0,
-            jwt_secret: "test-secret-for-integration-tests".into(),
-            token_expiry_secs: 3600,
-            cors_permissive: true,
-            max_body_size: 512 * 1024 * 1024,
-            enable_dashboard: true,
-        },
+        config: api_config,
         auth_rate_limiter: RateLimiter::new(5, std::time::Duration::from_secs(60)),
     })
 }

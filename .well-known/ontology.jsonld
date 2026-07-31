@@ -1732,11 +1732,13 @@
           {"name": "--jwt-secret", "type": "string", "required": true, "env": "AIM_JWT_SECRET", "description": "JWT secret for token signing"},
           {"name": "--token-expiry", "type": "u64", "required": false, "default": 3600, "description": "Token expiry in seconds"},
           {"name": "--cors-permissive", "type": "bool", "required": false, "description": "Allow CORS from any origin"},
-          {"name": "--no-dashboard", "type": "bool", "required": false, "description": "Disable the embedded web dashboard"}
+          {"name": "--no-dashboard", "type": "bool", "required": false, "description": "Disable the embedded web dashboard"},
+          {"name": "--revocation-store", "type": "path", "required": false, "env": "AIM_REVOCATION_STORE", "description": "File to persist the JWT revocation list to. Without it, revoked tokens are re-admitted when the server restarts."}
         ],
         "examples": [
           "aim serve --jwt-secret mysecret",
-          "aim serve --port 9090 --jwt-secret $AIM_JWT_SECRET --cors-permissive"
+          "aim serve --port 9090 --jwt-secret $AIM_JWT_SECRET --cors-permissive",
+          "aim serve --jwt-secret $AIM_JWT_SECRET --revocation-store /var/lib/aim/revocations.json"
         ],
         "exitCodes": {"0": "Server stopped gracefully", "1": "Bind error"},
         "longRunning": true,

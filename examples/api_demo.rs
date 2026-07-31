@@ -26,15 +26,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = VaultConfig::new()?;
     let vault = Vault::new(Some(config))?;
 
-    let api_config = ApiConfig {
-        host: "127.0.0.1".into(),
-        port: 0, // OS picks a free port
-        jwt_secret: "demo-secret-change-in-production".into(),
-        token_expiry_secs: 3600,
-        cors_permissive: true,
-        max_body_size: 512 * 1024 * 1024,
-        enable_dashboard: true,
-    };
+    // `ApiConfig` is `#[non_exhaustive]`: start from `default()` and override.
+    let mut api_config = ApiConfig::default();
+    api_config.port = 0; // OS picks a free port
+    api_config.jwt_secret = "demo-secret-change-in-production".into();
+    api_config.cors_permissive = true;
 
     let state = Arc::new(AppState {
         vault: RwLock::new(vault),

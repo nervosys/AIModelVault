@@ -28,17 +28,16 @@ fn bench_state(dir: &tempfile::TempDir) -> Arc<AppState> {
     let config = VaultConfig::with_dirs(dirs).unwrap();
     let vault = Vault::new(Some(config)).unwrap();
 
+    // `ApiConfig` is `#[non_exhaustive]`: start from `default()` and override.
+    let mut api_config = ApiConfig::default();
+    api_config.port = 0;
+    api_config.jwt_secret = "bench-secret-key-for-benchmarks-only".into();
+    api_config.cors_permissive = true;
+    api_config.enable_dashboard = false;
+
     Arc::new(AppState {
         vault: RwLock::new(vault),
-        config: ApiConfig {
-            host: "127.0.0.1".into(),
-            port: 0,
-            jwt_secret: "bench-secret-key-for-benchmarks-only".into(),
-            token_expiry_secs: 3600,
-            cors_permissive: true,
-            max_body_size: 512 * 1024 * 1024,
-            enable_dashboard: false,
-        },
+        config: api_config,
         auth_rate_limiter: RateLimiter::new(100, std::time::Duration::from_secs(60)),
     })
 }
