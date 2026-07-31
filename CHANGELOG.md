@@ -5,7 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.0.0] - Unreleased
+## [4.1.0] - 2026-07-31
+
+### Added
+
+- **OTLP export for telemetry events**, behind a new `otel` feature. Configured entirely from the standard OpenTelemetry environment variables — `OTEL_EXPORTER_OTLP_ENDPOINT` (and the signal-specific `..._LOGS_ENDPOINT`, which takes precedence), `OTEL_EXPORTER_OTLP_PROTOCOL` (`http/protobuf` or `http/json`), `OTEL_EXPORTER_OTLP_HEADERS`, and `OTEL_SERVICE_NAME` — so any collector or vendor endpoint works without bespoke configuration. Events map onto OTLP log records. Feature-gated because it pulls in prost and the OpenTelemetry SDK; default and `full` builds are unchanged.
+
+  Two properties are enforced by the code rather than described in prose. **Configuring an exporter does not enable collection**: pointing a build at a collector and consenting to report are separate decisions, usually made by different people, so both are required — there is a test for it. And **nothing is baked into the binary**: no default collector, no default token. A credential compiled into an AGPL crate published to a public registry is readable by everyone who installs it.
+
+  The exported attribute key set is pinned by a test. `Error::context`, `ApiCall::endpoint` and `FeatureUsed::detail` are the only fields that could carry a file path or a model name, so adding a key is now a deliberate edit to an approved list rather than something that can happen by accident. Building without the feature while `OTEL_EXPORTER_OTLP_ENDPOINT` is set warns on stderr instead of silently discarding the configuration.
+
+- **Service-scoped deployment configuration.** New `deploy/systemd/` unit and example environment file; the unit uses `EnvironmentFile=` rather than `Environment=`, because `Environment=` values are readable by any local user through `systemctl show` and `systemd-analyze dump` — for a bearer token that means every account on the host. The Helm chart gained a `telemetry` block that defaults to disabled and sources the `Authorization` header from a Secret created out of band, never from `values.yaml`, which is committed and printed back by `helm get values`. Neither path writes anything machine-global.
+
+- Helm can now set `AIM_REVOCATION_STORE`, which shipped in 4.0.0 with no way to configure it from the chart.
+
+### Fixed
+
+- **`docs/TELEMETRY.md` described collection that does not happen.** It stated command names were sent and documented a `GET /api/v1/telemetry/status` endpoint. Neither exists — `track_app_start` is the only tracker with a caller, and there is no such route. Rewritten to match the code.
+
+- **`src/telemetry.rs` documented `enabled` as defaulting to `true`** while `Default` set it to `false`. The code was right; the comment was the kind of wrong that gets quoted in a privacy review. The module's "Data Collected" list also named commands, errors and feature use, none of which are collected.
+
+- **`.env` was not gitignored.** The `env/` entry above it matches the virtualenv directory, not the file, so a dotenv file — the most common way a credential reaches a public repository — was committable. Added it along with `credentials.toml`, keystores and SSH keys, keeping `.env.example` allowed.
+
+### Changed
+
+- CI feature matrix builds `otel`.
+
+## [4.0.0] - 2026-07-31
 
 Hardening items that the 3.0.0 audit identified and reported but did not fix. Each was a real weakness left standing; this closes all four.
 
