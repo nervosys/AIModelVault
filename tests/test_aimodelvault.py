@@ -431,6 +431,30 @@ class TestPackageInit:
         ).group(1)
         assert aimodelvault.__version__ == crate_version
 
+    def test_pyproject_version_matches_crate(self):
+        """The wheel's metadata version is a third place the number lives.
+
+        `__init__.py` was checked against Cargo.toml but `pyproject.toml` was
+        not, so a release could bump two of the three and ship a wheel whose
+        metadata disagreed with the package it contained.
+        """
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent
+        crate_version = re.search(
+            r'^version = "([^"]+)"',
+            (root / "Cargo.toml").read_text(encoding="utf-8"),
+            re.MULTILINE,
+        ).group(1)
+        pyproject_version = re.search(
+            r'^version = "([^"]+)"',
+            (root / "pyproject.toml").read_text(encoding="utf-8"),
+            re.MULTILINE,
+        ).group(1)
+
+        assert pyproject_version == crate_version
+
     def test_native_flag_exists(self):
         import aimodelvault
         assert isinstance(aimodelvault._NATIVE, bool)

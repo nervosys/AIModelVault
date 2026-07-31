@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] - 2026-07-31
+
+Both fixes are test-only or inert for consumers; 4.1.0 is not broken for anyone depending on the crate. This release exists so the git tag, the crates.io artifact, and the source all agree.
+
+### Fixed
+
+- **The revocation tests raced against each other.** `test_revoke_claims` revoked a token and asserted it no longer verified, but `configure_revocation_store` replaces `entries` wholesale, so a concurrent store test deleted the revocation in between. The existing `STORE_LOCK` guarded only the `store` field, on the reasoning that the file was the shared resource — the entries map was shared too. Every test touching the global list now takes one lock, and resets state on *acquire* rather than on release, so a panicking test cannot cascade into an unrelated failure.
+
+  It surfaced on macOS and passed everywhere else, which reads like a platform bug and is not one: locally it reproduced 1 run in 30 without the lock and 0 in 30 with it. Thread scheduling, not the platform.
+
+- **`src/aimodelvault/__init__.py` still declared `3.0.0`.** The 4.0.0 release bumped `Cargo.toml` and `pyproject.toml` and missed the Python constant. A test already compared `__init__.py` against `Cargo.toml`, but CI had not run at 4.0.0, so nothing caught it until now. Added a matching check for `pyproject.toml`, which was the one version source with nothing asserting on it.
+
 ## [4.1.0] - 2026-07-31
 
 ### Added

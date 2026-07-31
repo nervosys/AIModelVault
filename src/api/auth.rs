@@ -313,21 +313,44 @@ mod tests {
         assert!(result.is_err());
     }
 
-    /// The revocation list is process-global, so tests that touch the backing
-    /// store must not overlap. Everything that reads or writes `store` takes
-    /// this first.
-    static STORE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    /// The revocation list is process-global and cargo runs tests on parallel
+    /// threads, so every test that touches it must serialise here.
+    ///
+    /// This originally guarded only `store`, on the reasoning that the file was
+    /// the shared resource. That was wrong: `configure_revocation_store`
+    /// replaces `entries` wholesale, so a test holding the lock wiped the
+    /// entries of a test that was not holding it. `test_revoke_claims` revoked
+    /// a token and had the revocation deleted out from under it before it could
+    /// verify — it failed on macOS and passed elsewhere purely because of
+    /// thread scheduling, which is what a missing lock looks like rather than a
+    /// platform difference.
+    static REVOCATION_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-    /// Detach the global list from any file a previous test attached.
-    fn clear_store() {
+    /// Serialise against every other revocation test and start from an empty
+    /// list.
+    ///
+    /// The reset happens on *acquire* rather than on release: a test that
+    /// panics never runs its cleanup, and leaving the next test to inherit that
+    /// state turns one failure into an unrelated cascade.
+    fn revocation_guard() -> std::sync::MutexGuard<'static, ()> {
+        let guard = REVOCATION_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
         let mut list = REVOKED_TOKENS
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
+        list.entries.clear();
         list.store = None;
+
+        drop(list);
+        guard
     }
 
     #[test]
     fn test_revoke_claims() {
+        let _guard = revocation_guard();
+
         let secret = "test-revoke-secret";
         let token = create_token(secret, 3600).unwrap();
         let claims = verify_token(&token, secret).unwrap();
@@ -340,6 +363,8 @@ mod tests {
 
     #[test]
     fn test_expired_revocations_are_pruned() {
+        let _guard = revocation_guard();
+
         let before = revoked_count();
 
         // An entry whose token expired an hour ago carries no information —
@@ -367,6 +392,8 @@ mod tests {
 
     #[test]
     fn test_unexpired_revocations_are_kept() {
+        let _guard = revocation_guard();
+
         let jti = "live-jti-for-pruning-test";
         {
             let mut list = REVOKED_TOKENS
@@ -389,7 +416,7 @@ mod tests {
 
     #[test]
     fn test_revocations_survive_a_restart() {
-        let _guard = STORE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = revocation_guard();
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("revocations.json");
@@ -420,20 +447,11 @@ mod tests {
             verify_token(&token, secret).is_err(),
             "a revocation recorded before the restart must still apply after it"
         );
-
-        // Leave the global list detached for other tests.
-        {
-            let mut list = REVOKED_TOKENS
-                .write()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            list.entries.remove(&claims.jti);
-        }
-        clear_store();
     }
 
     #[test]
     fn test_a_corrupt_revocation_store_is_an_error_not_an_empty_list() {
-        let _guard = STORE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = revocation_guard();
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("revocations.json");
@@ -446,13 +464,11 @@ mod tests {
             "the operator needs to know the store was unreadable, not silently \
              start with zero revocations; got: {err}"
         );
-
-        clear_store();
     }
 
     #[test]
     fn test_a_missing_revocation_store_is_a_valid_empty_list() {
-        let _guard = STORE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = revocation_guard();
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("does-not-exist-yet.json");
@@ -460,8 +476,6 @@ mod tests {
         // First run on a fresh volume must not fail.
         configure_revocation_store(&path).unwrap();
         assert!(path.exists(), "the store should be created on first use");
-
-        clear_store();
     }
 
     #[test]
