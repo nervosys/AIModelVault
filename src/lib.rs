@@ -44,6 +44,9 @@ pub mod signing;
 pub mod storage;
 pub mod tags;
 pub mod telemetry;
+/// OTLP export transport for telemetry events.
+#[cfg(feature = "otel")]
+pub mod telemetry_otlp;
 pub mod traits;
 pub mod tui;
 pub mod utils;

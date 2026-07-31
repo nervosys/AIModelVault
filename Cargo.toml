@@ -162,6 +162,17 @@ rusqlite = { version = "0.31", features = [
 sled = { version = "0.34", optional = true }
 # Vector database support (optional)
 qdrant-client = { version = "1.13", optional = true }
+# OpenTelemetry OTLP export (optional, `otel` feature).
+# `reqwest-blocking-client` matches the existing telemetry sender, which
+# already runs its flush on a detached std thread rather than a runtime.
+opentelemetry = { version = "0.32", optional = true }
+opentelemetry_sdk = { version = "0.32", optional = true, features = ["logs"] }
+opentelemetry-otlp = { version = "0.32", optional = true, default-features = false, features = [
+    "logs",
+    "http-proto",
+    "http-json",
+    "reqwest-blocking-client",
+] }
 # lancedb removed: v0.4 depends on arrow-arith v51 which is incompatible with Rust 1.93+
 
 [dev-dependencies]
@@ -197,6 +208,10 @@ api = [
 graphql = ["api", "async-graphql"]
 # Python native bindings
 python = ["dep:pyo3"]
+# OTLP export for telemetry events. Off by default: it pulls in prost and the
+# OpenTelemetry SDK, and enabling the feature must never be what turns
+# telemetry on -- that stays opt-in via config or `aim telemetry enable`.
+otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp"]
 
 [lints.rust]
 unsafe_code = "forbid"

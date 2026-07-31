@@ -116,6 +116,111 @@ impl Default for TelemetryConfig {
     }
 }
 
+/// OTLP export settings, read from the standard OpenTelemetry environment
+/// variables.
+///
+/// These are deliberately environment-only and are never written to the
+/// telemetry config file, baked into the binary, or defaulted to a vendor
+/// endpoint. Two reasons:
+///
+/// 1. `OTEL_EXPORTER_OTLP_HEADERS` carries a bearer token. A credential that
+///    ships inside an AGPL crate published to a public registry is readable by
+///    everyone who installs it, which makes it a shared secret with the world
+///    rather than an authorisation.
+/// 2. Configuring an exporter is an act by whoever *operates* a deployment.
+///    Baking one in would export on behalf of every user who merely installed
+///    the tool, which is a different person making a different decision.
+///
+/// Recognised variables (the standard set, so any OpenTelemetry collector or
+/// vendor endpoint works without bespoke configuration):
+///
+/// - `OTEL_EXPORTER_OTLP_ENDPOINT`, or `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
+/// - `OTEL_EXPORTER_OTLP_PROTOCOL` — `http/protobuf` (default) or `http/json`
+/// - `OTEL_EXPORTER_OTLP_HEADERS` — e.g. `Authorization=Bearer <token>`
+/// - `OTEL_SERVICE_NAME`
+///
+/// Setting these does **not** enable telemetry. Telemetry remains opt-in; when
+/// it is off, nothing is exported no matter how the exporter is configured.
+#[cfg(feature = "otel")]
+#[derive(Debug, Clone)]
+pub struct OtlpSettings {
+    /// Collector endpoint.
+    pub endpoint: String,
+    /// Wire protocol.
+    pub protocol: OtlpProtocol,
+    /// Service name reported as `service.name`.
+    pub service_name: String,
+}
+
+/// OTLP wire protocol.
+#[cfg(feature = "otel")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OtlpProtocol {
+    /// `http/protobuf`
+    HttpBinary,
+    /// `http/json`
+    HttpJson,
+}
+
+/// Non-`otel` builds still need to notice that OTLP was configured, so they can
+/// say so instead of silently dropping it.
+#[cfg(not(feature = "otel"))]
+pub struct OtlpSettings;
+
+impl OtlpSettings {
+    /// The configured endpoint, if any, checking the logs-specific variable
+    /// first as the specification requires.
+    #[must_use]
+    pub fn endpoint_from_env() -> Option<String> {
+        for key in [
+            "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT",
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+        ] {
+            if let Ok(value) = std::env::var(key) {
+                let trimmed = value.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+        None
+    }
+}
+
+#[cfg(feature = "otel")]
+impl OtlpSettings {
+    /// Read settings from the environment, or `None` if no endpoint is set.
+    #[must_use]
+    pub fn from_env() -> Option<Self> {
+        let endpoint = Self::endpoint_from_env()?;
+
+        let protocol = match std::env::var("OTEL_EXPORTER_OTLP_LOGS_PROTOCOL")
+            .or_else(|_| std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL"))
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "http/json" => OtlpProtocol::HttpJson,
+            // The specification's default for HTTP transport, and what an
+            // unset or unrecognised value falls back to.
+            _ => OtlpProtocol::HttpBinary,
+        };
+
+        let service_name = std::env::var("OTEL_SERVICE_NAME")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| env!("CARGO_PKG_NAME").to_string());
+
+        Some(Self {
+            endpoint,
+            protocol,
+            service_name,
+        })
+    }
+}
+
 /// Telemetry event types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -179,11 +284,11 @@ pub enum TelemetryEvent {
 
 /// Envelope for telemetry events
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct TelemetryEnvelope {
-    device_id: String,
-    session_id: String,
-    timestamp: u64,
-    event: TelemetryEvent,
+pub(crate) struct TelemetryEnvelope {
+    pub(crate) device_id: String,
+    pub(crate) session_id: String,
+    pub(crate) timestamp: u64,
+    pub(crate) event: TelemetryEvent,
 }
 
 /// Telemetry client for collecting and sending analytics data
@@ -287,7 +392,14 @@ impl TelemetryClient {
                     std::thread::sleep(Duration::from_millis(100 * (1 << attempt)));
                 }
 
-                match Self::send_http_batch(&endpoint, &events) {
+                // OTLP takes precedence when configured; the JSON endpoint is
+                // the fallback for deployments with no collector.
+                let result = match Self::try_send_otlp(&events) {
+                    Some(otlp_result) => otlp_result,
+                    None => Self::send_http_batch(&endpoint, &events),
+                };
+
+                match result {
                     Ok(()) => {
                         // Also try to send any previously queued events
                         let _ = Self::flush_local_queue(&endpoint);
@@ -306,6 +418,32 @@ impl TelemetryClient {
                 }
             }
         });
+    }
+
+    /// Send events via OTLP, if an OTLP endpoint is configured.
+    ///
+    /// Returns `None` when OTLP is not configured, so the caller falls back to
+    /// the plain JSON sender.
+    #[cfg(feature = "otel")]
+    fn try_send_otlp(events: &[TelemetryEnvelope]) -> Option<std::result::Result<(), String>> {
+        let settings = OtlpSettings::from_env()?;
+        Some(crate::telemetry_otlp::export(events, &settings))
+    }
+
+    #[cfg(not(feature = "otel"))]
+    #[allow(clippy::unnecessary_wraps)]
+    fn try_send_otlp(_events: &[TelemetryEnvelope]) -> Option<std::result::Result<(), String>> {
+        // Warn rather than fail silently: an operator who configured OTLP and
+        // is running a binary without the feature would otherwise see nothing
+        // arrive and have no way to tell why.
+        if OtlpSettings::endpoint_from_env().is_some() {
+            eprintln!(
+                "warning: OTEL_EXPORTER_OTLP_ENDPOINT is set, but this binary was \
+                 built without the `otel` feature. Telemetry will not be exported \
+                 over OTLP."
+            );
+        }
+        None
     }
 
     /// Send events via HTTP POST
@@ -913,6 +1051,44 @@ mod tests {
         // Without any env vars set, should return false
         // (env vars may or may not be set in CI, so just ensure no panic)
         let _ = TelemetryClient::is_disabled_by_env();
+    }
+
+    /// Configuring an exporter must never be what turns collection on.
+    ///
+    /// The two decisions are made by different people: an operator points the
+    /// build at a collector, but whether this deployment reports at all is the
+    /// opt-in. If setting `OTEL_EXPORTER_OTLP_ENDPOINT` silently enabled
+    /// telemetry, every deployment that configured a collector for its own
+    /// traces would start reporting here too.
+    #[test]
+    fn test_otlp_endpoint_alone_does_not_enable_telemetry() {
+        let config = TelemetryConfig::default();
+        assert!(!config.enabled, "precondition: default is opt-in");
+
+        let client = TelemetryClient::new(config);
+        assert!(
+            !client.is_enabled(),
+            "an OTLP endpoint configures where events go, not whether they are \
+             collected"
+        );
+    }
+
+    /// `DO_NOT_TRACK` and friends must still win when OTLP is configured.
+    #[test]
+    fn test_explicit_disable_still_wins_over_otlp_config() {
+        let config = TelemetryConfig {
+            enabled: true,
+            ..Default::default()
+        };
+
+        // Simulate the operator's kill switch being set.
+        let client = TelemetryClient::new(config);
+        client.disable();
+
+        assert!(
+            !client.is_enabled(),
+            "an explicit disable must not be overridden by exporter settings"
+        );
     }
 
     #[test]
