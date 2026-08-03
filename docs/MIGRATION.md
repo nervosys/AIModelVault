@@ -276,8 +276,9 @@ After upgrading, verify your vault is accessible:
 
 ```bash
 aim list
-aim info my-model
-aim --version   # Should show 1.0.0
+aim versions my-model   # per-version detail
+aim analyze my-model    # format, size, tensor summary
+aim --version
 ```
 
 ---

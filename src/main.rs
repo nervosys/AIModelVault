@@ -10,7 +10,7 @@
 
 mod cli;
 
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches};
 use cli::args::{Cli, Commands};
 use cli::handlers::{
     acl, analyze, archive, benchmark as benchmark_handler, browse, card, cloud, convert, database,
@@ -45,6 +45,27 @@ fn main() -> std::process::ExitCode {
     }
 }
 
+/// Names of the invoked command and its immediate subcommand, for telemetry.
+///
+/// `aim cloud push` -> `("cloud", Some("push"))`; `aim list` -> `("list", None)`.
+///
+/// Both values come from clap's own command table, so they can only ever be
+/// literals declared in `args.rs`. That is the whole point: an argument
+/// *value* -- a model name, a filesystem path, a HuggingFace token -- has no
+/// path into the returned pair, and therefore none into the telemetry event.
+fn command_names(matches: &clap::ArgMatches) -> (String, Option<String>) {
+    match matches.subcommand() {
+        Some((name, sub)) => (
+            name.to_string(),
+            sub.subcommand().map(|(nested, _)| nested.to_string()),
+        ),
+        // Unreachable in practice: a missing subcommand is rejected during
+        // parsing above. Named rather than panicking so telemetry can never be
+        // the thing that takes down the CLI.
+        None => (String::from("unknown"), None),
+    }
+}
+
 fn run() -> Result<()> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
@@ -53,8 +74,14 @@ fn run() -> Result<()> {
     // error. Code 2 is `EXIT_AUTH` in the published table, so a mistyped
     // subcommand would be indistinguishable from a wrong passphrase to any
     // agent branching on the exit code. A usage error is invalid input.
-    let cli = match Cli::try_parse() {
-        Ok(cli) => cli,
+    //
+    // Parsed via `ArgMatches` rather than straight to `Cli` so the telemetry
+    // call at the end of this function can name the command. Taking the names
+    // from clap's own table is what makes that safe: `subcommand_name` can
+    // only ever return one of the literals declared in `args.rs`, so no
+    // argument *value* -- model name, path, token -- can reach the event.
+    let matches = match Cli::command().try_get_matches() {
+        Ok(matches) => matches,
         Err(err) => {
             // `--help` and `--version` arrive here too, and both are successes:
             // clap has already written the text to stdout. A *missing*
@@ -75,6 +102,11 @@ fn run() -> Result<()> {
             ));
         }
     };
+
+    let (command_name, subcommand_name) = command_names(&matches);
+
+    let cli = Cli::from_arg_matches(&matches)
+        .map_err(|e| VaultError::InvalidInput(format!("failed to interpret command line: {e}")))?;
 
     // Load or create config
     let config = if let Some(config_path) = &cli.config {
@@ -99,6 +131,8 @@ fn run() -> Result<()> {
     let use_sqlite = cli.sqlite_versions;
     #[cfg(not(feature = "sqlite"))]
     let use_sqlite = false;
+
+    let started = std::time::Instant::now();
 
     let result = match cli.command {
         Commands::Init { name } => vault::handle_init(name, config, use_sqlite),
@@ -287,8 +321,89 @@ fn run() -> Result<()> {
         Commands::Vaults { command } => multi_vault_handler::handle_vaults(command, config),
     };
 
+    // Record which subcommand ran, how long it took, and whether it succeeded.
+    // `track` is a no-op when telemetry is disabled, so this costs an `Instant`
+    // subtraction on the opt-out path. Deliberately not recording the error
+    // *message*: those interpolate paths and model names.
+    telemetry::track_command(
+        &command_name,
+        subcommand_name.as_deref(),
+        started.elapsed(),
+        result.is_ok(),
+    );
+
     // Flush telemetry before exit
     telemetry::flush();
 
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn names_for(argv: &[&str]) -> (String, Option<String>) {
+        let matches = Cli::command()
+            .try_get_matches_from(argv)
+            .unwrap_or_else(|e| panic!("failed to parse {argv:?}: {e}"));
+        command_names(&matches)
+    }
+
+    #[test]
+    fn test_flat_command_has_no_subcommand() {
+        assert_eq!(names_for(&["aim", "list"]), ("list".to_string(), None));
+    }
+
+    #[test]
+    fn test_nested_command_reports_both_levels() {
+        assert_eq!(
+            names_for(&["aim", "cloud", "list", "-p", "s3", "-b", "bucket"]),
+            ("cloud".to_string(), Some("list".to_string()))
+        );
+    }
+
+    /// The reason this extraction goes through clap's table instead of
+    /// formatting the parsed `Commands` value: argument values must not be
+    /// able to reach a telemetry event. Every one of the values below is
+    /// sensitive -- a model name, a path, a passphrase-bearing URI -- and none
+    /// of them may appear in the result.
+    #[test]
+    fn test_argument_values_never_leak_into_the_names() {
+        let (command, subcommand) = names_for(&[
+            "aim",
+            "cloud",
+            "push",
+            "customer-proprietary-model",
+            "--provider",
+            "s3",
+            "--bucket",
+            "acme-private-bucket",
+        ]);
+
+        assert_eq!(command, "cloud");
+        assert_eq!(subcommand.as_deref(), Some("push"));
+
+        let rendered = format!("{command}{}", subcommand.unwrap_or_default());
+        for secret in ["customer-proprietary-model", "acme-private-bucket", "s3"] {
+            assert!(
+                !rendered.contains(secret),
+                "argument value {secret:?} leaked into the telemetry command name"
+            );
+        }
+    }
+
+    /// `kebab-case` names, not the Rust variant spelling -- the collector
+    /// groups on these, so `vault-export` must not silently become
+    /// `VaultExport`.
+    #[test]
+    fn test_names_are_the_registered_kebab_case_spelling() {
+        assert_eq!(
+            names_for(&["aim", "vault-export", "out.tar.gz"]),
+            ("vault-export".to_string(), None)
+        );
+        assert_eq!(
+            names_for(&["aim", "change-passphrase"]),
+            ("change-passphrase".to_string(), None)
+        );
+    }
 }

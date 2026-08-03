@@ -375,7 +375,11 @@ export XDG_DATA_HOME=/new/location
 # Restart AI Model Vault - it will use new location
 ```
 
-Note: Existing models won't be automatically moved. Use `aim export` and `aim import` to migrate.
+Note: Existing models won't be automatically moved. To migrate the whole vault,
+use `aim vault-export archive.tar.gz` against the old location and
+`aim vault-import archive.tar.gz` against the new one. For individual models,
+`aim export <name> <dir>` then `aim store` into the new vault. (There is no
+`aim import` — it takes the `vault-` prefix.)
 
 ### Q: What happens if I delete the cache directory?
 

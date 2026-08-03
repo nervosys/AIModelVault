@@ -22,6 +22,18 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig, use_sqlite: boo
             println!("   Provider: {}", provider);
             println!("   Bucket: {}", bucket);
 
+            // `get_model` decrypts and decompresses, so what goes over the wire
+            // below is the plaintext model -- not the vault's encrypted blob.
+            // Say so plainly: the docs used to claim the opposite, and a user
+            // who believes the upload is client-side encrypted may skip the
+            // bucket-level encryption that is actually protecting it.
+            eprintln!(
+                "\n⚠️  This upload is NOT client-side encrypted. `aim cloud push` sends the\n   \
+                 decrypted model; confidentiality depends on TLS in transit and on the\n   \
+                 bucket's own at-rest encryption (SSE-KMS on S3, SSE on Azure).\n   \
+                 Do not treat the destination bucket as untrusted storage."
+            );
+
             // Open vault and get model
             let mut vault = build_vault(config.clone(), use_sqlite)?;
             let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
@@ -421,28 +433,61 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig, use_sqlite: boo
                         println!("   export AWS_REGION=us-east-1  # optional");
                     }
                     "azure" => {
+                        // Keep this list in step with `AzureBackend::new`. It used to
+                        // advertise AZURE_STORAGE_KEY, which that constructor rejects
+                        // outright — the Azure SDK for Rust v1 has no shared-key
+                        // credential — so following this output produced a hard error.
+                        let is_set = |var: &str| {
+                            if std::env::var(var).is_ok() {
+                                "✅ Set"
+                            } else {
+                                "❌ Not set"
+                            }
+                        };
+
                         println!("\n📝 Azure Blob Storage Configuration:");
-                        println!("   Required environment variables:");
+                        println!("   Storage account (always required):");
                         println!(
                             "   - AZURE_STORAGE_ACCOUNT: {}",
-                            if std::env::var("AZURE_STORAGE_ACCOUNT").is_ok() {
-                                "✅ Set"
-                            } else {
-                                "❌ Not set"
-                            }
-                        );
-                        println!(
-                            "   - AZURE_STORAGE_KEY: {}",
-                            if std::env::var("AZURE_STORAGE_KEY").is_ok() {
-                                "✅ Set"
-                            } else {
-                                "❌ Not set"
-                            }
+                            is_set("AZURE_STORAGE_ACCOUNT")
                         );
 
-                        println!("\n💡 To configure:");
+                        println!("\n   Credentials — a SAS token, or Entra ID:");
+                        println!(
+                            "   - AZURE_STORAGE_SAS_TOKEN: {}",
+                            is_set("AZURE_STORAGE_SAS_TOKEN")
+                        );
+                        println!("   - AZURE_TENANT_ID:      {}", is_set("AZURE_TENANT_ID"));
+                        println!("   - AZURE_CLIENT_ID:      {}", is_set("AZURE_CLIENT_ID"));
+                        println!(
+                            "   - AZURE_CLIENT_SECRET:  {}",
+                            is_set("AZURE_CLIENT_SECRET")
+                        );
+
+                        println!("\n💡 To configure with a SAS token:");
                         println!("   export AZURE_STORAGE_ACCOUNT=your_account_name");
-                        println!("   export AZURE_STORAGE_KEY=your_account_key");
+                        println!("   export AZURE_STORAGE_SAS_TOKEN=\"$(az storage container \\");
+                        println!("       generate-sas --account-name your_account_name \\");
+                        println!("       --name your_container --permissions rwdl \\");
+                        println!("       --expiry 2030-01-01 --output tsv)\"");
+
+                        println!("\n💡 Or with an Entra ID service principal:");
+                        println!("   export AZURE_TENANT_ID=...");
+                        println!("   export AZURE_CLIENT_ID=...");
+                        println!("   export AZURE_CLIENT_SECRET=...");
+                        println!(
+                            "\n   Managed identity and `az login` are also picked up automatically."
+                        );
+
+                        if std::env::var("AZURE_STORAGE_KEY").is_ok()
+                            && std::env::var("AZURE_STORAGE_SAS_TOKEN").is_err()
+                        {
+                            println!(
+                                "\n⚠️  AZURE_STORAGE_KEY is set but is not supported — the Azure \
+                                 SDK for Rust v1 has no shared-key credential."
+                            );
+                            println!("   Mint a SAS from that key, or use Entra ID.");
+                        }
                     }
                     "gcs" => {
                         println!("\n📝 Google Cloud Storage Configuration:");

@@ -10,11 +10,18 @@ Multi-peer vault synchronization with vector clocks for conflict detection.
 
 ## Operations
 
-Federation operations are exposed through the library (`src/federation.rs`) and the REST API:
+> **Status: library only.** `FederationManager` and friends are public API of
+> the crate, but nothing drives them — there is no `aim` subcommand and no
+> REST endpoint. An earlier revision of this page claimed REST exposure;
+> `src/api/` contains no reference to the module.
+
+Available on `FederationManager` (`src/federation.rs`):
 
 - Peer registration / discovery
 - Push / pull deltas
 - Conflict listing and resolution (manual or last-writer-wins)
+
+The README's capability table lists Federation as `library` for this reason.
 
 ## When to use it
 

@@ -21,7 +21,9 @@ AI Model Vault supports pushing and pulling models to/from cloud storage provide
 - **Azure Blob Storage** - Microsoft Azure cloud storage
 - **Google Cloud Storage** - Google Cloud Platform storage (temporarily disabled)
 
-All cloud operations maintain the same encryption and security as local storage.
+Note that cloud operations do **not** carry the vault's encryption with them —
+`aim cloud push` uploads the decrypted model. See
+[Security Notes](#security-notes) before choosing a bucket.
 
 ---
 
@@ -321,10 +323,20 @@ aim cloud pull mymodel-v2 --provider s3 --bucket models --remote-path mymodel/sa
 ## Security Notes
 
 ### Encryption
-- Models are **encrypted locally** before upload
-- Cloud storage contains **encrypted data only**
-- Encryption keys never leave your machine
-- Same AES-256-GCM encryption as local vault
+
+**`aim cloud push` uploads the decrypted model.** The vault's AES-256-GCM
+encryption protects models on your local disk; `push` reads through the
+normal read path, which decrypts, and uploads the plaintext result.
+
+- In transit: protected by TLS, enforced by both cloud SDKs
+- At rest in the bucket: **only** whatever server-side encryption you have
+  configured — `aim` adds none
+- The vault passphrase and derived keys never leave your machine, but they
+  also are not what is protecting the uploaded object
+
+Enable SSE-KMS (S3) or customer-managed keys (Azure), and treat the bucket as
+trusted storage with IAM scoped to principals who already have vault access.
+See [CLOUD_STORAGE.md](CLOUD_STORAGE.md#security-model).
 
 ### Credentials
 - **Never commit credentials** to version control

@@ -84,7 +84,7 @@ Every one of the 29 features in [AGENTS.md](AGENTS.md) is reachable from **all t
 - **Agent-first** — three coequal surfaces (CLI / REST+GraphQL / MCP), one schema, self-describing via `introspect` and `.well-known/`
 - **Secure by default** — AES-256-GCM with Argon2id KDF; aligned to CMMC 2.0 L2 and MITRE ATT&CK control families. Not a FIPS-validated module — see [Security & Compliance](#security--compliance)
 - **Format-agnostic** — auto-detect 23+ formats; convert natively between SafeTensors, PyTorch, and raw. Conversions that need a Python toolchain (→ ONNX, → TensorRT, → Core ML, → GGUF) return a runnable plan rather than a silently wrong file
-- **Provenance built-in** — SHA-256 checksums, HMAC signatures, blockchain audit trail, license & pickle scanning
+- **Provenance built-in** — SHA-256 checksums, HMAC signatures, an automatic append-only audit log, license & pickle scanning (plus a Merkle-chained block store available as a library primitive)
 - **Operational** — version control, retention policies, garbage collection, multi-vault, profiles, plugins, scheduled backups
 - **Integrated** — REST + GraphQL APIs, 86 MCP tools, Python bindings, Ollama / LM Studio interop, HuggingFace / Ollama / URL pull
 - **Quality** — 2,160+ Rust + 84 Python tests, 0 clippy warnings, fuzz targets, property-based tests, criterion benchmarks
@@ -383,7 +383,7 @@ Full guide: [docs/CLOUD_STORAGE.md](docs/CLOUD_STORAGE.md) · CLI: [docs/CLOUD_C
 | Key derivation   | Argon2id (64 MB memory, 3 iterations, 32-byte salt)      |
 | Integrity        | SHA-256 checksums on every operation                     |
 | Memory hygiene   | `zeroize` on key material                                |
-| Audit trail      | Append-only with optional Merkle-tree blockchain proofs  |
+| Audit trail      | Append-only, `0600`; Merkle proofs via library API only  |
 | Permissions      | `0700` directories / `0600` files (Unix), ACLs (Windows) |
 | Signing          | HMAC-SHA256 with detached `.sig`                         |
 | Scanning         | Pickle opcode scanner + license/SPDX scanner             |
