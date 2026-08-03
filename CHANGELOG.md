@@ -17,6 +17,12 @@ An audit of the shipped surface against the shipped documentation. Most of what 
 
 ### Fixed
 
+- **`RetrievalOptimizer` was not reliably LRU.** `evict_lru` selected `min_by_key(last_access)` over a `HashMap`, and `last_access` is a `SystemTime`. Entries touched inside a single clock tick carry *equal* timestamps; `min_by_key` returns the first minimum in iteration order, and `HashMap` randomises that order per instance. So which entry got evicted was arbitrary whenever timestamps tied — which is the common case on a fast machine, since three inserts complete in well under a tick. `SystemTime` is also not monotonic and can move backwards under NTP.
+
+  Both caches now carry a strictly increasing sequence stamp and evict on that. `src/rag/cache.rs` had the same latent defect behind its `access_count` comparison and gets the same tiebreak.
+
+  This surfaced as `cache_eviction` failing one macOS release build after passing all 27 CI jobs on the same commit. The regression test forces the tie rather than waiting for a coarse clock to produce one — the previous formulation passed on Windows even with the bug present, because the clock there advances between the calls.
+
 - **`docs/CLOUD_STORAGE.md` claimed cloud uploads were encrypted client-side.** In bold: "only encrypted data leaves your machine", "cloud providers never see your plaintext models". Neither is true. `aim cloud push` calls `Vault::get_model`, which decrypts and decompresses, and uploads that buffer — the object in the bucket is the plaintext model. Anyone who sized their bucket controls against that promise was less protected than they believed.
 
   The push handler now warns at the point of upload, and both cloud documents lead with the real threat model. The wire format is unchanged: sending ciphertext instead changes what `pull` must do and how vaults with differing passphrases interoperate, which is a design decision rather than a documentation fix.

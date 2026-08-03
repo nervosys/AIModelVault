@@ -265,6 +265,8 @@ pub struct RetrievalOptimizer {
     cache: HashMap<String, CachedModel>,
     max_cache_size: usize,
     current_cache_size: usize,
+    /// Strictly increasing stamp handed out on every insert and every hit.
+    next_seq: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -272,6 +274,13 @@ struct CachedModel {
     data: Vec<u8>,
     access_count: usize,
     last_access: std::time::SystemTime,
+    /// Tie-breaker for eviction. `last_access` alone is not enough: two
+    /// entries touched within the same clock tick carry *equal* `SystemTime`
+    /// values, and the eviction scan then picked whichever the randomized
+    /// `HashMap` iteration order reached first -- so the cache was not
+    /// reliably LRU. `SystemTime` is also not monotonic and can move
+    /// backwards under NTP. This counter has neither problem.
+    seq: u64,
 }
 
 impl RetrievalOptimizer {
@@ -281,7 +290,15 @@ impl RetrievalOptimizer {
             cache: HashMap::new(),
             max_cache_size,
             current_cache_size: 0,
+            next_seq: 0,
         }
+    }
+
+    /// Hand out the next eviction stamp.
+    fn bump_seq(&mut self) -> u64 {
+        let seq = self.next_seq;
+        self.next_seq += 1;
+        seq
     }
 
     /// Cache a model for faster retrieval
@@ -298,6 +315,7 @@ impl RetrievalOptimizer {
             return Ok(());
         }
 
+        let seq = self.bump_seq();
         self.current_cache_size += data_size;
         self.cache.insert(
             key,
@@ -305,6 +323,7 @@ impl RetrievalOptimizer {
                 data,
                 access_count: 1,
                 last_access: std::time::SystemTime::now(),
+                seq,
             },
         );
 
@@ -313,21 +332,25 @@ impl RetrievalOptimizer {
 
     /// Retrieve model from cache
     pub fn get_cached(&mut self, key: &str) -> Option<Vec<u8>> {
+        let seq = self.bump_seq();
         if let Some(cached) = self.cache.get_mut(key) {
             cached.access_count += 1;
             cached.last_access = std::time::SystemTime::now();
+            cached.seq = seq;
             Some(cached.data.clone())
         } else {
             None
         }
     }
 
-    /// Evict least recently used model
+    /// Evict least recently used model.
+    ///
+    /// Ordered by `seq` rather than `last_access` -- see [`CachedModel::seq`].
     fn evict_lru(&mut self) {
         if let Some(key) = self
             .cache
             .iter()
-            .min_by_key(|(_, v)| v.last_access)
+            .min_by_key(|(_, v)| v.seq)
             .map(|(k, _)| k.clone())
         {
             if let Some(cached) = self.cache.remove(&key) {
@@ -1248,5 +1271,98 @@ mod tests {
             read_member_bounded("ok.bin", &mut reader, 64).unwrap(),
             payload
         );
+    }
+
+    /// Eviction must pick the least-recently-used entry every time, not
+    /// whichever one the `HashMap` iteration order happens to reach first.
+    ///
+    /// This is a regression test for a real flake: `evict_lru` ordered by
+    /// `last_access`, and three inserts in a row complete well inside one
+    /// clock tick, so all three timestamps compared equal. `min_by_key`
+    /// returns the *first* minimum it encounters, and `RandomState` reseeds
+    /// iteration order per process -- so which entry got evicted varied run
+    /// to run. It surfaced as `cache_eviction` failing one release build
+    /// after passing 27 CI jobs on the same commit.
+    ///
+    /// The loop is what makes this deterministic: a single round reproduced
+    /// the bug only when the ordering happened to land wrong.
+    #[test]
+    fn cache_evicts_strictly_least_recently_used() {
+        for round in 0..64 {
+            let mut opt = RetrievalOptimizer::new(200);
+
+            opt.cache_model("m1".into(), vec![0; 100]).unwrap();
+            opt.cache_model("m2".into(), vec![0; 100]).unwrap();
+
+            // Touch m1 so m2 is now the least recently used, inverting the
+            // insertion order. A timestamp-only comparison cannot see this
+            // on a fast machine.
+            assert!(opt.get_cached("m1").is_some(), "round {round}");
+
+            opt.cache_model("m3".into(), vec![0; 100]).unwrap();
+
+            assert!(
+                opt.get_cached("m2").is_none(),
+                "round {round}: m2 was least recently used and should have been evicted"
+            );
+            assert!(
+                opt.get_cached("m1").is_some(),
+                "round {round}: m1 was touched"
+            );
+            assert!(
+                opt.get_cached("m3").is_some(),
+                "round {round}: m3 is newest"
+            );
+        }
+    }
+
+    /// Plain insertion order, with no intervening access: oldest goes first.
+    #[test]
+    fn cache_evicts_in_insertion_order_when_untouched() {
+        for round in 0..64 {
+            let mut opt = RetrievalOptimizer::new(200);
+            opt.cache_model("m1".into(), vec![0; 100]).unwrap();
+            opt.cache_model("m2".into(), vec![0; 100]).unwrap();
+            opt.cache_model("m3".into(), vec![0; 100]).unwrap();
+
+            assert!(opt.get_cached("m1").is_none(), "round {round}");
+            assert!(opt.get_cached("m3").is_some(), "round {round}");
+        }
+    }
+
+    /// The two tests above only tie the timestamps if the platform clock is
+    /// coarse enough that three inserts land in one tick. That is true on the
+    /// macOS runner -- which is where this bug surfaced -- and false on
+    /// Windows, where `SystemTime` advances between the calls and the buggy
+    /// implementation passes. A regression test that only fails on one
+    /// platform is not much of a guard.
+    ///
+    /// So force the condition instead of hoping for it: stamp every entry
+    /// with an *identical* `last_access` and check eviction still respects
+    /// access order. Ordering by `last_access` cannot pass this; ordering by
+    /// `seq` cannot fail it.
+    #[test]
+    fn cache_eviction_is_deterministic_when_timestamps_are_identical() {
+        for round in 0..64 {
+            let mut opt = RetrievalOptimizer::new(200);
+            opt.cache_model("m1".into(), vec![0; 100]).unwrap();
+            opt.cache_model("m2".into(), vec![0; 100]).unwrap();
+
+            // Collapse the clock: every entry now looks equally recent.
+            let frozen = std::time::SystemTime::now();
+            for entry in opt.cache.values_mut() {
+                entry.last_access = frozen;
+            }
+
+            opt.cache_model("m3".into(), vec![0; 100]).unwrap();
+
+            assert!(
+                opt.cache.contains_key("m2"),
+                "round {round}: m1 was inserted first and must be evicted first, \
+                 but eviction fell back to HashMap iteration order"
+            );
+            assert!(!opt.cache.contains_key("m1"), "round {round}");
+            assert!(opt.cache.contains_key("m3"), "round {round}");
+        }
     }
 }

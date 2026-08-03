@@ -10,6 +10,8 @@ pub struct RetrievalCache {
     cache: HashMap<String, CachedResult>,
     max_size: usize,
     current_size: usize,
+    /// Strictly increasing stamp handed out on every insert.
+    next_seq: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -17,6 +19,12 @@ struct CachedResult {
     results: Vec<Document>,
     timestamp: std::time::SystemTime,
     access_count: usize,
+    /// Final tie-breaker for eviction. Two entries inserted within the same
+    /// clock tick carry *equal* `timestamp`s, and with equal `access_count`
+    /// the scan below then picked whichever the randomized `HashMap`
+    /// iteration order reached first. This counter makes the choice
+    /// deterministic and survives the non-monotonicity of `SystemTime`.
+    seq: u64,
 }
 
 impl RetrievalCache {
@@ -26,6 +34,7 @@ impl RetrievalCache {
             cache: HashMap::new(),
             max_size,
             current_size: 0,
+            next_seq: 0,
         }
     }
 
@@ -49,12 +58,15 @@ impl RetrievalCache {
         }
 
         if result_size <= self.max_size {
+            let seq = self.next_seq;
+            self.next_seq += 1;
             self.cache.insert(
                 query_hash,
                 CachedResult {
                     results,
                     timestamp: std::time::SystemTime::now(),
                     access_count: 0,
+                    seq,
                 },
             );
             self.current_size += result_size;
@@ -75,7 +87,8 @@ impl RetrievalCache {
         }
     }
 
-    /// Evict least recently used entry (lowest access_count; oldest timestamp breaks ties)
+    /// Evict least recently used entry (lowest access_count; oldest timestamp
+    /// breaks ties; insertion order breaks those).
     fn evict_lru(&mut self) {
         if let Some((key_to_remove, size)) = self
             .cache
@@ -84,6 +97,7 @@ impl RetrievalCache {
                 a.access_count
                     .cmp(&b.access_count)
                     .then_with(|| a.timestamp.cmp(&b.timestamp))
+                    .then_with(|| a.seq.cmp(&b.seq))
             })
             .map(|(k, v)| {
                 let size = v.results.iter().map(|d| d.content.len()).sum::<usize>();
