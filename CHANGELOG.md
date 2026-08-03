@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.1] - 2026-08-03
+
+### Fixed
+
+- **The default telemetry collector was undocumented, and the docs denied it existed.** `TelemetryConfig::endpoint` defaults to `https://telemetry.nervosys.ai/v1/events`, compiled into the binary — but `docs/TELEMETRY.md` stated flatly that "there is no default collector and no default token", and the 4.1.0 changelog said "nothing is baked into the binary". Both statements were written about the OTLP exporter, which genuinely has no defaults, and neither said so.
+
+  The practical effect: someone who opted in had no way to learn from the documentation where their events were being sent. That is the one thing a telemetry document exists to tell you. The endpoint is now disclosed, with instructions for pointing it at a collector you control, and both claims are scoped to the OTLP path.
+
+  No data was ever sent without consent — `enabled` defaults to `false` and always has. This is a disclosure failure, not a collection one.
+
 ## [4.2.0] - 2026-08-03
 
 An audit of the shipped surface against the shipped documentation. Most of what follows is a correction rather than a feature — the code was in better shape than the pages describing it.
@@ -55,7 +65,7 @@ Both fixes are test-only or inert for consumers; 4.1.0 is not broken for anyone 
 
 - **OTLP export for telemetry events**, behind a new `otel` feature. Configured entirely from the standard OpenTelemetry environment variables — `OTEL_EXPORTER_OTLP_ENDPOINT` (and the signal-specific `..._LOGS_ENDPOINT`, which takes precedence), `OTEL_EXPORTER_OTLP_PROTOCOL` (`http/protobuf` or `http/json`), `OTEL_EXPORTER_OTLP_HEADERS`, and `OTEL_SERVICE_NAME` — so any collector or vendor endpoint works without bespoke configuration. Events map onto OTLP log records. Feature-gated because it pulls in prost and the OpenTelemetry SDK; default and `full` builds are unchanged.
 
-  Two properties are enforced by the code rather than described in prose. **Configuring an exporter does not enable collection**: pointing a build at a collector and consenting to report are separate decisions, usually made by different people, so both are required — there is a test for it. And **nothing is baked into the binary**: no default collector, no default token. A credential compiled into an AGPL crate published to a public registry is readable by everyone who installs it.
+  Two properties are enforced by the code rather than described in prose. **Configuring an exporter does not enable collection**: pointing a build at a collector and consenting to report are separate decisions, usually made by different people, so both are required — there is a test for it. And **no OTLP endpoint or token is baked into the binary**: the exporter has no default collector and no default credential. A credential compiled into an AGPL crate published to a public registry is readable by everyone who installs it. (As originally written this said "nothing is baked into the binary", unqualified. That was wrong: the *built-in* sender has always had a compiled-in default endpoint. Corrected in 4.2.1, where it is also documented.)
 
   The exported attribute key set is pinned by a test. `Error::context`, `ApiCall::endpoint` and `FeatureUsed::detail` are the only fields that could carry a file path or a model name, so adding a key is now a deliberate edit to an approved list rather than something that can happen by accident. Building without the feature while `OTEL_EXPORTER_OTLP_ENDPOINT` is set warns on stderr instead of silently discarding the configuration.
 

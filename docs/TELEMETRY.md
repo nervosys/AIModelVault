@@ -21,7 +21,7 @@ Two events. `AppStart`, once per process:
 
 | Field | Example |
 |---|---|
-| `app.version` | `4.2.0` |
+| `app.version` | `4.2.1` |
 | `os.type` | `linux` |
 | `host.arch` | `x86_64` |
 | `app.features` | `api,sqlite` |
@@ -51,6 +51,33 @@ interpolate paths and model names.
 Still not emitted: `ModelOperation`, `Conversion`, `ApiCall`, `Error`, and
 `FeatureUsed`. Those event types and their `track_*` helpers are public, but
 nothing in the crate calls them.
+
+## Where events go
+
+The built-in sender posts to a compiled-in default:
+
+```
+https://telemetry.nervosys.ai/v1/events
+```
+
+That is the project's own collector, operated by NERVOSYS. Nothing is sent
+there unless you have explicitly enabled telemetry — `enabled` defaults to
+`false`, so a default install never contacts it.
+
+Override it in `config.toml` to send events somewhere you control instead:
+
+```toml
+[telemetry]
+enabled = true
+endpoint = "https://collector.internal.example.com/v1/events"
+```
+
+Or bypass the built-in sender entirely and use the `otel` feature with a
+standard OTLP collector, described below.
+
+This endpoint went undocumented until 4.2.1, and this page previously stated
+that no default collector existed. It did, and it does — for the built-in
+sender. The statement was written about the OTLP path and should have said so.
 
 ## What is **never** sent
 
@@ -86,9 +113,13 @@ Two rules the implementation enforces:
 1. **Setting an endpoint does not enable telemetry.** Configuring an exporter
    and consenting to collection are separate decisions, usually made by
    different people. Both are required.
-2. **Nothing is baked into the binary.** There is no default collector and no
-   default token. A credential compiled into an AGPL crate published to a
-   public registry is readable by everyone who installs it.
+2. **No OTLP endpoint or token is baked into the binary.** The OTLP exporter
+   has no default collector and no default credential; unset means no export.
+   A credential compiled into an AGPL crate published to a public registry is
+   readable by everyone who installs it.
+
+   This applies to the OTLP path only. The built-in sender *does* have a
+   compiled-in default endpoint — see [Where events go](#where-events-go).
 
 Building without the `otel` feature while `OTEL_EXPORTER_OTLP_ENDPOINT` is set
 warns on stderr rather than silently dropping the configuration.

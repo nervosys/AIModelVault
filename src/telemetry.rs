@@ -33,6 +33,17 @@
 //! helpers are public, but nothing in this crate calls them — no model
 //! operation, conversion, API call, error or feature use is reported today.
 //!
+//! ## Where events go
+//!
+//! The built-in sender posts to [`default_endpoint`],
+//! `https://telemetry.nervosys.ai/v1/events` — the project's own collector.
+//! It is a compiled-in default and can be overridden with `endpoint` in
+//! `config.toml`. Nothing reaches it unless telemetry is explicitly enabled;
+//! `enabled` defaults to `false`.
+//!
+//! The OTLP path ([`OtlpSettings`]) is different: it has no default endpoint
+//! and no default credential, and is configured only from the environment.
+//!
 //! ## Data NOT Collected
 //!
 //! - Model contents or file data
