@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2026-08-03
+
+An audit of the shipped surface against the shipped documentation. Most of what follows is a correction rather than a feature — the code was in better shape than the pages describing it.
+
+### Added
+
+- **`CommandRun` telemetry is now emitted** (still only when telemetry is enabled, which it is not by default). Six of the seven `track_*` helpers had no call sites, so an opted-in session reported exactly one event at startup. This wires `track_command`: subcommand name, duration, and a success boolean.
+
+  The binary takes both names from clap's registered command table via `ArgMatches`, not from the parsed value or the raw command line. That is the property that makes it safe rather than a promise about it: `subcommand_name` can only return a literal declared in `args.rs`, so the field's value set is the set of subcommands, and a model name or path has no route in. A test asserts argument values do not appear. The failure reason is not recorded, only the boolean — error messages interpolate paths.
+
+### Fixed
+
+- **`docs/CLOUD_STORAGE.md` claimed cloud uploads were encrypted client-side.** In bold: "only encrypted data leaves your machine", "cloud providers never see your plaintext models". Neither is true. `aim cloud push` calls `Vault::get_model`, which decrypts and decompresses, and uploads that buffer — the object in the bucket is the plaintext model. Anyone who sized their bucket controls against that promise was less protected than they believed.
+
+  The push handler now warns at the point of upload, and both cloud documents lead with the real threat model. The wire format is unchanged: sending ciphertext instead changes what `pull` must do and how vaults with differing passphrases interoperate, which is a design decision rather than a documentation fix.
+
+- **`docs/BLOCKCHAIN_AUDIT.md` documented a CLI that does not exist.** `aim audit`, `aim audit --verify`, and `aim audit --export` are not commands — there is no `audit` subcommand. The page also stated that every mutating operation was recorded as a block; `blockchain.rs` has no callers anywhere in the tree, so nothing was ever recorded. It is a library primitive and now says so, pointing at `audit.rs`, which *is* wired into `Vault` and is what actually produces an audit trail. The block-fields table listed `principal`, `operation`, and `payload`, none of which are fields of `AuditBlock` or `BlockEntry`.
+
+- **`docs/FEDERATION.md` claimed REST API exposure.** `src/api/` contains no reference to the module. Federation is library-only, as the README's capability table already said.
+
+- **`docs/CLOUD_STORAGE.md` was written against commands that do not exist** — `aim remote add`, `aim push`, `aim sync --direction`, and a "remote" concept the CLI has never had. Rewritten against the real `aim cloud push|pull|list|config`. Stray references to `aim import` and `aim info` corrected in `XDG_COMPLIANCE.md` and `MIGRATION.md`.
+
+- **`aim cloud config --provider azure --show` advertised `AZURE_STORAGE_KEY`**, which `AzureBackend::new` rejects outright — the Azure SDK for Rust v1 has no shared-key credential, a constraint recorded in `Cargo.toml` since 4.0.0 but never reflected in the CLI. It now lists the SAS and Entra ID variables actually consulted, and flags the dead one when set.
+
+- Website dependencies: seven advisories cleared, including Next.js request smuggling in rewrites and a Server Actions CSRF bypass via null origin (16.1.6 → 16.2.12). The remaining postcss and sharp findings are vendored inside Next.js and have no stable fix — `npm audit fix --force` "resolves" them by downgrading to next@9.3.3.
+
 ## [4.1.1] - 2026-07-31
 
 Both fixes are test-only or inert for consumers; 4.1.0 is not broken for anyone depending on the crate. This release exists so the git tag, the crates.io artifact, and the source all agree.

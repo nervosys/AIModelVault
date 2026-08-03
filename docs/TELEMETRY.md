@@ -17,11 +17,11 @@ Or `aim telemetry disable`, or set `telemetry.enabled = false` in `config.toml`.
 
 ## What is sent (when enabled)
 
-As of 4.0.0 the only event emitted is `AppStart`:
+Two events. `AppStart`, once per process:
 
 | Field | Example |
 |---|---|
-| `app.version` | `4.0.0` |
+| `app.version` | `4.2.0` |
 | `os.type` | `linux` |
 | `host.arch` | `x86_64` |
 | `app.features` | `api,sqlite` |
@@ -31,11 +31,26 @@ As of 4.0.0 the only event emitted is `AppStart`:
 Neither identifier is derived from anything about the machine or the user, so
 neither can be correlated back to an identity.
 
-Earlier revisions of this page said command names were sent. They were not, and
-are not: no command, model operation, conversion, API call, error, or feature
-use is reported. The `CommandRun`, `ModelOperation`, `Conversion`, `ApiCall`,
-`Error` and `FeatureUsed` event types exist and their `track_*` helpers are
-public, but nothing in the crate calls them.
+And `CommandRun`, once per invocation, added in 4.2.0:
+
+| Field | Example |
+|---|---|
+| `command.name` | `cloud` |
+| `command.subcommand` | `push`, or absent |
+| `command.duration_ms` | `1420` |
+| `command.success` | `true` |
+
+Both names come from clap's registered command table, not from the command
+line. `ArgMatches::subcommand_name` can only return a literal declared in
+`args.rs`, so the set of values this field can ever hold is the set of
+subcommands — a model name, path, or token has no route into it. There is a
+test asserting that argument values do not appear in the pair. The failure
+*reason* is deliberately not recorded, only the boolean: error messages
+interpolate paths and model names.
+
+Still not emitted: `ModelOperation`, `Conversion`, `ApiCall`, `Error`, and
+`FeatureUsed`. Those event types and their `track_*` helpers are public, but
+nothing in the crate calls them.
 
 ## What is **never** sent
 

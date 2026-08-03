@@ -12,19 +12,26 @@
 //!
 //! ## Data Collected
 //!
-//! Only if you opt in. As of this version the sole event that is ever emitted
-//! is [`TelemetryEvent::AppStart`], carrying:
+//! Only if you opt in. Two events are emitted.
+//!
+//! [`TelemetryEvent::AppStart`], once per process:
 //!
 //! - **Environment**: version, OS, architecture, enabled feature flags
 //! - **Anonymous ID**: random UUID v4 generated on first run, and a per-run
 //!   session UUID. Neither is derived from anything about the machine or the
 //!   user, so neither can be correlated back to an identity.
 //!
-//! The other [`TelemetryEvent`] variants are defined and their `track_*`
-//! helpers are public, but nothing in this crate calls them — no command,
-//! model operation, conversion, API call, error or feature use is reported
-//! today. This section previously listed all of those as collected, which
-//! overstated it in the direction that matters for a privacy review.
+//! [`TelemetryEvent::CommandRun`], once per CLI invocation:
+//!
+//! - **Command and subcommand name**, duration in milliseconds, and a success
+//!   boolean. The binary takes both names from clap's registered command
+//!   table rather than from the command line, so the field can only ever hold
+//!   one of the subcommand literals declared in `args.rs` — never an argument
+//!   value. The failure *reason* is not recorded, only the boolean.
+//!
+//! The remaining [`TelemetryEvent`] variants are defined and their `track_*`
+//! helpers are public, but nothing in this crate calls them — no model
+//! operation, conversion, API call, error or feature use is reported today.
 //!
 //! ## Data NOT Collected
 //!

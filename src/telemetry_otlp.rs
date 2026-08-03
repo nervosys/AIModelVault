@@ -31,7 +31,7 @@ use crate::telemetry::{OtlpProtocol, OtlpSettings, TelemetryEnvelope, TelemetryE
 /// A provider is built per batch rather than cached in a `static`. Batches are
 /// infrequent (they are gated on a flush interval and a batch size), and a
 /// long-lived global provider would hold a connection open for the life of a
-/// CLI process that may only ever emit a single `AppStart`.
+/// CLI process that emits two events and exits.
 pub(crate) fn export(
     events: &[TelemetryEnvelope],
     settings: &OtlpSettings,
