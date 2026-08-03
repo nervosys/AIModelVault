@@ -132,17 +132,42 @@ host, including ones that dump their environment on crash.
 
 ### systemd
 
-`deploy/systemd/` has a unit and an example environment file.
+`deploy/systemd/install.sh` provisions the unit and writes the environment
+variables at install time, so there is no manual editing step to forget:
 
 ```bash
-sudo cp deploy/systemd/aim-server.service /etc/systemd/system/
-sudo install -d -m 0755 /etc/aim
-sudo cp deploy/systemd/aim-server.env.example /etc/aim/server.env
-sudo chown root:root /etc/aim/server.env
-sudo chmod 0600 /etc/aim/server.env
-$EDITOR /etc/aim/server.env
-sudo systemctl daemon-reload && sudo systemctl enable --now aim-server
+# Put the credential in a file first -- never in an argument.
+printf 'Authorization=Bearer %s' "$TOKEN" > /tmp/otlp-headers
+chmod 600 /tmp/otlp-headers
+
+sudo ./deploy/systemd/install.sh \
+    --otlp-endpoint     https://collector.example.com/otlp \
+    --otlp-protocol     http/protobuf \
+    --otlp-service-name ai-model-vault \
+    --otlp-headers-file /tmp/otlp-headers \
+    --enable-telemetry
+
+shred -u /tmp/otlp-headers
 ```
+
+`--dry-run` prints every change without writing anything, and never prints the
+token — only the path it was read from.
+
+The credential is taken from a file rather than a flag because command-line
+arguments are world-readable through `/proc/<pid>/cmdline` while the process
+runs. A token passed as `--otlp-headers` would be visible to every local user,
+which is the exposure `EnvironmentFile` exists to prevent.
+
+The script creates the `aim` system user, `/var/lib/aim`, and
+`/etc/aim/server.env` at 0600 root-owned, generates `AIM_JWT_SECRET` if there
+isn't one (preserving an existing value across re-runs), and reloads systemd.
+It is idempotent.
+
+Omitting `--enable-telemetry` configures the exporter without turning
+collection on — the two remain separate decisions.
+
+To do it by hand instead, copy `aim-server.env.example` to
+`/etc/aim/server.env`, `chmod 0600`, `chown root:root`, and fill it in.
 
 The unit uses `EnvironmentFile=`, not `Environment=`. `Environment=` values are
 visible in `systemctl show` and `systemd-analyze dump` to any local user, which

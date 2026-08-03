@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.2.1] - 2026-08-03
 
+### Added
+
+- **`deploy/systemd/install.sh`** — provisions the unit and writes the OTLP environment variables at install time, rather than leaving a hand-editing step in the documentation. Creates the `aim` system user and `/var/lib/aim`, writes `/etc/aim/server.env` at 0600 root-owned through a temp file and rename (a plain redirect would inherit the umask and be briefly world-readable), generates `AIM_JWT_SECRET` if absent while preserving an existing one, and reloads systemd. Idempotent, with `--dry-run`.
+
+  The OTLP credential is read from a file (`--otlp-headers-file`), never an argument: command-line arguments are world-readable through `/proc/<pid>/cmdline` for the life of the process, so passing a bearer token as a flag exposes it to every local user — the exact thing `EnvironmentFile=` is there to prevent. The token is never echoed, including under `--dry-run`, which reports only the path it came from.
+
+  `--enable-telemetry` is separate from the exporter flags, so configuring a collector still does not turn collection on.
+
 ### Fixed
 
 - **The default telemetry collector was undocumented, and the docs denied it existed.** `TelemetryConfig::endpoint` defaults to `https://telemetry.nervosys.ai/v1/events`, compiled into the binary — but `docs/TELEMETRY.md` stated flatly that "there is no default collector and no default token", and the 4.1.0 changelog said "nothing is baked into the binary". Both statements were written about the OTLP exporter, which genuinely has no defaults, and neither said so.
