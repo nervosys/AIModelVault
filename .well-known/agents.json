@@ -4,7 +4,7 @@
   "project": {
     "id": "ai-model-vault",
     "name": "AI Model Vault",
-    "version": "1.6.0",
+    "version": "4.2.1",
     "description": "Encrypted AI/ML model management system with versioning, 23+ format conversion, compliance validation (FIPS 140-3, CMMC 2.0, MITRE ATT&CK), RAG with MCP tools, federation, blockchain audit, model download (HuggingFace/Ollama/URL), HMAC signing & verification, pickle safety scanning, tensor-level diffing, engine interop (Ollama/LM Studio), license scanning, model tags & search, vault export/import, garbage collection, TUI dashboard, webhooks, role-based ACL, KMS integration, model validation, retention policies, cross-model lineage DAG, plugin system, config profiles, quantization pipeline, evaluation harness, backup scheduling, and multi-vault management.",
     "homepage": "https://github.com/nervosys/AIModelVault",
     "documentation": "https://github.com/nervosys/AIModelVault/tree/master/docs",
@@ -128,9 +128,9 @@
       "standards": ["FIPS 140-3", "CMMC 2.0 Level 2", "MITRE ATT&CK"]
     },
     "cloud_storage": {
-      "description": "Push/pull encrypted models to cloud providers",
+      "description": "Push/pull models to cloud providers. Note: push uploads the DECRYPTED model — the vault's encryption is at-rest on local disk only. Confidentiality in the bucket depends on TLS and the bucket's own server-side encryption.",
       "commands": ["aim cloud push", "aim cloud pull", "aim cloud list", "aim cloud config"],
-      "providers": ["AWS S3", "Azure Blob Storage", "Google Cloud Storage"]
+      "providers": ["AWS S3", "Azure Blob Storage"]
     },
     "rag": {
       "description": "Retrieval Augmented Generation system for AI-powered document search",

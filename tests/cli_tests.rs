@@ -2393,3 +2393,71 @@ fn test_published_exit_code_tables_match_the_implementation() {
         );
     }
 }
+
+/// The `.well-known/` manifests publish a version that agents may branch on,
+/// and nothing kept it in step with the crate. It had drifted to `1.6.0`
+/// (agents.json, mcp-manifest.json) and `1.5.0` (openapi.yaml) while the crate
+/// was at 4.2.1 — three major versions of skew on the discovery surface the
+/// README tells agents to read first.
+///
+/// `ontology.jsonld` is deliberately excluded: its `version` is the ontology
+/// schema's own version, tracked by `owl:versionInfo`, and is independent of
+/// the crate.
+#[test]
+fn test_well_known_manifests_declare_the_crate_version() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let crate_version = env!("CARGO_PKG_VERSION");
+
+    let agents: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join(".well-known/agents.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        agents["project"]["version"].as_str(),
+        Some(crate_version),
+        ".well-known/agents.json project.version drifted from Cargo.toml"
+    );
+
+    let mcp: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join(".well-known/mcp-manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        mcp["version"].as_str(),
+        Some(crate_version),
+        ".well-known/mcp-manifest.json version drifted from Cargo.toml"
+    );
+
+    // Parsed as text rather than YAML: the top-level `version:` under `info:`
+    // is the only two-space-indented `version:` in the file, and the test would
+    // otherwise need a YAML dependency for one field.
+    let openapi = std::fs::read_to_string(root.join(".well-known/openapi.yaml")).unwrap();
+    let declared = openapi
+        .lines()
+        .find(|l| l.starts_with("  version:"))
+        .map(|l| l.trim_start_matches("  version:").trim().to_string())
+        .expect("openapi.yaml has no top-level info.version");
+    assert_eq!(
+        declared, crate_version,
+        ".well-known/openapi.yaml info.version drifted from Cargo.toml"
+    );
+}
+
+/// `aim cloud` supports S3 and Azure. GCS was removed along with the
+/// `cloud-storage` crate, and there is no `gcs` cargo feature — so a manifest
+/// advertising it sends an agent down a path that cannot work.
+#[test]
+fn test_manifests_do_not_advertise_removed_gcs_support() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    for name in [
+        ".well-known/ai-plugin.json",
+        ".well-known/agents.json",
+        ".well-known/mcp-manifest.json",
+    ] {
+        let body = std::fs::read_to_string(root.join(name)).unwrap();
+        assert!(
+            !body.contains("GCS") && !body.contains("Google Cloud Storage"),
+            "{name} advertises GCS, which `aim cloud` cannot do"
+        );
+    }
+}

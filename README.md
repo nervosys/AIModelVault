@@ -10,7 +10,9 @@
 [![CMMC](https://img.shields.io/badge/CMMC%202.0%20L2-controls%20supported-blue.svg)](docs/SECURITY_HARDENING.md)
 [![Tests](https://img.shields.io/badge/tests-2%2C160%2B%20passing-brightgreen.svg)](reports/)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.2.1-blue.svg)](CHANGELOG.md)
+[![crates.io](https://img.shields.io/crates/v/ai-model-vault.svg)](https://crates.io/crates/ai-model-vault)
+[![PyPI](https://img.shields.io/pypi/v/aimodelvault.svg)](https://pypi.org/project/aimodelvault/)
 [![Clippy](https://img.shields.io/badge/clippy-clean-brightgreen.svg)](validate.ps1)
 [![Agent-ready](https://img.shields.io/badge/agent--ready-AGENTS.md-blueviolet.svg)](AGENTS.md)
 
@@ -59,7 +61,7 @@ curl  http://host:8080/api/v1/...     # REST (see openapi.yaml)
 - **Destructive ops gated:** `delete`, `policy apply`, `gc`, `vault-import` accept `--dry-run` (where applicable) or require an explicit name argument.
 - **Self-describing errors:** error JSON includes `code`, `message`, and `hint`; never just a string.
 - **URIs:** Vault resources are addressable via the [`aimv://`](docs/UTILITIES.md) scheme — agents can pass `aimv://vault/model@version` between tools.
-- **No surprise network:** the CLI never phones home except `aim pull` (explicit), `aim cloud` (explicit), and opt-in telemetry (off by default; honors `DO_NOT_TRACK=1`).
+- **No surprise network:** the CLI never phones home except `aim pull` (explicit), `aim cloud` (explicit), and opt-in telemetry — off by default, honors `DO_NOT_TRACK=1`, and when enabled posts to `https://telemetry.nervosys.ai/v1/events` unless you point `telemetry.endpoint` elsewhere. Two events, no model names or paths: see [docs/TELEMETRY.md](docs/TELEMETRY.md).
 
 ### Three-surface coverage matrix
 
@@ -75,7 +77,8 @@ Every one of the 29 features in [AGENTS.md](AGENTS.md) is reachable from **all t
 | [`.well-known/`](.well-known/) — discovery manifests             | [Installation](#installation)                       | [Build & Validate](#build--validate)           |
 | [`aim introspect`](#for-ai-agents--read-this-first) — CLI schema | [CLI Reference](docs/CLI.md)                        | [Architecture](#architecture)                  |
 | [MCP tools](docs/MCP_TOOLS.md) — 86 tools                        | [Rust API Quickstart](#rust-library-api-quickstart) | [Performance](docs/PERFORMANCE.md)             |
-| [OpenAPI 3.1](.well-known/openapi.yaml) — 53 endpoints           | [Demos](#interactive-demos)                         | [Contributing](CONTRIBUTING.md)                |
+| [OpenAPI 3.1](.well-known/openapi.yaml) — 53 endpoints           | [Demos](#interactive-demos)                         | [Deployment](#deployment)                      |
+|                                                                  | [Telemetry](docs/TELEMETRY.md) — opt-in, disclosed  | [Contributing](CONTRIBUTING.md)                |
 
 ---
 
@@ -96,17 +99,33 @@ Every one of the 29 features in [AGENTS.md](AGENTS.md) is reachable from **all t
 ### Install
 
 ```bash
-# From source
-git clone https://github.com/nervosys/AIModelVault.git
-cd AIModelVault
-cargo build --release --features full
-# Binary at target/release/aim (~17 MB, LTO + stripped)
+# From crates.io
+cargo install ai-model-vault --features full,api
 ```
 
 ```bash
-# Or via cargo
-cargo install ai-model-vault --features full
+# Prebuilt binary (Linux / macOS / Windows, no toolchain needed)
+# https://github.com/nervosys/AIModelVault/releases/latest
+curl -sSLO https://github.com/nervosys/AIModelVault/releases/latest/download/aim-linux-amd64
+curl -sSLO https://github.com/nervosys/AIModelVault/releases/latest/download/aim-linux-amd64.sha256
+sha256sum -c aim-linux-amd64.sha256 && chmod +x aim-linux-amd64 && sudo mv aim-linux-amd64 /usr/local/bin/aim
 ```
+
+```bash
+# Python bindings
+pip install aimodelvault
+```
+
+```bash
+# From source
+git clone https://github.com/nervosys/AIModelVault.git
+cd AIModelVault
+cargo build --release --features full,api
+# Binary at target/release/aim (~17 MB, LTO + stripped)
+```
+
+`full` covers the storage backends but not the REST API — add `api` if you
+want `aim serve`. See [Cargo feature flags](#cargo-feature-flags).
 
 ### 30-second walkthrough
 
@@ -151,7 +170,7 @@ All features below are fully implemented, tested, and exposed via both CLI and l
 | Streaming encryption    | (auto)        | Constant 8 MiB memory for multi-GB models                  |
 | KMS integration         | `$aimodelvault_PASSPHRASE` | `env://`, `file://`, `azure-kv://`, `vault://`, `aws-sm://` (`--features s3`) |
 | 23+ model formats       | (auto-detect) | See [Supported Formats](#supported-model-formats)          |
-| Cloud storage           | `aim cloud`   | AWS S3, Azure Blob, GCS                                    |
+| Cloud storage           | `aim cloud`   | AWS S3, Azure Blob (GCS removed). Uploads are not client-side encrypted |
 
 ### Version Control & Lineage
 
@@ -252,7 +271,18 @@ See [docs/PROVIDERS_FORMATS.md](docs/PROVIDERS_FORMATS.md) and [FORMATS.md](FORM
 
 ## Installation
 
-### From source (recommended for now)
+### From a registry
+
+```bash
+cargo install ai-model-vault --features full,api   # Rust CLI + library
+pip install aimodelvault                           # Python bindings
+```
+
+Prebuilt binaries for Linux (gnu and musl), macOS (x86-64 and arm64), and
+Windows are attached to every [release](https://github.com/nervosys/AIModelVault/releases/latest),
+each with a `.sha256` alongside it.
+
+### From source
 
 ```bash
 git clone https://github.com/nervosys/AIModelVault.git
@@ -261,7 +291,7 @@ cd AIModelVault
 # Default build (Safetensors + ndarray + SQLite)
 cargo build --release
 
-# Full feature set
+# Storage backends + REST API + GraphQL
 cargo build --release --features full,graphql
 
 # Or use the helpers
@@ -273,19 +303,28 @@ The release binary lives at `target/release/aim` (~17 MB, LTO + stripped).
 
 ### Cargo feature flags
 
-| Feature        | Description                          |
-| -------------- | ------------------------------------ |
-| `default`      | SafeTensors + ndarray + SQLite       |
-| `full`         | All non-system features              |
-| `sqlite`       | SQLite RAG backend                   |
-| `kv-store`     | Sled KV backend                      |
-| `vector-db`    | Qdrant vector database               |
-| `s3`           | AWS S3 cloud storage                 |
-| `azure`        | Azure Blob storage                   |
-| `cloud`        | All cloud backends                   |
-| `api`          | REST API (Axum + JWT)                |
-| `graphql`      | GraphQL API                          |
-| `python`       | Python bindings (PyO3)               |
+| Feature     | Description                                                |
+| ----------- | ---------------------------------------------------------- |
+| `default`   | SafeTensors + ndarray + SQLite                             |
+| `full`      | `default` + Sled + Qdrant. **Not** the APIs, cloud, or otel |
+| `sqlite`    | SQLite RAG backend                                         |
+| `kv-store`  | Sled KV backend                                            |
+| `vector-db` | Qdrant vector database                                     |
+| `s3`        | AWS S3 cloud storage                                       |
+| `azure`     | Azure Blob storage                                         |
+| `cloud`     | All cloud backends                                         |
+| `api`       | REST API (Axum + JWT) — required for `aim serve`           |
+| `graphql`   | GraphQL API (implies `api`)                                |
+| `python`    | Python bindings (PyO3)                                     |
+| `otel`      | OTLP export for telemetry events                           |
+
+`full` is narrower than the name suggests: it enables the storage backends
+only. To get the server, ask for it explicitly:
+
+```bash
+cargo build --release --features full,api      # + aim serve
+cargo build --release --features full,cloud    # + S3 / Azure
+```
 
 ### Optional system dependencies
 
@@ -363,15 +402,67 @@ aim cloud list  --provider s3 --bucket my-models
 aim cloud pull  llama-7b --provider s3 --bucket my-models --remote-path llama-7b/safetensors/v1.vault
 ```
 
-| Provider             | Status                                       |
-| -------------------- | -------------------------------------------- |
-| AWS S3               | ✅ `--features s3`                            |
-| Azure Blob           | ✅ `--features azure`                         |
-| Google Cloud Storage | ⚠️ Temporarily disabled (rebuild in progress) |
+| Provider             | Status                                                  |
+| -------------------- | ------------------------------------------------------- |
+| AWS S3               | ✅ `--features s3`                                       |
+| Azure Blob           | ✅ `--features azure`                                    |
+| Google Cloud Storage | ❌ Removed — no `gcs` feature exists                     |
 
-Models are AES-256-GCM encrypted **before** upload; the cloud only ever sees ciphertext. Credentials come from standard env vars (`AWS_*`, `AZURE_STORAGE_*`, `GOOGLE_APPLICATION_CREDENTIALS`).
+> **`aim cloud push` uploads the decrypted model.** The vault's AES-256-GCM
+> encryption protects models on local disk; `push` reads through the normal
+> read path, which decrypts, and uploads the result. Confidentiality in the
+> bucket depends on TLS in transit and on the bucket's own server-side
+> encryption (SSE-KMS on S3, SSE on Azure) — not on the vault. Treat the
+> destination as trusted storage. Earlier revisions of this README claimed the
+> opposite; see [docs/CLOUD_STORAGE.md](docs/CLOUD_STORAGE.md#security-model).
+
+Credentials come from standard environment variables. S3 uses the normal AWS
+chain (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION`, profiles,
+or an instance role). Azure takes `AZURE_STORAGE_ACCOUNT` plus either
+`AZURE_STORAGE_SAS_TOKEN` or Entra ID — `AZURE_STORAGE_KEY` is **not**
+supported, as the Azure SDK for Rust v1 has no shared-key credential.
 
 Full guide: [docs/CLOUD_STORAGE.md](docs/CLOUD_STORAGE.md) · CLI: [docs/CLOUD_CLI.md](docs/CLOUD_CLI.md).
+
+---
+
+## Deployment
+
+Running `aim serve` as a service. Both paths keep configuration **service-scoped** — nothing is written to `/etc/environment` or a profile script, so no other process on the host inherits the API secret or a telemetry token.
+
+### systemd
+
+```bash
+sudo ./deploy/systemd/install.sh --dry-run    # see every change first
+sudo ./deploy/systemd/install.sh
+sudo systemctl enable --now aim-server
+```
+
+Creates the `aim` system user and `/var/lib/aim`, writes `/etc/aim/server.env` at `0600` root-owned, generates `AIM_JWT_SECRET` if absent, and installs a hardened unit using `EnvironmentFile=` rather than `Environment=` — the latter is readable by any local user via `systemctl show`.
+
+To configure OTLP export at install time, pass the credential as a *file*, never a flag (arguments are world-readable through `/proc/<pid>/cmdline`):
+
+```bash
+printf 'Authorization=Bearer %s' "$TOKEN" > /tmp/hdr && chmod 600 /tmp/hdr
+sudo ./deploy/systemd/install.sh \
+    --otlp-endpoint https://collector.example.com/otlp \
+    --otlp-headers-file /tmp/hdr \
+    --enable-telemetry
+shred -u /tmp/hdr
+```
+
+### Kubernetes / Helm
+
+```bash
+kubectl create secret generic aim-otlp \
+  --from-literal=headers='Authorization=Bearer <token>'
+helm install aim deploy/helm/ai-model-vault/ \
+  --set telemetry.otlp.headersSecret.existingSecret=aim-otlp
+```
+
+The chart never takes a credential through `values.yaml`, which is committed and printed back by `helm get values`. The JWT secret is generated into a Secret if you don't supply one.
+
+Details: [docs/TELEMETRY.md](docs/TELEMETRY.md#service-scoped-configuration) · [docs/SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md).
 
 ---
 
@@ -495,7 +586,8 @@ Full demo guide: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md).
 | `AIM_TELEMETRY_DISABLED=1` / `DO_NOT_TRACK=1`                | Disable anonymous telemetry        |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | AWS S3 credentials                 |
 | `AZURE_STORAGE_ACCOUNT` / `AZURE_STORAGE_SAS_TOKEN`          | Azure: account + SAS. Or Entra ID via `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET`. Shared keys (`AZURE_STORAGE_KEY`) are not supported |
-| `GOOGLE_APPLICATION_CREDENTIALS` / `GCP_PROJECT`             | GCS credentials                    |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` / `_PROTOCOL` / `_HEADERS`     | OTLP export (`--features otel`). Setting these does not enable telemetry |
+| `OTEL_SERVICE_NAME`                                          | Reported as `service.name`         |
 
 ---
 
@@ -509,7 +601,7 @@ src/
 ├── rag/                       # 7 RAG submodules (docs, KB, MCP, rules…)
 ├── vault.rs                   # Core vault logic + VaultBuilder
 ├── traits.rs                  # CryptoProvider, BlobStore, EventBus, URI parser
-├── storage.rs                 # Local + S3/Azure/GCS backends
+├── storage.rs                 # Local + S3/Azure backends
 ├── version.rs / version_sqlite.rs  # Version control (JSON + SQLite backends)
 ├── formats.rs                 # 23+ format detection
 ├── conversion.rs              # 10 format converters

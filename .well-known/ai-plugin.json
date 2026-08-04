@@ -4,7 +4,7 @@
   "name_for_human": "AI Model Vault",
   "name_for_model": "ai_model_vault",
   "description_for_human": "Securely store, version, convert, and manage AI/ML models with military-grade encryption, format conversion, and federated sync.",
-  "description_for_model": "AI Model Vault (binary: `aim`) is a Rust-based encrypted model management system. Use it to: store AI models with AES-256-GCM encryption and Argon2id key derivation; version models with full lineage tracking; convert between 23+ formats (SafeTensors, GGUF, ONNX, PyTorch, TensorRT, CoreML, MLX, etc.); run FIPS 140-3 / CMMC 2.0 compliance checks; manage model cards; operate a RAG system with document store/knowledge base/rule engine; push/pull models to cloud storage (S3, Azure, GCS); archive and deduplicate models; query via REST/GraphQL API or MCP tools. The CLI binary is `aim`.",
+  "description_for_model": "AI Model Vault (binary: `aim`) is a Rust-based encrypted model management system. Use it to: store AI models with AES-256-GCM encryption and Argon2id key derivation; version models with full lineage tracking; convert between 23+ formats (SafeTensors, GGUF, ONNX, PyTorch, TensorRT, CoreML, MLX, etc.); run FIPS 140-3 / CMMC 2.0 compliance checks; manage model cards; operate a RAG system with document store/knowledge base/rule engine; push/pull models to cloud storage (S3, Azure); archive and deduplicate models; query via REST/GraphQL API or MCP tools. The CLI binary is `aim`.",
   "auth": {
     "type": "none"
   },
