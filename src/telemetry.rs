@@ -29,9 +29,24 @@
 //!   one of the subcommand literals declared in `args.rs` — never an argument
 //!   value. The failure *reason* is not recorded, only the boolean.
 //!
-//! The remaining [`TelemetryEvent`] variants are defined and their `track_*`
-//! helpers are public, but nothing in this crate calls them — no model
-//! operation, conversion, API call, error or feature use is reported today.
+//! [`TelemetryEvent::ModelOperation`] on store/get/delete: operation, format
+//! label, a **size bucket** (never the exact size), duration, outcome.
+//!
+//! [`TelemetryEvent::Conversion`] on `aim convert`: source and target format
+//! labels, duration, outcome.
+//!
+//! [`TelemetryEvent::ApiCall`] per HTTP request: the matched **route
+//! template**, method, status, duration.
+//!
+//! [`TelemetryEvent::Error`] when a command fails: the variant name from
+//! [`crate::VaultError::kind`] and nothing else — never the message.
+//!
+//! [`TelemetryEvent::FeatureUsed`] for KMS: the URI scheme only.
+//!
+//! Every one of those labels is a `&'static str` chosen from a closed set.
+//! Format labels come from [`crate::formats::ModelFormat::telemetry_name`]
+//! rather than `name()`, which returns the user's own string for a custom
+//! format.
 //!
 //! ## Where events go
 //!

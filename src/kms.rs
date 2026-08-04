@@ -251,7 +251,15 @@ pub fn fetch(uri: &KmsUri) -> Result<Zeroizing<String>> {
 /// user-supplied passphrase.
 pub fn resolve(value: &str) -> Result<Zeroizing<String>> {
     if is_kms_uri(value) {
-        fetch(&value.parse::<KmsUri>()?)
+        let uri = value.parse::<KmsUri>()?;
+
+        // `scheme()` is one of five `&'static str` literals. The rest of the
+        // URI is deliberately untouched: `secret_id` names a secret and
+        // `endpoint` names infrastructure, and both are exactly the sort of
+        // free-form value `feature.detail` must never carry.
+        crate::telemetry::track_feature("kms", Some(uri.backend.scheme()));
+
+        fetch(&uri)
     } else {
         Ok(Zeroizing::new(value.to_string()))
     }

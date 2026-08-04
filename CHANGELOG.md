@@ -19,6 +19,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   **Objects pushed before 4.3.0 are still plaintext.** `pull` detects the missing magic, accepts them so nothing already in a bucket is stranded, and warns. Re-push to seal, then delete the old object; nothing re-encrypts in place.
 
+- **The five dormant telemetry helpers are now wired.** Before 4.2.0 an opted-in install reported one event at startup and nothing else; 4.2.0 added `CommandRun`. The remaining five event types existed with public `track_*` helpers and no call sites. All are now emitted — still only when telemetry is explicitly enabled, which it is not by default.
+
+  | Event | Where | What it carries |
+  |---|---|---|
+  | `ModelOperation` | store / get / delete | operation, format label, **size bucket**, duration, outcome |
+  | `Conversion` | `aim convert` | source and target format labels, duration, outcome |
+  | `ApiCall` | every HTTP request | matched **route template**, method, status, duration |
+  | `Error` | any failed command | variant name only |
+  | `FeatureUsed` | KMS URI resolution | the URI scheme only |
+
+  Every label is a `&'static str` from a closed set, and three specific hazards were closed rather than assumed away:
+
+  `ModelFormat::name()` returns the *caller's own string* for `Custom`, so a `--format` argument would have been reported verbatim. Added `telemetry_name()`, which collapses every `Custom` to the literal `"custom"`; a test feeds it paths, S3 URLs, and a bearer token and asserts none survive.
+
+  `ApiCall::endpoint` had to be the route template, not the resolved path — `/api/v1/models/gpt-4-customer-tuned` names a model. It is taken from axum's `MatchedPath`, which is only available in middleware and is a literal from the router table. Unmatched requests report the constant `<no match>` rather than the requested path, which is attacker-controlled.
+
+  `Error` reports `VaultError::kind()`, a new fixed literal per variant, and never `Display` — every message-carrying variant interpolates a path or model name. `context` is passed as `None`.
+
+  Exact model sizes are never sent, only the existing four buckets. No new OTLP attribute keys: all twenty were already on the pinned approved list.
+
 ### Fixed
 
 - **`.well-known/agents.json` told agents to run `pip install ai-model-vault`.** The PyPI distribution is `aimodelvault`; that command does not resolve. A test now derives the expected string from `pyproject.toml`.

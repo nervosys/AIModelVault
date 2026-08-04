@@ -196,6 +196,44 @@ impl ModelFormat {
             ModelFormat::Custom(name) => name,
         }
     }
+
+    /// Format label safe to report in telemetry.
+    ///
+    /// [`name`](Self::name) returns the caller's own string for
+    /// [`ModelFormat::Custom`], which is free-form user input — a model name,
+    /// a path fragment, anything they typed. Reporting it would break the
+    /// guarantee that telemetry carries no user-supplied text, so this
+    /// collapses every `Custom` to the literal `"custom"` and is otherwise a
+    /// fixed set of `&'static str`.
+    #[must_use]
+    pub fn telemetry_name(&self) -> &'static str {
+        match self {
+            ModelFormat::Safetensors => "safetensors",
+            ModelFormat::GGUF => "gguf",
+            ModelFormat::PyTorch => "pytorch",
+            ModelFormat::TensorRT => "tensorrt",
+            ModelFormat::ONNX => "onnx",
+            ModelFormat::MLX => "mlx",
+            ModelFormat::CoreML => "coreml",
+            ModelFormat::TorchScript => "torchscript",
+            ModelFormat::TFLite => "tflite",
+            ModelFormat::TensorFlow => "tensorflow",
+            ModelFormat::Keras => "keras",
+            ModelFormat::OpenVINO => "openvino",
+            ModelFormat::TVM => "tvm",
+            ModelFormat::NCNN => "ncnn",
+            ModelFormat::MNN => "mnn",
+            ModelFormat::RKNN => "rknn",
+            ModelFormat::Caffe => "caffe",
+            ModelFormat::MXNet => "mxnet",
+            ModelFormat::Darknet => "darknet",
+            ModelFormat::HDF5 => "hdf5",
+            ModelFormat::Pickle => "pickle",
+            ModelFormat::NumPy => "numpy",
+            // Deliberately NOT `name`: that is whatever the user typed.
+            ModelFormat::Custom(_) => "custom",
+        }
+    }
 }
 
 impl std::fmt::Display for ModelFormat {
@@ -560,5 +598,68 @@ mod tests {
         // Documents the trap `from_stored` exists to avoid: this is what the
         // convert and diff paths used to do with a stored format string.
         assert_ne!(ModelFormat::from_extension("PyTorch"), ModelFormat::PyTorch);
+    }
+
+    /// `name()` returns the caller's own string for `Custom`, so it must never
+    /// be what telemetry reports. This is the guard on that: whatever a user
+    /// types as `--format`, the telemetry label stays a fixed literal.
+    #[test]
+    fn test_telemetry_name_never_echoes_a_custom_format_string() {
+        for hostile in [
+            "/home/alice/models/customer-data.bin",
+            "s3://acme-private/secret-model",
+            "Bearer abc123",
+            "",
+        ] {
+            let fmt = ModelFormat::Custom(hostile.to_string());
+            assert_eq!(
+                fmt.telemetry_name(),
+                "custom",
+                "telemetry_name leaked a Custom payload"
+            );
+            assert_eq!(fmt.name(), hostile, "name() should still be verbatim");
+        }
+    }
+
+    /// Every non-Custom variant must map to a distinct lowercase literal, or
+    /// the collector groups unrelated formats together.
+    #[test]
+    fn test_telemetry_names_are_distinct_and_lowercase() {
+        let all = [
+            ModelFormat::Safetensors,
+            ModelFormat::GGUF,
+            ModelFormat::PyTorch,
+            ModelFormat::TensorRT,
+            ModelFormat::ONNX,
+            ModelFormat::MLX,
+            ModelFormat::CoreML,
+            ModelFormat::TorchScript,
+            ModelFormat::TFLite,
+            ModelFormat::TensorFlow,
+            ModelFormat::Keras,
+            ModelFormat::OpenVINO,
+            ModelFormat::TVM,
+            ModelFormat::NCNN,
+            ModelFormat::MNN,
+            ModelFormat::RKNN,
+            ModelFormat::Caffe,
+            ModelFormat::MXNet,
+            ModelFormat::Darknet,
+            ModelFormat::HDF5,
+            ModelFormat::Pickle,
+            ModelFormat::NumPy,
+        ];
+        let mut seen = std::collections::HashSet::new();
+        for f in &all {
+            let label = f.telemetry_name();
+            assert!(
+                label
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()),
+                "{label:?} is not a plain lowercase token"
+            );
+            assert!(seen.insert(label), "duplicate telemetry label {label:?}");
+        }
+        assert_eq!(seen.len(), all.len());
     }
 }

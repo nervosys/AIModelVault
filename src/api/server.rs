@@ -201,6 +201,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     dashboard
         .merge(graphql_routes)
         .nest("/api/v1", api)
+        .layer(axum::middleware::from_fn(track_request))
         .layer(cors)
         .layer(RequestBodyLimitLayer::new(state.config.max_body_size))
         .layer(TimeoutLayer::with_status_code(
@@ -208,6 +209,44 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             Duration::from_secs(300),
         ))
         .layer(TraceLayer::new_for_http())
+}
+
+/// Record one API call: route template, method, status, and duration.
+///
+/// The endpoint reported is [`MatchedPath`] — the *template* axum matched,
+/// such as `/api/v1/models/{name}` — and never `uri().path()`, which is the
+/// resolved path and therefore contains the model name. That distinction is
+/// the whole reason this is a middleware rather than something sprinkled
+/// through the handlers: `MatchedPath` is only available here, and it is a
+/// literal from the router table, so no request data can reach the event.
+///
+/// A request that matches no route (a 404) has no `MatchedPath`. It is
+/// reported as the constant `"<no match>"` rather than the path the client
+/// asked for, which is attacker-controlled and frequently a probe string.
+async fn track_request(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use axum::extract::MatchedPath;
+
+    let route = req
+        .extensions()
+        .get::<MatchedPath>()
+        .map_or("<no match>", |m| m.as_str())
+        .to_string();
+    let method = req.method().as_str().to_string();
+
+    let started = Instant::now();
+    let response = next.run(req).await;
+
+    crate::telemetry::track_api_call(
+        &route,
+        &method,
+        response.status().as_u16(),
+        started.elapsed(),
+    );
+
+    response
 }
 
 /// Minimum HS256 signing key length.

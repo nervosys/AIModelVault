@@ -163,13 +163,24 @@ pub fn handle_convert(
         println!("   {}", p);
     });
 
-    let result = pipeline.convert(
+    // Both labels come from `telemetry_name`, which collapses
+    // `ModelFormat::Custom` to a literal -- `name()` would return whatever
+    // string the user passed to `--to-format`.
+    let started = std::time::Instant::now();
+    let converted = pipeline.convert(
         &data,
         &from_format,
         &to_format,
         &options,
         Some(&progress_cb),
-    )?;
+    );
+    ai_model_vault::telemetry::track_conversion(
+        from_format.telemetry_name(),
+        to_format.telemetry_name(),
+        started.elapsed(),
+        converted.is_ok(),
+    );
+    let result = converted?;
 
     if let Some(plan) = &result.plan {
         // No conversion happened — the pipeline returned instructions instead.

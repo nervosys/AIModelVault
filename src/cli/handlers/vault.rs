@@ -67,6 +67,11 @@ pub fn handle_store(
         ModelFormat::from_extension(ext)
     };
 
+    // Captured before `model_format` is moved into the metadata below.
+    // `telemetry_name` rather than `name`: the latter returns the caller's own
+    // string for `ModelFormat::Custom`.
+    let format_label = model_format.telemetry_name();
+
     // Create metadata
     let mut metadata = ModelMetadata::new(name.clone(), model_format);
     if let Some(desc) = description {
@@ -85,7 +90,19 @@ pub fn handle_store(
     // Store model
     let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
-    let version = vault.store_model(&name, data, metadata, None)?;
+
+    // Size is bucketed inside `track_model_op`, never reported exactly.
+    let size = data.len() as u64;
+    let started = std::time::Instant::now();
+    let stored = vault.store_model(&name, data, metadata, None);
+    ai_model_vault::telemetry::track_model_op(
+        "store",
+        format_label,
+        size,
+        started.elapsed(),
+        stored.is_ok(),
+    );
+    let version = stored?;
 
     println!("✓ Model '{}' stored successfully", name);
     println!("  Version: {}", version.version);
@@ -111,7 +128,26 @@ pub fn handle_get(
     let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
-    let data = vault.get_model(&name, version)?;
+    // Format is read from the stored version rather than guessed from the
+    // output path's extension, which the user chose and which may be anything.
+    let format_label = vault
+        .list_versions(&name)
+        .iter()
+        .find(|v| version.is_none_or(|want| v.version == want))
+        .map_or("unknown", |v| {
+            ModelFormat::from_stored(&v.format).telemetry_name()
+        });
+
+    let started = std::time::Instant::now();
+    let fetched = vault.get_model(&name, version);
+    ai_model_vault::telemetry::track_model_op(
+        "get",
+        format_label,
+        fetched.as_ref().map_or(0, |d| d.len() as u64),
+        started.elapsed(),
+        fetched.is_ok(),
+    );
+    let data = fetched?;
     std::fs::write(&output, &data)?;
 
     println!("✓ Model '{}' retrieved successfully", name);
@@ -217,7 +253,25 @@ pub fn handle_delete(
     let mut vault = build_vault(config, use_sqlite)?;
     vault.unlock(passphrase)?;
 
-    if vault.delete_version(&name, version)? {
+    let format_label = vault
+        .list_versions(&name)
+        .iter()
+        .find(|v| v.version == version)
+        .map_or("unknown", |v| {
+            ModelFormat::from_stored(&v.format).telemetry_name()
+        });
+
+    let started = std::time::Instant::now();
+    let deleted = vault.delete_version(&name, version);
+    ai_model_vault::telemetry::track_model_op(
+        "delete",
+        format_label,
+        0,
+        started.elapsed(),
+        deleted.is_ok(),
+    );
+
+    if deleted? {
         println!("✓ Deleted '{}' v{}", name, version);
     } else {
         println!("Version not found");

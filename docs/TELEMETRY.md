@@ -17,7 +17,7 @@ Or `aim telemetry disable`, or set `telemetry.enabled = false` in `config.toml`.
 
 ## What is sent (when enabled)
 
-Two events. `AppStart`, once per process:
+`AppStart`, once per process:
 
 | Field | Example |
 |---|---|
@@ -48,9 +48,42 @@ test asserting that argument values do not appear in the pair. The failure
 *reason* is deliberately not recorded, only the boolean: error messages
 interpolate paths and model names.
 
-Still not emitted: `ModelOperation`, `Conversion`, `ApiCall`, `Error`, and
-`FeatureUsed`. Those event types and their `track_*` helpers are public, but
-nothing in the crate calls them.
+`ModelOperation`, on `store` / `get` / `delete`:
+
+| Field | Example |
+|---|---|
+| `model.operation` | `store` — one of three literals |
+| `model.format` | `safetensors` — from a fixed set, never a custom string |
+| `model.size_bucket` | `small` / `medium` / `large` / `xlarge` |
+| `duration.ms`, `outcome.success` | |
+
+The **exact size is never sent**, only the bucket. The format label comes from
+`ModelFormat::telemetry_name`, not `name()` — the latter returns whatever
+string the user passed for a custom format, and a test asserts it cannot leak.
+
+`Conversion`, on `aim convert` — source and target format labels from the same
+fixed set, plus duration and outcome.
+
+`ApiCall`, per HTTP request when running `aim serve`:
+
+| Field | Example |
+|---|---|
+| `http.route` | `/api/v1/models/{name}` — the **route template** |
+| `http.method`, `http.status_code`, `duration.ms` | |
+
+The route is axum's `MatchedPath`, a literal from the router table. The
+resolved path is never used: it contains the model name. Requests matching no
+route report the constant `<no match>` rather than the requested path, which
+is attacker-controlled.
+
+`Error`, when a command fails — `error.type` only, from
+`VaultError::kind()`, which returns a fixed literal per variant
+(`model_not_found`, `integrity`, …). The message is never sent: every
+message-carrying variant interpolates a path or a model name.
+
+`FeatureUsed`, currently only for KMS — `feature.name` is `kms` and
+`feature.detail` is the URI *scheme* (`env`, `file`, `aws-sm`, `azure-kv`,
+`vault`). The secret id and endpoint are not sent.
 
 ## Where events go
 
@@ -84,12 +117,15 @@ sender. The statement was written about the OTLP path and should have said so.
 - Model names, file paths, vault contents, passphrases, keys, ACL principals
 - Free-form text from any flag
 
-If you wire up the unused event types, note that `Error::context`,
-`ApiCall::endpoint` and `FeatureUsed::detail` are free-form strings and the only
-way the guarantees above can break — error messages carry file paths, and a
-resolved request path carries the model name. Pass constants and route
-templates, never formatted messages. `telemetry_otlp` has a test pinning the
-exported attribute key set, so adding one requires a deliberate edit.
+Three fields are free-form `String`s and are the only way the guarantees above
+can break: `Error::context`, `ApiCall::endpoint`, and `FeatureUsed::detail`.
+As wired today, `context` is always `None`, `endpoint` is always a router
+template, and `detail` is always a KMS scheme literal. If you add a call site,
+pass a constant — never a formatted message, a resolved path, or anything
+derived from an argument.
+
+`telemetry_otlp` has a test pinning the exported attribute key set, so adding
+a key requires a deliberate edit.
 
 ## OTLP export
 

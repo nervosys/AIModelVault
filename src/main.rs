@@ -332,6 +332,15 @@ fn run() -> Result<()> {
         result.is_ok(),
     );
 
+    // On failure, report *which kind* of error it was. `VaultError::kind`
+    // returns a fixed literal per variant, so the set of values this can send
+    // is closed and auditable. `context` is `None` on purpose: the field is
+    // free-form, and the only thing available to put in it here is the
+    // `Display` output, which interpolates paths and model names.
+    if let Err(err) = &result {
+        telemetry::track_error(err.kind(), None);
+    }
+
     // Flush telemetry before exit
     telemetry::flush();
 

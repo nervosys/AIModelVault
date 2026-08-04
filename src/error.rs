@@ -268,6 +268,39 @@ impl VaultError {
             | VaultError::StorageError(_) => EXIT_GENERAL,
         }
     }
+
+    /// Stable, constant name for the error variant.
+    ///
+    /// This exists so telemetry can report *which kind* of failure occurred
+    /// without touching the message. Every variant that carries a `String`
+    /// carries an interpolated one — model names, filesystem paths, and in
+    /// `ConfigError`'s case the path of a config file under the user's home
+    /// directory. `Display` output is therefore unsafe to report, and this
+    /// returns a fixed literal per variant instead: the set of possible values
+    /// is exactly the list below, and nothing else can ever appear.
+    #[must_use]
+    pub fn kind(&self) -> &'static str {
+        match self {
+            VaultError::CryptoError(_) => "crypto",
+            VaultError::AuthenticationFailed => "authentication_failed",
+            VaultError::IntegrityError(_) => "integrity",
+            VaultError::VersionError(_) => "version",
+            VaultError::ModelNotFound(_) => "model_not_found",
+            VaultError::VersionNotFound(_, _) => "version_not_found",
+            VaultError::NotFound(_) => "not_found",
+            VaultError::ConversionError(_) => "conversion",
+            VaultError::UnsupportedFormat(_) => "unsupported_format",
+            VaultError::IoError(_) => "io",
+            VaultError::ConfigError(_) => "config",
+            VaultError::SerializationError(_) => "serialization",
+            VaultError::CompressionError(_) => "compression",
+            VaultError::SecurityViolation(_) => "security_violation",
+            VaultError::InvalidInput(_) => "invalid_input",
+            VaultError::ComplianceViolation(_) => "compliance_violation",
+            VaultError::AuditError(_) => "audit",
+            VaultError::StorageError(_) => "storage",
+        }
+    }
 }
 
 impl From<serde_json::Error> for VaultError {
