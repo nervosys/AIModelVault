@@ -10,7 +10,7 @@
 [![CMMC](https://img.shields.io/badge/CMMC%202.0%20L2-controls%20supported-blue.svg)](docs/SECURITY_HARDENING.md)
 [![Tests](https://img.shields.io/badge/tests-2%2C160%2B%20passing-brightgreen.svg)](reports/)
 [![Coverage](https://img.shields.io/badge/coverage-85.4%25-brightgreen.svg)](docs/PERFORMANCE.md)
-[![Version](https://img.shields.io/badge/version-4.2.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.3.0-blue.svg)](CHANGELOG.md)
 [![crates.io](https://img.shields.io/crates/v/ai-model-vault.svg)](https://crates.io/crates/ai-model-vault)
 [![PyPI](https://img.shields.io/pypi/v/aimodelvault.svg)](https://pypi.org/project/aimodelvault/)
 [![Clippy](https://img.shields.io/badge/clippy-clean-brightgreen.svg)](validate.ps1)
@@ -170,7 +170,7 @@ All features below are fully implemented, tested, and exposed via both CLI and l
 | Streaming encryption    | (auto)        | Constant 8 MiB memory for multi-GB models                  |
 | KMS integration         | `$aimodelvault_PASSPHRASE` | `env://`, `file://`, `azure-kv://`, `vault://`, `aws-sm://` (`--features s3`) |
 | 23+ model formats       | (auto-detect) | See [Supported Formats](#supported-model-formats)          |
-| Cloud storage           | `aim cloud`   | AWS S3, Azure Blob (GCS removed). Uploads are not client-side encrypted |
+| Cloud storage           | `aim cloud`   | AWS S3, Azure Blob. Uploads sealed client-side (AES-256-GCM) |
 
 ### Version Control & Lineage
 
@@ -408,13 +408,14 @@ aim cloud pull  llama-7b --provider s3 --bucket my-models --remote-path llama-7b
 | Azure Blob           | ✅ `--features azure`                                    |
 | Google Cloud Storage | ❌ Removed — no `gcs` feature exists                     |
 
-> **`aim cloud push` uploads the decrypted model.** The vault's AES-256-GCM
-> encryption protects models on local disk; `push` reads through the normal
-> read path, which decrypts, and uploads the result. Confidentiality in the
-> bucket depends on TLS in transit and on the bucket's own server-side
-> encryption (SSE-KMS on S3, SSE on Azure) — not on the vault. Treat the
-> destination as trusted storage. Earlier revisions of this README claimed the
-> opposite; see [docs/CLOUD_STORAGE.md](docs/CLOUD_STORAGE.md#security-model).
+Uploads are **sealed client-side** (4.3.0+): AES-256-GCM under an Argon2id key
+derived from your vault passphrase, fresh salt per object, so the bucket holds
+ciphertext and can be treated as untrusted. The salt travels with the object,
+so a peer who knows the passphrase can `pull` into a *different* vault.
+
+> Objects pushed by a version **before** 4.3.0 are plaintext. `pull` still
+> accepts them so nothing is stranded, but warns — re-push to seal, then
+> delete the old object. See [docs/CLOUD_STORAGE.md](docs/CLOUD_STORAGE.md#security-model).
 
 Credentials come from standard environment variables. S3 uses the normal AWS
 chain (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION`, profiles,

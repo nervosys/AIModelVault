@@ -2461,3 +2461,62 @@ fn test_manifests_do_not_advertise_removed_gcs_support() {
         );
     }
 }
+
+/// The PyPI distribution is `aimodelvault`; the crates.io crate is
+/// `ai-model-vault`. agents.json told agents to run `pip install
+/// ai-model-vault`, which does not resolve. Names that differ by punctuation
+/// across two registries are exactly the kind of thing that rots silently.
+#[test]
+fn test_manifest_python_install_uses_the_real_pypi_name() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join(".well-known/agents.json")).unwrap(),
+    )
+    .unwrap();
+
+    let pypi_name = {
+        let pyproject = std::fs::read_to_string(root.join("pyproject.toml")).unwrap();
+        pyproject
+            .lines()
+            .find(|l| l.trim_start().starts_with("name"))
+            .and_then(|l| l.split('=').nth(1))
+            .map(|v| v.trim().trim_matches('"').to_string())
+            .expect("pyproject.toml has no name")
+    };
+
+    let install = agents["agent_interfaces"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["type"] == "python_bindings")
+        .and_then(|i| i["install"].as_str())
+        .expect("no python_bindings interface with an install command");
+
+    assert_eq!(
+        install,
+        format!("pip install {pypi_name}"),
+        "agents.json python install command does not match pyproject.toml name"
+    );
+}
+
+/// `AZURE_STORAGE_KEY` is rejected by `AzureBackend::new` — the Azure SDK for
+/// Rust v1 has no shared-key credential. Advertising it in the discovery
+/// surface sends an agent down a path that terminates in a hard error.
+#[test]
+fn test_manifest_does_not_advertise_unsupported_azure_shared_key() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents = std::fs::read_to_string(root.join(".well-known/agents.json")).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&agents).unwrap();
+
+    for iface in parsed["agent_interfaces"].as_array().unwrap() {
+        if let Some(vars) = iface["environment_variables"].as_array() {
+            for v in vars {
+                let name = v["name"].as_str().unwrap_or_default();
+                assert_ne!(
+                    name, "AZURE_STORAGE_KEY",
+                    "agents.json lists AZURE_STORAGE_KEY, which the Azure v1 SDK cannot use"
+                );
+            }
+        }
+    }
+}

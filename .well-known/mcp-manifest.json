@@ -1,7 +1,7 @@
 {
   "$schema": "https://modelcontextprotocol.io/schema/tools.json",
   "name": "ai-model-vault",
-  "version": "4.2.1",
+  "version": "4.3.0",
   "description": "MCP tool manifest for AI Model Vault — encrypted AI/ML model management with versioning, conversion, compliance, RAG, signing, scanning, diffing, license scanning, tagging, quantization, evaluation, backup scheduling, multi-vault, policies, plugins, profiles, webhooks, ACL, validation, GC, and lineage-graph tools.",
   "protocol_version": "2024-11-05",
   "capabilities": {
@@ -273,7 +273,7 @@
     },
     {
       "name": "cloud_push",
-      "description": "Push a model to cloud storage (AWS S3 or Azure Blob). The upload is NOT client-side encrypted: the vault decrypts on read, so the object placed in the bucket is the plaintext model. Confidentiality depends on TLS in transit and on the bucket's own server-side encryption.",
+      "description": "Push a model to cloud storage (AWS S3 or Azure Blob). The payload is sealed client-side with AES-256-GCM under an Argon2id key derived from the vault passphrase, so the object in the bucket is ciphertext. Requires the vault passphrase.",
       "inputSchema": {
         "type": "object",
         "properties": {

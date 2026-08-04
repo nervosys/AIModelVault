@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] - 2026-08-03
+
+### Added
+
+- **`aim cloud push` now encrypts client-side.** Until now it uploaded what `Vault::get_model` returns, which is plaintext — the vault decrypts on read — so the object in the bucket was the bare model and confidentiality rested entirely on the bucket's own access policy and server-side encryption. 4.2.1 documented that honestly; this release removes the problem.
+
+  Payloads are sealed with AES-256-GCM under an Argon2id key derived from the vault passphrase, with a fresh salt **per object**. Pushing the same model twice produces different ciphertext, so an observer cannot tell that two objects hold the same model.
+
+  The salt travels inside the object rather than living in the vault, and that choice is deliberate: uploading the vault's own on-disk blob would have produced an object only the originating vault directory could open, which defeats the case cloud storage exists for. As sealed, a colleague or a CI runner who knows the passphrase can `pull` into a *different* vault.
+
+  The header is not separately authenticated because it does not need to be — every field in it feeds key derivation, so altering any of them yields a different key and the GCM tag check fails. Tampering produces an error, never wrong plaintext. There are tests for a flipped ciphertext bit, a flipped salt byte, a wrong passphrase, truncation at eight different offsets, and that the plaintext does not appear anywhere in the sealed bytes.
+
+  **Objects pushed before 4.3.0 are still plaintext.** `pull` detects the missing magic, accepts them so nothing already in a bucket is stranded, and warns. Re-push to seal, then delete the old object; nothing re-encrypts in place.
+
+### Fixed
+
+- **`.well-known/agents.json` told agents to run `pip install ai-model-vault`.** The PyPI distribution is `aimodelvault`; that command does not resolve. A test now derives the expected string from `pyproject.toml`.
+
+- **`agents.json` advertised `AZURE_STORAGE_KEY`**, which `AzureBackend::new` rejects outright, and `GOOGLE_APPLICATION_CREDENTIALS` / `GCP_PROJECT` for a GCS backend that no longer exists. Replaced with the SAS and Entra ID variables actually consulted, plus the OTLP and `DO_NOT_TRACK` variables that were missing. A test fails if the shared-key variable reappears.
+
 ## [4.2.1] - 2026-08-03
 
 ### Added

@@ -9,6 +9,30 @@ use ai_model_vault::formats::{ModelFormat, ModelMetadata};
 use crate::cli::args::CloudCommands;
 use crate::cli::helpers::{build_vault, prompt_passphrase};
 
+/// Decrypt a downloaded object, or pass it through if it predates sealing.
+///
+/// Objects pushed before 4.3.0 are plaintext and carry no magic. Refusing them
+/// would strand data already in a bucket, so they are accepted with a warning
+/// rather than an error -- but the warning matters, because a plaintext object
+/// sitting in cloud storage is exactly the exposure sealing exists to close.
+#[cfg(any(feature = "s3", feature = "azure"))]
+fn unseal_downloaded(data: Vec<u8>, passphrase: &[u8]) -> Result<Vec<u8>> {
+    use ai_model_vault::cloud_envelope;
+
+    if cloud_envelope::is_sealed(&data) {
+        println!("🔓 Sealed object — decrypting");
+        cloud_envelope::open(&data, passphrase.to_vec())
+    } else {
+        eprintln!(
+            "\n⚠️  This object is NOT encrypted. It was uploaded by a version before\n   \
+             4.3.0, which sent the plaintext model. It is readable by anyone with\n   \
+             read access to the bucket. Re-push it with this version to seal it,\n   \
+             then delete the old object."
+        );
+        Ok(data)
+    }
+}
+
 pub fn handle_cloud(command: CloudCommands, config: VaultConfig, use_sqlite: bool) -> Result<()> {
     match command {
         CloudCommands::Push {
@@ -22,21 +46,12 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig, use_sqlite: boo
             println!("   Provider: {}", provider);
             println!("   Bucket: {}", bucket);
 
-            // `get_model` decrypts and decompresses, so what goes over the wire
-            // below is the plaintext model -- not the vault's encrypted blob.
-            // Say so plainly: the docs used to claim the opposite, and a user
-            // who believes the upload is client-side encrypted may skip the
-            // bucket-level encryption that is actually protecting it.
-            eprintln!(
-                "\n⚠️  This upload is NOT client-side encrypted. `aim cloud push` sends the\n   \
-                 decrypted model; confidentiality depends on TLS in transit and on the\n   \
-                 bucket's own at-rest encryption (SSE-KMS on S3, SSE on Azure).\n   \
-                 Do not treat the destination bucket as untrusted storage."
-            );
-
-            // Open vault and get model
+            // Open vault and get model. The passphrase is needed twice --
+            // once to unlock, once to seal the upload -- and `unlock` consumes
+            // it, so keep a copy for the envelope.
             let mut vault = build_vault(config.clone(), use_sqlite)?;
             let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
+            let seal_passphrase = passphrase.clone();
             vault.unlock(passphrase)?;
 
             // Get version to push
@@ -55,13 +70,20 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig, use_sqlite: boo
                     })?
             };
 
-            // Get model data
-            let _data = vault.get_model(&model, Some(version_num))?;
+            // `get_model` decrypts and decompresses, so this is the plaintext
+            // model. It is sealed below before anything leaves the process --
+            // see `cloud_envelope`. Prior to 4.3.0 this buffer was uploaded
+            // as-is.
+            let plaintext = vault.get_model(&model, Some(version_num))?;
             let versions = vault.list_versions(&model);
             let model_version = versions
                 .iter()
                 .find(|v| v.version == version_num)
                 .ok_or_else(|| VaultError::VersionNotFound(version_num, model.clone()))?;
+
+            let _data = ai_model_vault::cloud_envelope::seal(&plaintext, seal_passphrase)?;
+            drop(plaintext);
+            println!("🔒 Sealed with AES-256-GCM (Argon2id, per-object salt)");
 
             // Construct remote path
             let _remote_path = format!("{}/{}/v{}.vault", model, model_version.format, version_num);
@@ -197,6 +219,7 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig, use_sqlite: boo
 
                         // Store into vault
                         let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
+                        let data = unseal_downloaded(data, &passphrase)?;
                         let mut vault = build_vault(config.clone(), use_sqlite)?;
                         vault.unlock(passphrase)?;
 
@@ -247,6 +270,7 @@ pub fn handle_cloud(command: CloudCommands, config: VaultConfig, use_sqlite: boo
 
                         // Store into vault
                         let passphrase = prompt_passphrase("Enter vault passphrase: ")?;
+                        let data = unseal_downloaded(data, &passphrase)?;
                         let mut vault = build_vault(config.clone(), use_sqlite)?;
                         vault.unlock(passphrase)?;
 

@@ -19,31 +19,55 @@ Push and pull vault models to AWS S3 or Azure Blob Storage.
 
 ## Security model
 
-Read this before pointing `aim` at a bucket.
+**As of 4.3.0, `aim cloud push` encrypts before upload.** The payload is
+sealed with AES-256-GCM under a key derived from your vault passphrase with
+Argon2id, using a fresh random salt per object. What lands in the bucket is
+ciphertext; the cloud provider never sees the model.
 
-**`aim cloud push` uploads the decrypted model.** The vault encrypts models
-at rest on your local disk, but `push` reads the model back out through the
-normal read path — which decrypts and decompresses — and uploads that. The
-object that lands in your bucket is the plaintext model file.
+| Threat                              | Protected?                                     |
+| ----------------------------------- | ---------------------------------------------- |
+| Network interception                | Yes — TLS, enforced by both SDKs                |
+| Local disk theft                    | Yes — AES-256-GCM vault encryption              |
+| Bucket read by cloud provider / IAM | Yes — object is ciphertext                      |
+| Misconfigured public bucket         | Yes — object is ciphertext                      |
+| Passphrase compromise               | **No** — the passphrase is the key              |
 
-Consequences:
+Server-side encryption is still worth enabling as defence in depth, but it is
+no longer the only thing standing between a bucket misconfiguration and your
+models.
 
-| Threat                              | Protected?                                       |
-| ----------------------------------- | ------------------------------------------------ |
-| Network interception                | Yes — TLS, enforced by both SDKs                  |
-| Local disk theft                    | Yes — AES-256-GCM vault encryption                |
-| Bucket read by cloud provider / IAM | **No** — unless you enable server-side encryption |
-| Misconfigured public bucket         | **No** — the object is readable as-is             |
+### Sealed object format
 
-So: treat the destination bucket as trusted storage. Enable SSE-KMS (S3) or
-customer-managed keys (Azure), keep the bucket private, and scope IAM to the
-principals that already have vault access. `aim cloud push` prints this
-warning at runtime.
+Each object is self-contained:
 
-An earlier revision of this document claimed uploads were encrypted
-client-side and that "cloud providers never see your plaintext models."
-That was wrong. If you sized your bucket controls against that claim,
-revisit them.
+```
+magic "AIMVSEAL" | version | KDF id | salt length | salt | nonce ‖ ciphertext ‖ tag
+```
+
+The salt travels with the object rather than living in the vault, which is
+what makes a pushed model **portable**: a colleague or CI runner who knows
+the passphrase can `pull` into a *different* vault. Uploading the vault's own
+on-disk blob would have produced an object only the originating vault
+directory could open.
+
+Every header field feeds key derivation, so altering any of them changes the
+key and the GCM tag check fails. Tampering produces an error, never wrong
+plaintext.
+
+Pushing the same model twice yields different ciphertext — a fresh salt and
+nonce per call — so an observer cannot tell that two objects hold the same
+model.
+
+### Objects pushed before 4.3.0
+
+Those are plaintext. `pull` detects the absence of the magic bytes, accepts
+them so existing data is not stranded, and warns. To fix: re-push with 4.3.0
+or later, then delete the old object. Nothing re-encrypts in place.
+
+Versions before 4.3.0 uploaded the decrypted model, and revisions of this
+document before 4.2.1 wrongly claimed otherwise. If you sized bucket controls
+against the old claim, the objects already up there are still plaintext until
+you re-push them.
 
 ---
 

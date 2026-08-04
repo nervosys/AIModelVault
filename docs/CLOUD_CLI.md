@@ -21,8 +21,8 @@ AI Model Vault supports pushing and pulling models to/from cloud storage provide
 - **Azure Blob Storage** - Microsoft Azure cloud storage
 - **Google Cloud Storage** - Google Cloud Platform storage (temporarily disabled)
 
-Note that cloud operations do **not** carry the vault's encryption with them —
-`aim cloud push` uploads the decrypted model. See
+Since 4.3.0, `aim cloud push` seals the payload with AES-256-GCM before it
+leaves the process, so the bucket holds ciphertext. See
 [Security Notes](#security-notes) before choosing a bucket.
 
 ---
@@ -324,19 +324,22 @@ aim cloud pull mymodel-v2 --provider s3 --bucket models --remote-path mymodel/sa
 
 ### Encryption
 
-**`aim cloud push` uploads the decrypted model.** The vault's AES-256-GCM
-encryption protects models on your local disk; `push` reads through the
-normal read path, which decrypts, and uploads the plaintext result.
+**As of 4.3.0 `aim cloud push` encrypts before upload.** The payload is sealed
+with AES-256-GCM under an Argon2id key derived from your vault passphrase,
+with a fresh salt per object.
 
-- In transit: protected by TLS, enforced by both cloud SDKs
-- At rest in the bucket: **only** whatever server-side encryption you have
-  configured — `aim` adds none
-- The vault passphrase and derived keys never leave your machine, but they
-  also are not what is protecting the uploaded object
+- In transit: TLS, enforced by both cloud SDKs
+- At rest in the bucket: ciphertext — the provider never sees the model
+- Portable: the salt travels with the object, so a peer who knows the
+  passphrase can pull into a different vault
+- The passphrase never leaves your machine, and is what protects the object
 
-Enable SSE-KMS (S3) or customer-managed keys (Azure), and treat the bucket as
-trusted storage with IAM scoped to principals who already have vault access.
-See [CLOUD_STORAGE.md](CLOUD_STORAGE.md#security-model).
+Server-side encryption (SSE-KMS on S3, CMK on Azure) is still worth enabling
+as defence in depth.
+
+Objects pushed **before** 4.3.0 are plaintext. `pull` still accepts them, so
+nothing is stranded, but it warns — re-push to seal, then delete the old
+object. See [CLOUD_STORAGE.md](CLOUD_STORAGE.md#security-model).
 
 ### Credentials
 - **Never commit credentials** to version control

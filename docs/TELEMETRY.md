@@ -21,7 +21,7 @@ Two events. `AppStart`, once per process:
 
 | Field | Example |
 |---|---|
-| `app.version` | `4.2.1` |
+| `app.version` | `4.3.0` |
 | `os.type` | `linux` |
 | `host.arch` | `x86_64` |
 | `app.features` | `api,sqlite` |

@@ -4,7 +4,7 @@
   "project": {
     "id": "ai-model-vault",
     "name": "AI Model Vault",
-    "version": "4.2.1",
+    "version": "4.3.0",
     "description": "Encrypted AI/ML model management system with versioning, 23+ format conversion, compliance validation (FIPS 140-3, CMMC 2.0, MITRE ATT&CK), RAG with MCP tools, federation, blockchain audit, model download (HuggingFace/Ollama/URL), HMAC signing & verification, pickle safety scanning, tensor-level diffing, engine interop (Ollama/LM Studio), license scanning, model tags & search, vault export/import, garbage collection, TUI dashboard, webhooks, role-based ACL, KMS integration, model validation, retention policies, cross-model lineage DAG, plugin system, config profiles, quantization pipeline, evaluation harness, backup scheduling, and multi-vault management.",
     "homepage": "https://github.com/nervosys/AIModelVault",
     "documentation": "https://github.com/nervosys/AIModelVault/tree/master/docs",
@@ -55,9 +55,13 @@
         {"name": "AWS_SECRET_ACCESS_KEY", "description": "AWS S3 secret key"},
         {"name": "AWS_REGION", "description": "AWS region"},
         {"name": "AZURE_STORAGE_ACCOUNT", "description": "Azure storage account name"},
-        {"name": "AZURE_STORAGE_KEY", "description": "Azure storage key"},
-        {"name": "GOOGLE_APPLICATION_CREDENTIALS", "description": "GCP service account JSON path"},
-        {"name": "GCP_PROJECT", "description": "GCP project ID"}
+        {"name": "AZURE_STORAGE_SAS_TOKEN", "description": "Azure SAS token. Shared keys (AZURE_STORAGE_KEY) are not supported: the Azure SDK for Rust v1 has no shared-key credential"},
+        {"name": "AZURE_TENANT_ID", "description": "Azure Entra ID tenant, as an alternative to a SAS token"},
+        {"name": "AZURE_CLIENT_ID", "description": "Azure Entra ID client"},
+        {"name": "AZURE_CLIENT_SECRET", "description": "Azure Entra ID client secret"},
+        {"name": "OTEL_EXPORTER_OTLP_ENDPOINT", "description": "OTLP collector endpoint (requires the otel feature). Setting it does not enable telemetry"},
+        {"name": "OTEL_EXPORTER_OTLP_HEADERS", "description": "OTLP headers, e.g. Authorization=Bearer <token>"},
+        {"name": "DO_NOT_TRACK", "description": "Set to 1 to disable telemetry"}
       ]
     },
     {
@@ -94,7 +98,7 @@
       "type": "python_bindings",
       "description": "Python bindings via PyO3. Requires `python` cargo feature.",
       "feature_flag": "python",
-      "install": "pip install ai-model-vault"
+      "install": "pip install aimodelvault"
     }
   ],
 
@@ -128,7 +132,7 @@
       "standards": ["FIPS 140-3", "CMMC 2.0 Level 2", "MITRE ATT&CK"]
     },
     "cloud_storage": {
-      "description": "Push/pull models to cloud providers. Note: push uploads the DECRYPTED model — the vault's encryption is at-rest on local disk only. Confidentiality in the bucket depends on TLS and the bucket's own server-side encryption.",
+      "description": "Push/pull models to cloud providers. Uploads are sealed client-side with AES-256-GCM (Argon2id key from the vault passphrase, fresh salt per object), so the bucket holds ciphertext. Objects pushed before 4.3.0 are plaintext and are accepted with a warning.",
       "commands": ["aim cloud push", "aim cloud pull", "aim cloud list", "aim cloud config"],
       "providers": ["AWS S3", "Azure Blob Storage"]
     },
