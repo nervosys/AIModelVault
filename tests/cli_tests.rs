@@ -2520,3 +2520,26 @@ fn test_manifest_does_not_advertise_unsupported_azure_shared_key() {
         }
     }
 }
+
+/// Capabilities that are reachable from the CLI must say so.
+///
+/// `federation` and `blockchain_audit` sat in agents.json with no `commands`
+/// field for as long as they were library-only. Once wired, an agent reading
+/// the catalog would still have concluded there was no way to invoke them.
+#[test]
+fn test_wired_capabilities_list_their_commands() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents = std::fs::read_to_string(root.join(".well-known/agents.json")).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&agents).unwrap();
+
+    for name in ["federation", "blockchain_audit"] {
+        let cap = &parsed["capabilities"][name];
+        let commands = cap["commands"].as_array().unwrap_or_else(|| {
+            panic!("agents.json capability '{name}' is wired to the CLI but lists no commands")
+        });
+        assert!(
+            !commands.is_empty(),
+            "agents.json capability '{name}' has an empty commands list"
+        );
+    }
+}

@@ -153,12 +153,32 @@
       "tools": ["ModelArchive", "CompressionAnalyzer", "ModelAnalyzer", "ModelDeduplicator", "ModelExporter", "QuantizationInfo", "PruningInfo"]
     },
     "federation": {
-      "description": "Sync vaults across peers with vector clocks and conflict resolution",
-      "feature_flag": "default"
+      "description": "Sync vaults across peers with vector clocks and conflict resolution. Opt-in via federation.enabled; transfers are sealed client-side with AES-256-GCM by default. Peers authenticate with a shared X-API-Key, not the API's JWT.",
+      "commands": [
+        "aim federation status",
+        "aim federation manifest",
+        "aim federation plan",
+        "aim federation sync"
+      ],
+      "endpoints": [
+        "GET /api/v1/federation/manifest",
+        "GET /api/v1/federation/models/{name}/versions/{checkpoint_id}",
+        "PUT /api/v1/federation/models/{name}/versions/{checkpoint_id}"
+      ],
+      "feature_flag": "default",
+      "enabled_by_default": false
     },
     "blockchain_audit": {
-      "description": "Append-only blockchain audit trail with Merkle tree proofs",
-      "feature_flag": "default"
+      "description": "Append-only blockchain audit trail with Merkle tree proofs. Opt-in via security.blockchain_audit; mirrors every audit-log entry into a hash-linked chain. Read-only from the CLI — entries are recorded by the audit logger, never by a command.",
+      "commands": [
+        "aim chain status",
+        "aim chain verify",
+        "aim chain proof",
+        "aim chain verify-proof",
+        "aim chain search"
+      ],
+      "feature_flag": "default",
+      "enabled_by_default": false
     },
     "agent_discovery": {
       "description": "Machine-readable CLI schema introspection for AI agent bootstrapping",
