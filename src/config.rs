@@ -49,6 +49,10 @@ pub struct VaultConfig {
     #[serde(default)]
     pub telemetry: TelemetrySettings,
 
+    /// Federation settings
+    #[serde(default)]
+    pub federation: FederationSettings,
+
     /// Directory paths (not serialized, computed at runtime)
     #[serde(skip)]
     pub dirs: DirectoryPaths,
@@ -98,6 +102,33 @@ pub struct SecuritySettings {
     pub require_passphrase: bool,
     pub session_timeout_seconds: u64,
     pub audit_log: bool,
+
+    /// Mirror every audit entry into a hash-linked blockchain (default: off).
+    ///
+    /// Opt-in because it changes on-disk behaviour for an existing vault: the
+    /// chain is append-only and never pruned, so it grows without bound while
+    /// `audit_log` alone rotates at a size cap. Requires `audit_log` — the
+    /// chain is fed from the audit logger, so with the log off there is
+    /// nothing to mirror.
+    #[serde(default)]
+    pub blockchain_audit: bool,
+
+    /// Audit entries per block (default: 1).
+    ///
+    /// One entry per block is deliberate. `BlockchainAudit` holds pending
+    /// entries in memory and only writes them to disk on finalize, so any
+    /// value above 1 means a process that exits before the threshold silently
+    /// drops the entries it was asked to make tamper-evident. A larger value
+    /// trades that durability for fewer, denser block files; the logger
+    /// finalizes on drop to narrow the window, but a crash still loses
+    /// whatever is pending.
+    #[serde(default = "default_blockchain_block_size")]
+    pub blockchain_block_size: usize,
+}
+
+/// Default entries per audit block: 1 — see [`SecuritySettings::blockchain_block_size`].
+fn default_blockchain_block_size() -> usize {
+    1
 }
 
 /// Compliance and regulatory settings (FIPS mode, CVE scanning).
@@ -106,6 +137,87 @@ pub struct ComplianceSettings {
     pub fips_mode: bool,
     pub cve_scanning: bool,
     pub audit_retention_days: u32,
+}
+
+/// Federation settings — syncing models between `aim` nodes.
+///
+/// Off by default. Enabling it exposes `/api/v1/federation/*` on `aim serve`,
+/// which hands model bytes to any caller presenting an accepted key, so it is
+/// a deliberate act rather than something an upgrade turns on.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FederationSettings {
+    /// Serve the federation endpoints (default: false).
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// This node's stable ID. Generated on first use if empty.
+    #[serde(default)]
+    pub node_id: String,
+
+    /// Human-readable name for this node.
+    #[serde(default)]
+    pub node_name: String,
+
+    /// Encrypt model bytes in transit with the `AIMVSEAL` envelope
+    /// (default: true).
+    ///
+    /// TLS protects the hop; this protects the object, so a peer's reverse
+    /// proxy, request log, or on-disk cache never holds a readable model. It
+    /// requires both nodes to share `$aimodelvault_FEDERATION_PASSPHRASE`.
+    /// Turning it off is only defensible on a network you fully control.
+    #[serde(default = "default_true")]
+    pub seal_transfers: bool,
+
+    /// Peers this node may sync with.
+    #[serde(default)]
+    pub peers: Vec<FederationPeerSettings>,
+}
+
+impl Default for FederationSettings {
+    /// Hand-written rather than derived: `#[derive(Default)]` would make
+    /// `seal_transfers` false, quietly shipping models in the clear while the
+    /// serde default says true. A security default must not depend on which
+    /// path constructed the struct.
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            node_id: String::new(),
+            node_name: String::new(),
+            seal_transfers: true,
+            peers: Vec::new(),
+        }
+    }
+}
+
+/// A single federation peer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FederationPeerSettings {
+    /// Peer's node ID.
+    pub node_id: String,
+    /// Display name.
+    #[serde(default)]
+    pub name: String,
+    /// Base URL, e.g. `https://peer.example.com`.
+    pub endpoint: String,
+    /// Shared key for this peer, as a literal or a KMS URI
+    /// (`env://NAME`, `file://path`, `aws-sm://…`, `azure-kv://…`, `vault://…`).
+    ///
+    /// Prefer a URI. A literal here is a secret sitting in a config file that
+    /// tends to end up in version control.
+    ///
+    /// The same key authenticates both directions: this node sends it to the
+    /// peer, and accepts it from the peer. One shared secret per pair rather
+    /// than two half-configured ones.
+    #[serde(default)]
+    pub api_key: Option<String>,
+    /// Whether sync with this peer is enabled.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+/// serde default for boolean fields that should default to `true`.
+fn default_true() -> bool {
+    true
 }
 
 /// Telemetry and analytics settings.
@@ -366,6 +478,8 @@ impl VaultConfig {
                 require_passphrase: true,
                 session_timeout_seconds: 3600,
                 audit_log: true,
+                blockchain_audit: false,
+                blockchain_block_size: default_blockchain_block_size(),
             },
             compliance: ComplianceSettings {
                 fips_mode: true,
@@ -373,6 +487,7 @@ impl VaultConfig {
                 audit_retention_days: 90,
             },
             telemetry: TelemetrySettings::default(),
+            federation: FederationSettings::default(),
             dirs,
         }
     }
@@ -396,6 +511,15 @@ impl VaultConfig {
     /// Get audit log path
     pub fn get_audit_log_path(&self) -> PathBuf {
         self.dirs.log_dir.join("audit.log")
+    }
+
+    /// Directory holding the blockchain audit trail's block files.
+    ///
+    /// Sits beside the audit log rather than inside the vault data directory:
+    /// the chain exists to be checked against the vault, so a single delete of
+    /// the vault should not take the evidence with it.
+    pub fn get_audit_chain_dir(&self) -> PathBuf {
+        self.dirs.log_dir.join("chain")
     }
 
     /// Get compression algorithm

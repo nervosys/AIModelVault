@@ -13,6 +13,7 @@
 pub mod auth;
 pub mod dashboard;
 pub mod error;
+pub mod federation_routes;
 #[cfg(feature = "graphql")]
 pub mod graphql;
 pub mod openapi;

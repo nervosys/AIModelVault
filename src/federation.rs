@@ -364,7 +364,14 @@ impl FederationManager {
                         .into_iter()
                         .map(|v| VersionManifestEntry {
                             version: v.version,
-                            checkpoint_id: v.checkpoint_id,
+                            // The federation identity, not the local one: a
+                            // model received from a peer keeps the id it was
+                            // created with, so both nodes agree on what they
+                            // already have and sync converges instead of
+                            // re-transferring on every run.
+                            checkpoint_id: crate::federation_transport::federation_checkpoint_id(
+                                &v,
+                            ),
                             created_at: v.timestamp,
                             checksum: v.checksum_sha256,
                             size_bytes: v.size_bytes,
@@ -613,6 +620,14 @@ impl FederationManager {
     }
 
     /// Fetch manifest from peer
+    /// Fetch a peer's manifest without syncing.
+    ///
+    /// Public so `aim federation plan` can show what a sync would move before
+    /// anything moves.
+    pub async fn fetch_peer_manifest(&self, peer: &PeerConfig) -> Result<SyncManifest> {
+        self.fetch_manifest(peer).await
+    }
+
     async fn fetch_manifest(&self, peer: &PeerConfig) -> Result<SyncManifest> {
         let url = format!("{}/api/v1/federation/manifest", peer.endpoint);
         let mut req = self.http_client.get(&url);

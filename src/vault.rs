@@ -204,6 +204,31 @@ impl VersionBackend {
 }
 
 /// Main vault for secure model storage
+/// Build the audit logger for a config, with the blockchain mirror attached
+/// when `security.blockchain_audit` is set.
+///
+/// `blockchain_audit` is subordinate to `audit_log`: with logging off there is
+/// no entry stream to mirror, so the chain stays off too regardless of the
+/// flag. Shared by both vault constructors so the two cannot drift.
+fn build_audit_logger(config: &VaultConfig) -> Result<Option<AuditLogger>> {
+    if !config.security.audit_log {
+        return Ok(None);
+    }
+
+    let log_path = config.get_audit_log_path();
+    let logger = if config.security.blockchain_audit {
+        AuditLogger::with_chain(
+            &log_path,
+            &config.get_audit_chain_dir(),
+            config.security.blockchain_block_size,
+        )?
+    } else {
+        AuditLogger::new(&log_path)?
+    };
+
+    Ok(Some(logger))
+}
+
 pub struct Vault {
     config: VaultConfig,
     storage: Storage,
@@ -243,11 +268,7 @@ impl Vault {
         let storage = Storage::new(&vault_path)?;
         let version_backend = VersionBackend::Json(VersionControl::new(&vault_path)?);
 
-        let audit_logger = if config.security.audit_log {
-            Some(AuditLogger::new(&config.get_audit_log_path())?)
-        } else {
-            None
-        };
+        let audit_logger = build_audit_logger(&config)?;
 
         let crypto = FipsCrypto::new()?;
         let key_manager = KeyManager::new()?;
@@ -622,6 +643,16 @@ impl Vault {
         &self.key_manager
     }
 
+    /// Borrow the blockchain audit trail, if `security.blockchain_audit` is on.
+    ///
+    /// `None` means the chain was never enabled for this vault -- not that it
+    /// is empty. Callers should say so rather than reporting a height of zero,
+    /// which reads as "nothing has happened" when the truth is "nothing was
+    /// being recorded".
+    pub fn audit_chain(&self) -> Option<&std::sync::Mutex<crate::blockchain::BlockchainAudit>> {
+        self.audit_logger.as_ref().and_then(AuditLogger::chain)
+    }
+
     /// Change vault passphrase
     ///
     /// Re-derives and persists a new salt, then re-encrypts all stored model files.
@@ -901,11 +932,7 @@ impl VaultBuilder {
             VersionBackend::Json(VersionControl::new(&vault_path)?)
         };
 
-        let audit_logger = if config.security.audit_log {
-            Some(AuditLogger::new(&config.get_audit_log_path())?)
-        } else {
-            None
-        };
+        let audit_logger = build_audit_logger(&config)?;
 
         let crypto = FipsCrypto::new()?;
         let key_manager = KeyManager::new()?;

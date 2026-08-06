@@ -256,6 +256,18 @@ pub enum Commands {
         command: CloudCommands,
     },
 
+    /// Blockchain audit trail (requires security.blockchain_audit = true)
+    Chain {
+        #[command(subcommand)]
+        command: ChainCommands,
+    },
+
+    /// Federation — sync models with peer nodes
+    Federation {
+        #[command(subcommand)]
+        command: FederationCommands,
+    },
+
     /// Model card operations
     Card {
         #[command(subcommand)]
@@ -807,6 +819,80 @@ pub enum CardCommands {
         /// Include evaluation section
         #[arg(long)]
         include_evaluation: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum FederationCommands {
+    /// Show this node's identity, peers, and sync history
+    Status,
+
+    /// Show what a sync with a peer would transfer, without transferring it
+    Plan {
+        /// Peer node ID (see `aim federation status`)
+        peer: String,
+    },
+
+    /// Sync with a peer: download what is missing here, upload what is missing there
+    Sync {
+        /// Peer node ID
+        peer: String,
+
+        /// Report what would transfer, then stop
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Print this node's sync manifest (what peers would see)
+    Manifest,
+}
+
+#[derive(Subcommand)]
+pub enum ChainCommands {
+    /// Show chain height, latest block hash, and pending entry count
+    Status,
+
+    /// Verify the whole chain: hash links, Merkle roots, and block hashes
+    Verify,
+
+    /// Emit a Merkle inclusion proof for one entry
+    Proof {
+        /// Block index (see `aim chain status` for the height)
+        #[arg(short, long)]
+        block: u64,
+
+        /// Entry index within that block
+        #[arg(short, long)]
+        entry: usize,
+
+        /// Write the proof JSON here instead of stdout
+        #[arg(short, long)]
+        output: Option<std::path::PathBuf>,
+    },
+
+    /// Verify a proof produced by `aim chain proof`
+    ///
+    /// Checks the proof internally -- that the entry hashes to a leaf which
+    /// reaches the stated Merkle root. It does not confirm that root belongs
+    /// to this vault's chain; run `aim chain verify` for that.
+    VerifyProof {
+        /// Path to the proof JSON
+        proof: std::path::PathBuf,
+    },
+
+    /// Search recorded entries
+    Search {
+        /// Filter by model name
+        #[arg(short, long)]
+        model: Option<String>,
+
+        /// Filter by event type (e.g. MODEL_STORED, MODEL_DELETED)
+        #[arg(short, long)]
+        event: Option<String>,
+
+        /// Maximum results
+        #[arg(short, long, default_value = "50")]
+        limit: usize,
     },
 }
 

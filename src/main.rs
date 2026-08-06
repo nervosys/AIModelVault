@@ -13,12 +13,13 @@ mod cli;
 use clap::{CommandFactory, FromArgMatches};
 use cli::args::{Cli, Commands};
 use cli::handlers::{
-    acl, analyze, archive, benchmark as benchmark_handler, browse, card, cloud, convert, database,
-    diff as diff_handler, evaluation as evaluation_handler, gc, introspect,
-    license_scan as license_scan_handler, lineage_graph, multi_vault as multi_vault_handler,
-    plugins, policies, profiles, pull, quantization as quantization_handler, register, scan,
-    scheduler as scheduler_handler, sign, tags, telemetry as telemetry_handler, validation, vault,
-    vault_bundle as vault_bundle_handler, webhooks as webhooks_handler,
+    acl, analyze, archive, benchmark as benchmark_handler, browse, card, chain, cloud, convert,
+    database, diff as diff_handler, evaluation as evaluation_handler,
+    federation as federation_handler, gc, introspect, license_scan as license_scan_handler,
+    lineage_graph, multi_vault as multi_vault_handler, plugins, policies, profiles, pull,
+    quantization as quantization_handler, register, scan, scheduler as scheduler_handler, sign,
+    tags, telemetry as telemetry_handler, validation, vault, vault_bundle as vault_bundle_handler,
+    webhooks as webhooks_handler,
 };
 
 use ai_model_vault::{telemetry, Result, VaultConfig, VaultError};
@@ -238,6 +239,10 @@ fn run() -> Result<()> {
         }
         Commands::Cache => vault::handle_cache(),
         Commands::Cloud { command } => cloud::handle_cloud(command, config, use_sqlite),
+        Commands::Chain { command } => chain::handle_chain(command, config),
+        Commands::Federation { command } => {
+            federation_handler::handle_federation(command, config, use_sqlite)
+        }
         Commands::Card { command } => card::handle_card(command, config, use_sqlite),
         Commands::Database { command } => database::handle_database(command),
         Commands::Telemetry { command } => telemetry_handler::handle_telemetry(command, config),

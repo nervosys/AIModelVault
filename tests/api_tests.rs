@@ -32,6 +32,7 @@ fn test_state(dir: &tempfile::TempDir) -> Arc<AppState> {
         databases_dir: dir.path().join("config/databases"),
     };
     let config = VaultConfig::with_dirs(dirs).unwrap();
+    let vault_config = config.clone();
     let vault = Vault::new(Some(config)).unwrap();
 
     // `ApiConfig` is `#[non_exhaustive]`: start from `default()` and override.
@@ -44,6 +45,10 @@ fn test_state(dir: &tempfile::TempDir) -> Arc<AppState> {
         vault: RwLock::new(vault),
         config: api_config,
         auth_rate_limiter: RateLimiter::new(5, std::time::Duration::from_secs(60)),
+        // Federation stays off here: these tests cover the JWT-authenticated
+        // API, and the federation routes are not registered when disabled.
+        vault_config,
+        federation: None,
     })
 }
 

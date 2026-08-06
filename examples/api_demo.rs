@@ -24,6 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ── 1. Set up vault and API config ───────────────────────────────────
     println!("1. Setting up vault and API configuration...");
     let config = VaultConfig::new()?;
+    let vault_config = config.clone();
     let vault = Vault::new(Some(config))?;
 
     // `ApiConfig` is `#[non_exhaustive]`: start from `default()` and override.
@@ -36,6 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         vault: RwLock::new(vault),
         config: api_config,
         auth_rate_limiter: RateLimiter::new(10, std::time::Duration::from_secs(60)),
+        vault_config,
+        federation: None,
     });
 
     // ── 2. Bind and start HTTP server ────────────────────────────────────

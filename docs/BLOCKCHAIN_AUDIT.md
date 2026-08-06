@@ -2,21 +2,73 @@
 
 A Merkle-chained, append-only block store for audit entries.
 
-> **Status: library primitive, not a wired feature.**
+> **Status: wired as of 4.4.0, opt-in.**
 >
-> Nothing in the vault, CLI, or REST API writes to this store. There is no
-> `aim audit` command. If you want a tamper-evident chain, you construct
-> `BlockchainAudit` yourself and feed it entries.
+> Set `security.blockchain_audit = true` and every audit entry is mirrored
+> into a hash-linked chain. Inspect it with `aim chain`. Off by default: the
+> chain is append-only and never pruned, so it grows without bound, while
+> `audit_log` alone rotates at a size cap.
 >
-> For the audit trail that *is* wired up and running by default, see
-> [`src/audit.rs`](https://github.com/nervosys/AIModelVault/blob/master/src/audit.rs)
-> — `Vault` writes to it on unlock, store, delete, and integrity failure when
-> `security.audit_log` is enabled. That log is append-only and `0600`, but has
-> no Merkle proofs.
+> Before 4.4.0 this was a library primitive that nothing called. An earlier
+> revision of this page documented an `aim audit` command that did not exist
+> and claimed "every mutating operation is recorded as a block"; neither was
+> true then.
 
-An earlier revision of this page documented `aim audit`, `aim audit --verify`,
-and `aim audit --export`, and stated that "every mutating operation is
-recorded as a block." None of that was true.
+## Enabling it
+
+```yaml
+security:
+  audit_log: true          # required — the chain is fed from the audit logger
+  blockchain_audit: true
+  blockchain_block_size: 1
+```
+
+Entries are recorded from the moment it is switched on. History written
+before then is not in the chain and cannot be added retroactively — that is
+the point of a hash chain.
+
+### Why `blockchain_block_size` defaults to 1
+
+Pending entries live in memory until a block is finalized. At any value above
+1, a process that exits before the threshold **silently drops the entries it
+was asked to make tamper-evident**. At 1, every entry is written as its own
+block immediately.
+
+Raising it trades that durability for fewer, denser block files. The logger
+finalizes on drop, which narrows the window on a clean exit, but a crash or
+`SIGKILL` still loses whatever is pending. `aim chain status` reports the
+pending count — a non-zero value is exactly what a crash would cost you.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `aim chain status` | Height, latest block hash, pending count |
+| `aim chain verify` | Re-verify hash links, Merkle roots, and block hashes |
+| `aim chain proof --block N --entry M` | Emit an inclusion proof as JSON |
+| `aim chain verify-proof <file>` | Check a proof |
+| `aim chain search --model X --event MODEL_STORED` | Find entries |
+
+These read the chain directly rather than through the vault, so they need no
+passphrase — and, more importantly, **inspecting the trail does not append to
+it**. Going through `Vault` would log a `VaultOpened` entry on every command,
+so a `chain verify` cron job would grow the chain by a block per run and
+`verify` would disagree with the `status` printed seconds earlier.
+
+`verify` and `verify-proof` exit non-zero (code 5, integrity) when a check
+fails, so they work as CI or cron gates.
+
+## What a proof does and does not establish
+
+`verify-proof` confirms the entry hashes to a leaf that reaches the stated
+Merkle root, and that the block chain in the proof runs to genesis. It does
+**not** confirm that genesis belongs to your vault — compare it against
+`aim chain status` on a vault you trust.
+
+Until 4.4.0 it did not confirm the first part either: the Merkle walk started
+from a `leaf_hash` carried inside the proof and never checked that hash came
+from the entry beside it, so editing the entry left a proof that still
+verified clean. `verify_proof` now recomputes the leaf from the entry.
 
 ---
 

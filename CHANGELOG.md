@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] - 2026-08-06
+
+### Added
+
+- **Blockchain audit trail is wired up** (`security.blockchain_audit`, default off). `blockchain.rs` has been a complete Merkle-chain implementation since it was written, and nothing ever called `add_entry`. It now hangs off `AuditLogger::log`, which is the single choke point every audit helper routes through — so a call site cannot record to the plain log while skipping the chain.
+
+  `blockchain_block_size` defaults to **1** for a reason worth stating: pending entries live in memory until a block is finalized, so at any higher value a process that exits early silently drops the entries it was asked to make tamper-evident. At 1 every entry is written immediately. The logger also finalizes on drop, which narrows the window for larger block sizes but cannot close it — a crash still loses what is pending, and `aim chain status` reports that count.
+
+  New `aim chain` commands: `status`, `verify`, `proof`, `verify-proof`, `search`. They open the chain directly rather than through `Vault`, so they need no passphrase and — more to the point — **reading the trail does not append to it**. Going through the vault logs a `VaultOpened` entry, which meant a `chain verify` cron job grew the chain by one block per run and `verify` reported a different height than the `status` printed seconds earlier. `verify` and `verify-proof` exit 5 on failure so they work as CI gates.
+
+- **Federation is wired up** (`federation.enabled`, default off). `FederationManager` was already a complete HTTP client aimed at `/api/v1/federation/*`; nothing served those paths, so a node could only sync against a peer that did not exist. This release adds the server half, the `aim federation` commands (`status`, `manifest`, `plan`, `sync`), and transit encryption.
+
+  Peers authenticate with a shared key in `X-API-Key`, not the JWT the rest of the API uses — a peer is a machine with a long-lived pre-shared secret, not a user with a session, and handing it a login token would grant the full model API just to fetch weights. One key per pair serves both directions, and disabling a peer revokes it both ways. Keys resolve through the existing KMS layer, so config can hold `env://NAME` rather than a secret. They resolve at startup, so a bad reference aborts the server instead of failing the first sync at 3am.
+
+  Transfers are sealed by default with the same `AIMVSEAL` envelope used for cloud uploads, keyed by `$aimodelvault_FEDERATION_PASSPHRASE` (read from the environment, never the config file). TLS protects the hop; this protects the object, so a peer's reverse proxy, request log, or on-disk cache never holds a readable model. An unsealed model arriving while sealing is on is **refused rather than stored**, so a peer cannot downgrade a transfer by sending plaintext.
+
+  The routes are not registered at all when federation is off — an unauthenticated caller gets a 404 rather than a 401 confirming the endpoint exists. When it is on, `aim serve` unlocks the vault at startup from `$aimodelvault_PASSPHRASE`, because peers hold the federation key and never the vault passphrase; without that every peer request failed until a human POSTed to `/auth/token`.
+
+### Fixed
+
+- **A tampered audit proof verified as valid.** `BlockchainAudit::verify_proof` walked the Merkle path from a `leaf_hash` carried *inside* the proof and never checked that hash came from the entry beside it. Rewriting `proof.entry` — changing a model version, flipping the `success` flag — left a proof that still passed. A tamper-evidence mechanism that accepts tampering is worse than none, since it converts "unverified" into "verified". The leaf is now recomputed from the entry. Found by editing a proof by hand and watching it pass; covered by a regression test that alters an entry and one that flips only the boolean.
+
+- **`verify_proof` panicked on a crafted proof.** The block-chain walk used `0..block_chain.len() - 1`, which underflows on an empty chain. That function parses a JSON file supplied by whoever runs `aim chain verify-proof`, so malformed input crashed instead of reporting invalid.
+
+- **Federation sync never converged.** `add_version` mints a checkpoint id from the model name, local version number, and current time, so a received copy got an id its sender had never seen. The next sync found the sender's version still "missing" and transferred it again — every run duplicating the model on both nodes, without bound. A received version now keeps the id it arrived with (recorded as `federation_origin_checkpoint_id` and advertised in place of the local one), which is what gives a version one identity across the federation. Verified against two live nodes: one transfer, then zeros on every subsequent sync, in both directions, with bytes identical to the original.
+
+- `FederationSettings` derived `Default`, which made `seal_transfers` **false** while the serde default said true — models would have shipped in the clear depending on which path constructed the struct. Now hand-written, with a test pinning it.
+
 ## [4.3.0] - 2026-08-03
 
 ### Added

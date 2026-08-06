@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
+use crate::blockchain::BlockchainAudit;
 use crate::error::Result;
 
 /// Maximum audit log size before rotation (10 MiB).
@@ -76,6 +78,14 @@ pub struct AuditEntry {
 /// Audit logger
 pub struct AuditLogger {
     log_file: PathBuf,
+    /// Optional hash-linked mirror of every entry written through [`Self::log`].
+    ///
+    /// Deliberately owned here rather than by `Vault`: `log` is the single
+    /// choke point every helper routes through, so a call site cannot record
+    /// to the plain log while skipping the chain. `Mutex` because
+    /// [`BlockchainAudit::add_entry`] needs `&mut self` and `log` takes
+    /// `&self`.
+    chain: Option<Mutex<BlockchainAudit>>,
 }
 
 impl AuditLogger {
@@ -88,7 +98,29 @@ impl AuditLogger {
 
         Ok(Self {
             log_file: log_path.to_path_buf(),
+            chain: None,
         })
+    }
+
+    /// Create an audit logger that also mirrors entries into a blockchain.
+    ///
+    /// `block_size` is entries per block; see
+    /// [`SecuritySettings::blockchain_block_size`](crate::config::SecuritySettings::blockchain_block_size)
+    /// for why 1 is the default.
+    pub fn with_chain(log_path: &Path, chain_dir: &Path, block_size: usize) -> Result<Self> {
+        let mut logger = Self::new(log_path)?;
+        // A zero block size would make `add_entry` finalize on every call via
+        // `len() >= 0` while also never batching -- and `finalize_block` on an
+        // empty pending set returns None, so entries would round-trip through
+        // an empty block. Clamp instead of surprising the operator.
+        let block_size = block_size.max(1);
+        logger.chain = Some(Mutex::new(BlockchainAudit::new(chain_dir, block_size)?));
+        Ok(logger)
+    }
+
+    /// Borrow the blockchain mirror, if this logger has one.
+    pub fn chain(&self) -> Option<&Mutex<BlockchainAudit>> {
+        self.chain.as_ref()
     }
 
     /// Log an audit event
@@ -105,6 +137,16 @@ impl AuditLogger {
         crate::permissions::restrict_file(&self.log_file)?;
         let json = serde_json::to_string(&entry)?;
         writeln!(file, "{}", json)?;
+
+        // Mirror into the chain after the log write succeeds. Ordering matters:
+        // the plain log is the primary record, and a chain failure must not be
+        // able to lose an entry that would otherwise have been written.
+        if let Some(chain) = &self.chain {
+            let mut chain = chain
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            chain.add_entry(entry)?;
+        }
 
         Ok(())
     }
@@ -216,6 +258,27 @@ impl AuditLogger {
         }
 
         Ok(entries)
+    }
+}
+
+impl Drop for AuditLogger {
+    /// Flush any entries still pending in the chain.
+    ///
+    /// Only does work when `blockchain_block_size > 1`; at the default of 1
+    /// every entry is already finalized inline. This narrows the loss window
+    /// on a clean exit but cannot close it -- a crash or `SIGKILL` still takes
+    /// whatever is pending, which is why the default is 1.
+    fn drop(&mut self) {
+        let Some(chain) = &self.chain else { return };
+        let mut chain = chain
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Err(err) = chain.finalize_block() {
+            // Drop cannot propagate, and swallowing this would mean losing
+            // audit evidence silently -- the one failure mode this feature
+            // exists to prevent.
+            eprintln!("warning: failed to finalize pending audit block: {err}");
+        }
     }
 }
 
@@ -357,7 +420,10 @@ mod tests {
         // Covers the early-return when log_file doesn't exist
         let temp_dir = tempfile::tempdir().unwrap();
         let log_path = temp_dir.path().join("nonexistent.log");
-        let logger = AuditLogger { log_file: log_path };
+        let logger = AuditLogger {
+            log_file: log_path,
+            chain: None,
+        };
         let entries = logger.read_entries(None).unwrap();
         assert!(entries.is_empty());
     }

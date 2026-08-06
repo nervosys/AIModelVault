@@ -36,6 +36,11 @@ pub struct AppState {
     pub config: ApiConfig,
     /// Per-IP rate limiter for auth endpoints.
     pub auth_rate_limiter: RateLimiter,
+    /// Vault configuration, kept for the settings the federation endpoints
+    /// consult on every request (accepted peer keys, sealing).
+    pub vault_config: VaultConfig,
+    /// Federation manifest generator; `None` when federation is disabled.
+    pub federation: Option<crate::federation::FederationManager>,
 }
 
 /// Simple sliding-window rate limiter keyed by IP address.
@@ -178,6 +183,27 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/vaults/:name/activate", post(routes::vault_activate))
         .with_state(state.clone());
 
+    // Registered only when federation is enabled, so a default server does not
+    // expose model-serving paths at all — an unauthenticated 404 rather than a
+    // 401 that confirms the endpoint exists.
+    let federation_routes = if state.vault_config.federation.enabled {
+        Router::new()
+            .route(
+                "/federation/manifest",
+                get(super::federation_routes::manifest),
+            )
+            .route(
+                "/federation/models/:name/versions/:checkpoint_id",
+                get(super::federation_routes::get_version)
+                    .put(super::federation_routes::put_version),
+            )
+            .with_state(state.clone())
+    } else {
+        Router::new()
+    };
+
+    let api = api.merge(federation_routes);
+
     let dashboard = if state.config.enable_dashboard {
         Router::new().route("/", get(routes::dashboard_index))
     } else {
@@ -297,11 +323,57 @@ pub async fn serve(vault_config: VaultConfig, api_config: ApiConfig) -> Result<(
         );
     }
 
-    let vault = Vault::new(Some(vault_config))?;
+    // Build the federation manager before the vault takes ownership of the
+    // config. Resolving peer keys here means a bad KMS reference aborts
+    // startup instead of failing the first sync at 3am.
+    let federation = if vault_config.federation.enabled {
+        let manager_config =
+            crate::federation_transport::to_manager_config(&vault_config.federation)?;
+        let state_dir = vault_config.dirs.data_dir.join("federation");
+        let peers = manager_config.peers.len();
+        let manager = crate::federation::FederationManager::new(manager_config, state_dir)?;
+        eprintln!(
+            "federation: enabled, serving /api/v1/federation/* to {peers} configured peer(s)"
+        );
+        if !vault_config.federation.seal_transfers {
+            eprintln!(
+                "warning: federation.seal_transfers is off — models will be sent to peers \
+                 unencrypted, protected only by the transport"
+            );
+        }
+        Some(manager)
+    } else {
+        None
+    };
+
+    let state_config = vault_config.clone();
+    let mut vault = Vault::new(Some(vault_config))?;
+
+    // Unlock at startup when federation is on and a passphrase is available.
+    //
+    // Peers authenticate with the shared federation key and never hold the
+    // vault passphrase, so without this every peer request 500s until a human
+    // POSTs to /auth/token. Scoped to federation deliberately: a plain `aim
+    // serve` keeps the existing behaviour of starting locked.
+    if state_config.federation.enabled {
+        match crate::federation_transport::startup_passphrase()? {
+            Some(passphrase) => {
+                vault.unlock(passphrase.as_bytes().to_vec())?;
+                eprintln!("federation: vault unlocked at startup to serve peer requests");
+            }
+            None => eprintln!(
+                "warning: federation is enabled but ${} is unset — the vault starts \
+                 locked and peer requests will fail until it is unlocked via /auth/token",
+                crate::federation_transport::VAULT_PASSPHRASE_ENV
+            ),
+        }
+    }
     let state = Arc::new(AppState {
         vault: RwLock::new(vault),
         config: api_config.clone(),
         auth_rate_limiter: RateLimiter::new(5, Duration::from_secs(60)),
+        vault_config: state_config,
+        federation,
     });
 
     let router = create_router(state.clone()).into_make_service_with_connect_info::<SocketAddr>();

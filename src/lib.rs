@@ -24,6 +24,7 @@ pub mod download;
 pub mod error;
 pub mod evaluation;
 pub mod federation;
+pub mod federation_transport;
 pub mod formats;
 pub mod gc;
 pub mod gguf;

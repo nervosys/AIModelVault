@@ -538,6 +538,20 @@ impl BlockchainAudit {
         self.latest_block.as_ref().map(|b| b.index + 1).unwrap_or(0)
     }
 
+    /// Entries accepted but not yet written into a block.
+    ///
+    /// These live in memory only: they are not on disk and not covered by
+    /// [`Self::verify_chain`] until [`Self::finalize_block`] runs. A non-zero
+    /// count is exactly the amount of audit evidence a crash would lose.
+    pub fn pending_count(&self) -> usize {
+        self.pending_entries.len()
+    }
+
+    /// Entries per block for this chain.
+    pub fn block_size(&self) -> usize {
+        self.block_size
+    }
+
     /// Verify entire chain integrity
     pub fn verify_chain(&self) -> ChainVerification {
         let mut result = ChainVerification {
@@ -641,16 +655,42 @@ impl BlockchainAudit {
     pub fn verify_proof(proof: &AuditProof) -> ProofVerification {
         let mut issues = Vec::new();
 
+        // Bind the claimed entry to the leaf the Merkle path starts from.
+        //
+        // `MerkleTree::verify_proof` walks from `merkle_proof.leaf_hash` to the
+        // root, but that leaf hash travels *inside* the proof. Without this
+        // check the entry is unbound: swapping `proof.entry` for arbitrary
+        // content leaves an otherwise-valid proof, so a tampered audit record
+        // verifies clean. Recompute the leaf the same way `generate_proof`
+        // built it -- sha256 of the serialized `BlockEntry`.
+        match serde_json::to_vec(&proof.entry) {
+            Ok(entry_json) => {
+                let recomputed = sha256(&entry_json);
+                if recomputed != proof.merkle_proof.leaf_hash {
+                    issues.push(
+                        "Entry does not match the proof's leaf hash (entry was altered)".into(),
+                    );
+                }
+            }
+            Err(e) => issues.push(format!("Entry could not be serialized for hashing: {e}")),
+        }
+
         // Verify Merkle proof
         if !MerkleTree::verify_proof(&proof.merkle_proof) {
             issues.push("Merkle proof invalid".into());
         }
 
-        // Verify block chain to genesis
-        for i in 0..proof.block_chain.len() - 1 {
-            let current = &proof.block_chain[i];
-            let prev = &proof.block_chain[i + 1];
-
+        // Verify block chain to genesis.
+        //
+        // `windows(2)` rather than `0..len() - 1`: this function parses a proof
+        // file supplied by whoever runs `aim chain verify-proof`, and an empty
+        // `block_chain` made that subtraction underflow and panic on untrusted
+        // input.
+        if proof.block_chain.is_empty() {
+            issues.push("Proof carries no block chain".into());
+        }
+        for pair in proof.block_chain.windows(2) {
+            let (current, prev) = (&pair[0], &pair[1]);
             if current.prev_hash != prev.hash {
                 issues.push(format!("Block chain broken at index {}", current.index));
             }
@@ -952,6 +992,93 @@ mod tests {
         // Verify the proof
         let verification = BlockchainAudit::verify_proof(&proof);
         assert!(verification.valid);
+    }
+
+    /// A proof must bind its entry, not just carry one.
+    ///
+    /// Regression: `verify_proof` walked the Merkle path from the proof's own
+    /// `leaf_hash` without checking that hash came from `proof.entry`, so
+    /// rewriting the entry left a proof that still verified clean -- a tamper
+    /// check that accepted tampering.
+    #[test]
+    fn test_verify_proof_rejects_an_altered_entry() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 1).unwrap();
+
+        audit
+            .add_entry(AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "Model 'demo' version 1 stored".into(),
+                model_name: Some("demo".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            })
+            .unwrap();
+
+        let proof = audit.generate_proof(1, 0).unwrap();
+        assert!(
+            BlockchainAudit::verify_proof(&proof).valid,
+            "untouched proof should verify"
+        );
+
+        // Rewrite history: same shape, different claim.
+        let mut forged = proof.clone();
+        forged.entry.audit.description = "Model 'demo' version 9 stored".into();
+        forged.entry.audit.version = Some(9);
+
+        let verification = BlockchainAudit::verify_proof(&forged);
+        assert!(
+            !verification.valid,
+            "an altered entry must not verify: {:?}",
+            verification.issues
+        );
+
+        // Flipping `success` is the subtler forgery -- it turns a failed
+        // operation into a successful one without changing any text.
+        let mut flipped = proof.clone();
+        flipped.entry.audit.success = !proof.entry.audit.success;
+        assert!(
+            !BlockchainAudit::verify_proof(&flipped).valid,
+            "flipping the success flag must not verify"
+        );
+    }
+
+    /// `verify_proof` parses attacker-supplied JSON; it must not panic on it.
+    ///
+    /// Regression: the block-chain walk used `0..len() - 1`, which underflows
+    /// on an empty `block_chain` and panicked instead of reporting invalid.
+    #[test]
+    fn test_verify_proof_rejects_empty_block_chain_without_panicking() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut audit = BlockchainAudit::new(temp_dir.path(), 1).unwrap();
+
+        audit
+            .add_entry(AuditEntry {
+                timestamp: Utc::now(),
+                event_type: AuditEventType::ModelStored,
+                description: "Entry".into(),
+                model_name: Some("m".into()),
+                version: Some(1),
+                success: true,
+                metadata: None,
+            })
+            .unwrap();
+
+        let mut proof = audit.generate_proof(1, 0).unwrap();
+        proof.block_chain.clear();
+
+        let verification = BlockchainAudit::verify_proof(&proof);
+        assert!(!verification.valid);
+        assert!(
+            verification
+                .issues
+                .iter()
+                .any(|i| i.contains("no block chain")),
+            "expected an explicit complaint, got {:?}",
+            verification.issues
+        );
     }
 
     #[test]

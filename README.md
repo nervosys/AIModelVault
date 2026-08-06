@@ -207,7 +207,7 @@ All features below are fully implemented, tested, and exposed via both CLI and l
 | Feature            | CLI              | Notes                                             |
 | ------------------ | ---------------- | ------------------------------------------------- |
 | Audit log          | (automatic)      | Every operation; structured, append-only          |
-| Blockchain audit   | —                | Merkle-tree-proofed append-only chain             |
+| Blockchain audit   | `aim chain`      | Merkle-proofed hash chain; opt-in, mirrors the audit log |
 | Model cards        | (via API)        | Google / HuggingFace standard, JSON/YAML/Markdown |
 | Compliance check   | `aim compliance` | FIPS 140-3, CMMC 2.0 L2, MITRE ATT&CK             |
 | Benchmark metadata | `aim benchmark`  | MMLU, HellaSwag, etc., per model version          |
@@ -238,7 +238,7 @@ All features below are fully implemented, tested, and exposed via both CLI and l
 | Python bindings      | `pip install` (PyO3)  | `--features python`                                |
 | Engine interop       | `aim register`        | Ollama (`ollama create`) + LM Studio               |
 | Model download       | `aim pull`            | HuggingFace, Ollama, URLs (+ SHA-256 verification) |
-| Federation           | library               | Vector-clock peer sync                             |
+| Federation           | `aim federation`      | Vector-clock peer sync; opt-in, sealed in transit  |
 | RAG / Knowledge base | `aim database`        | SQLite / Sled / Qdrant backends                    |
 | `aimv://` URI scheme | library               | Agent-addressable vault resources                  |
 | Agent introspection  | `aim introspect`      | JSON / YAML / JSON-LD CLI schema                   |
