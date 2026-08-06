@@ -1,0 +1,47 @@
+version: 2
+
+# Security updates work off the advisory database and need no config; this file
+# only adds the routine version-update stream. Everything is grouped so a quiet
+# week produces one PR per ecosystem rather than a dozen.
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      cargo-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # Majors arrive as individual PRs: they can move the MSRV or break the
+    # feature-gated build, which is worth reviewing one crate at a time.
+
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
