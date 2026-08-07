@@ -124,7 +124,7 @@ hex = "0.4"
 tempfile = "3.8"
 # Model format support (optional features)
 # These will be optional to reduce binary size
-safetensors = { version = "0.4", optional = true }
+safetensors = { version = "0.8", optional = true }
 ndarray = { version = "0.15", optional = true }
 
 # UUID generation
