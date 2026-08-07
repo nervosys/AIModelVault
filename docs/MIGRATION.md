@@ -176,7 +176,10 @@ aim serve --host 0.0.0.0 --port 8080
 
 ## Docker Deployment (New)
 
-v1.0.0 introduces first-class Docker support:
+> **Removed in 4.5.0.** The Dockerfile, published images, and Helm chart no
+> longer exist. This section is kept as a record of what v1.0.0 shipped.
+
+v1.0.0 introduced first-class Docker support:
 
 ```bash
 # Build locally
@@ -206,7 +209,9 @@ docker build --target debian -t aim:debian .
 
 ## Kubernetes Deployment (New)
 
-A Helm chart is provided at `deploy/helm/ai-model-vault/`:
+> **Removed in 4.5.0.** The chart no longer exists; this records v1.0.0.
+
+v1.0.0 provided a Helm chart at `deploy/helm/ai-model-vault/`:
 
 ```bash
 # Install

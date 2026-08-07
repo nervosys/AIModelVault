@@ -25,10 +25,6 @@ cargo build --release
 # With ML extras:
 pip install "aimodelvault[ml]"`}</CodeBlock>
 
-      <h3 className="text-lg font-semibold mt-6 mb-2">Docker</h3>
-      <CodeBlock language="bash">{`docker pull ghcr.io/nervosys/ai-model-vault:1.1.0
-docker run --rm -v ./vault:/data ghcr.io/nervosys/ai-model-vault:1.1.0 aim --help`}</CodeBlock>
-
       <h2 className="text-2xl font-bold mt-10 mb-4" id="first-vault">Create Your First Vault</h2>
       <CodeBlock language="bash">{`# Initialize a new vault
 aim init my-vault

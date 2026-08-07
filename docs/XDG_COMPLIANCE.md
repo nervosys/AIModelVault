@@ -405,9 +405,11 @@ echo $XDG_DATA_HOME    # Falls back to ~/.local/share
 echo $XDG_CACHE_HOME   # Falls back to ~/.cache
 ```
 
-### Q: Does this work in Docker containers?
+### Q: Does this work in containers?
 
-**A:** Yes! XDG directories work in containers:
+**A:** Yes. XDG directories work in containers, though there is no first-party
+image — the `Dockerfile` and Helm chart were removed in 4.5.0, so this applies
+to an image you build yourself:
 
 ```dockerfile
 # Set custom XDG paths for container

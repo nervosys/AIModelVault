@@ -452,18 +452,13 @@ sudo ./deploy/systemd/install.sh \
 shred -u /tmp/hdr
 ```
 
-### Kubernetes / Helm
-
-```bash
-kubectl create secret generic aim-otlp \
-  --from-literal=headers='Authorization=Bearer <token>'
-helm install aim deploy/helm/ai-model-vault/ \
-  --set telemetry.otlp.headersSecret.existingSecret=aim-otlp
-```
-
-The chart never takes a credential through `values.yaml`, which is committed and printed back by `helm get values`. The JWT secret is generated into a Secret if you don't supply one.
-
 Details: [docs/TELEMETRY.md](docs/TELEMETRY.md#service-scoped-configuration) · [docs/SECURITY_HARDENING.md](docs/SECURITY_HARDENING.md).
+
+> **Containers were removed in 4.5.0.** The `Dockerfile`, the image published
+> to `ghcr.io`, and the Helm chart are gone. `aim` ships as a static binary,
+> a crate, and a Python wheel; run it directly or under systemd. Images
+> already published to `ghcr.io` remain pullable but receive no further
+> updates.
 
 ---
 

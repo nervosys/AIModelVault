@@ -39,13 +39,18 @@ export default function SecurityHardeningPage() {
         a reverse proxy with TLS termination for production use.
       </Callout>
 
-      <h2 className="text-2xl font-bold mt-10 mb-4" id="docker-sec">Docker Security</h2>
+      <h2 className="text-2xl font-bold mt-10 mb-4" id="container-sec">Container Security</h2>
+      <p className="text-[var(--color-text-secondary)] mb-2">
+        There is no first-party image — the Dockerfile and Helm chart were
+        removed in 4.5.0. If you build your own, keep the properties the
+        removed image had:
+      </p>
       <ul className="space-y-2 text-[var(--color-text-secondary)]">
-        <li>• Images run as non-root user (UID 1000) by default</li>
-        <li>• Read-only root filesystem when used with Kubernetes</li>
+        <li>• Run as a non-root user</li>
+        <li>• Read-only root filesystem, with the vault directory mounted as a volume</li>
         <li>• All Linux capabilities dropped</li>
+        <li>• Inject secrets at runtime — never bake them into a layer</li>
         <li>• Scan images regularly with <code className="text-xs px-1 bg-[var(--color-bg-secondary)] rounded">trivy</code> or <code className="text-xs px-1 bg-[var(--color-bg-secondary)] rounded">grype</code></li>
-        <li>• Pin image versions — never use <code className="text-xs px-1 bg-[var(--color-bg-secondary)] rounded">:latest</code> in production</li>
       </ul>
 
       <h2 className="text-2xl font-bold mt-10 mb-4" id="dependencies">Dependency Auditing</h2>

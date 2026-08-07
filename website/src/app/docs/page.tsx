@@ -37,7 +37,7 @@ export default function DocsIndex() {
         <li className="flex items-start gap-2"><span>•</span> <span><strong>REST API</strong> — 14 endpoints with JWT auth, embedded web dashboard, and OpenAPI spec</span></li>
         <li className="flex items-start gap-2"><span>•</span> <span><strong>Python Bindings</strong> — Native PyO3 bindings for seamless Python integration</span></li>
         <li className="flex items-start gap-2"><span>•</span> <span><strong>Cloud Storage</strong> — AWS S3 and Azure Blob Storage with end-to-end encryption</span></li>
-        <li className="flex items-start gap-2"><span>•</span> <span><strong>Docker & K8s</strong> — Multi-stage Dockerfile and production Helm chart</span></li>
+        <li className="flex items-start gap-2"><span>•</span> <span><strong>Federation</strong> — Sync models between peer nodes, sealed in transit</span></li>
         <li className="flex items-start gap-2"><span>•</span> <span><strong>Model Download</strong> — Pull from HuggingFace Hub, Ollama registry, or URLs with SHA-256 verification</span></li>
         <li className="flex items-start gap-2"><span>•</span> <span><strong>Model Signing</strong> — HMAC-SHA256 signatures with detached .sig files for provenance</span></li>
         <li className="flex items-start gap-2"><span>•</span> <span><strong>Safety Scanning</strong> — Detect dangerous pickle opcodes and malicious patterns in model files</span></li>

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.0] - 2026-08-07
+
+### Removed
+
+- **Containers.** The `Dockerfile`, `.dockerignore`, the `docker.yml` workflow that published to `ghcr.io`, and the Helm chart under `deploy/helm/` are gone, along with the Docker and Kubernetes documentation pages and the chart-linting CI job.
+
+  Helm went with Docker rather than surviving it: the chart's only job was to deploy `ghcr.io/nervosys/ai-model-vault`, so without a Dockerfile it would have been a deployment path that could never obtain an image. Keeping it would have been worse than removing it — a chart that looks supported but cannot work.
+
+  `aim` continues to ship as a static binary for five targets, a crate, and a Python wheel. For a hardened service install, `deploy/systemd/install.sh` remains and is unaffected. Images already published to `ghcr.io` stay pullable but receive no further updates; nothing re-tags or deletes them.
+
+  Documentation that described containers as a supported path now says they were removed. `docs/MIGRATION.md` keeps its Docker and Kubernetes sections, annotated — it is a record of what v1.0.0 shipped, and rewriting history there would make it a worse migration guide.
+
+### Fixed
+
+- **`aimodelvault.__version__` reported the previous release.** The Python package carries its own version constant, separate from `Cargo.toml` and `pyproject.toml`, and the 4.4.0 bump missed it — so the published 4.4.0 wheel reports `4.3.0`. Cosmetic, but wrong. The existing `test_version_matches_crate` drift test caught it; it is now correct and all three constants move together.
+
 ## [4.4.0] - 2026-08-06
 
 ### Added

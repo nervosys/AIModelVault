@@ -365,8 +365,8 @@ Network-accessible vault management.
 - [x] Security audit by third party
 - [x] crates.io publication
 - [x] PyPI publication
-- [x] Docker images (alpine, debian)
-- [x] Kubernetes Helm chart
+- [~] Docker images (alpine, debian) — shipped in 1.0, **removed in 4.5.0**
+- [~] Kubernetes Helm chart — shipped in 1.0, **removed in 4.5.0**
 - [x] Comprehensive migration guide from v0.x
 - [x] Long-term support commitment
 

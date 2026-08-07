@@ -209,31 +209,13 @@ The unit uses `EnvironmentFile=`, not `Environment=`. `Environment=` values are
 visible in `systemctl show` and `systemd-analyze dump` to any local user, which
 for a bearer token means every account on the machine can read it.
 
-### Kubernetes / Helm
+### Containers and Kubernetes
 
-Create the credential Secret out of band — never in `values.yaml`, which is
-committed and printed back by `helm get values`:
-
-```bash
-kubectl create secret generic aim-otlp \
-  --from-literal=headers='Authorization=Bearer <token>'
-```
-
-```yaml
-telemetry:
-  enabled: true
-  otlp:
-    endpoint: "https://collector.example.com/otlp"
-    protocol: "http/protobuf"
-    serviceName: "ai-model-vault"
-    headersSecret:
-      existingSecret: "aim-otlp"
-      key: headers
-```
-
-The chart injects these into the Deployment's containers only. Two releases in
-the same cluster can report to different collectors, and nothing else on the
-node inherits the settings.
+The `Dockerfile` and Helm chart were **removed in 4.5.0**, so there is no
+first-party container image or chart to configure. If you run `aim` in a
+container you build yourself, the same rule applies as everywhere else: pass
+`OTEL_EXPORTER_OTLP_HEADERS` from a mounted secret or an injected environment
+variable, never a baked-in image layer or a committed values file.
 
 ## Rotating a leaked token
 
@@ -242,9 +224,9 @@ compromised if it has ever appeared in a shell history, a chat window, a CI
 log, a screenshot, or a commit — including one later amended or force-pushed,
 since the object usually survives in the reflog and on any fork.
 
-Rotate at the provider, then update `/etc/aim/server.env` or the Kubernetes
-Secret. No application change is needed; the value is read from the environment
-at process start.
+Rotate at the provider, then update `/etc/aim/server.env` or whatever supplies
+the environment where `aim` runs. No application change is needed; the value is
+read from the environment at process start.
 
 See [src/telemetry.rs](https://github.com/nervosys/AIModelVault/blob/master/src/telemetry.rs)
 and [src/telemetry_otlp.rs](https://github.com/nervosys/AIModelVault/blob/master/src/telemetry_otlp.rs).

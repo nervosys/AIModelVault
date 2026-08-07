@@ -391,69 +391,18 @@ cargo clippy -- -D warnings
 
 ## 10. Production Deployment
 
-### Containerization (Docker)
+Containers were removed in 4.5.0 — there is no first-party `Dockerfile`, image,
+or Helm chart. `aim` ships as a static binary, a crate, and a Python wheel.
 
-```dockerfile
-FROM rust:1.85-slim-bookworm as builder
+For a hardened service install, use `deploy/systemd/install.sh`: it creates the
+`aim` system user and `/var/lib/aim`, writes `/etc/aim/server.env` at `0600`
+root-owned, and installs a unit that reads credentials via `EnvironmentFile=`
+rather than `Environment=` — the latter is readable by any local user through
+`systemctl show`. See [TELEMETRY.md](TELEMETRY.md#service-scoped-configuration).
 
-# Build with security features
-WORKDIR /app
-COPY . .
-RUN cargo build --release --features cloud
-
-FROM debian:bookworm-slim
-
-# Install security updates
-RUN apt-get update && \
-    apt-get install -y ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
-RUN useradd -m -u 1000 aimodelvault
-
-# Copy binary
-COPY --from=builder /app/target/release/aim /usr/local/bin/
-
-# Set permissions
-RUN chown -R aimodelvault:aimodelvault /home/aimodelvault
-USER aimodelvault
-
-ENTRYPOINT ["aim"]
-```
-
-### Kubernetes Deployment
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: aimodelvault
-spec:
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
-  containers:
-  - name: aimodelvault
-    image: aimodelvault:0.1.0
-    securityContext:
-      allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
-      capabilities:
-        drop:
-        - ALL
-    resources:
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
-    volumeMounts:
-    - name: vault-data
-      mountPath: /home/aimodelvault/.local/share/aimodelvault
-  volumes:
-  - name: vault-data
-    persistentVolumeClaim:
-      claimName: aimodelvault-pvc
-```
+If you build your own container, keep the properties the removed image had: run
+as a non-root user, mount the vault directory as a volume rather than baking it
+into a layer, and inject secrets at runtime instead of at build time.
 
 ---
 

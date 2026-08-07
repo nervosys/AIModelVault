@@ -59,8 +59,6 @@ const navigation: NavSection[] = [
   {
     title: "Deployment",
     items: [
-      { label: "Docker", href: "/docs/docker" },
-      { label: "Kubernetes", href: "/docs/kubernetes" },
       { label: "Migration Guide", href: "/docs/migration" },
     ],
   },

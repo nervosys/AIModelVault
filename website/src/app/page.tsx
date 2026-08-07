@@ -123,10 +123,10 @@ export default function HomePage() {
             href="/docs/python"
           />
           <FeatureCard
-            icon="🐳"
-            title="Docker & Kubernetes"
-            description="Production-ready Dockerfile and Helm chart with hardened security contexts."
-            href="/docs/docker"
+            icon="🛡️"
+            title="Hardened systemd Install"
+            description="One script provisions the service user, 0600 root-owned credentials, and a locked-down unit."
+            href="/docs/security-hardening"
           />
           <FeatureCard
             icon="☁️"
