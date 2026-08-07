@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.1] - 2026-08-07
+
+### Changed
+
+- **jsonwebtoken 9.3 → 11.0**, with an explicit crypto provider.
+
+  The bump alone is a trap. From 11.0 the crate requires exactly one of the `rust_crypto` / `aws_lc_rs` features; without one it **compiles cleanly and panics at runtime** on the first sign or verify — *"Could not automatically determine the process-level CryptoProvider"*. Dependabot's PR was the bare version bump, so merging it on a green build would have shipped an API where every authenticated request crashes the handler.
+
+  Verified by doing it: in an isolated worktree the bare bump passed `cargo check`, then failed 6 of 10 auth tests, including basic token creation. With `default-features = false, features = ["rust_crypto"]` all 10 pass — including expired-token rejection and invalid-secret rejection, which confirms `Validation::default()` still validates `exp` and the signature.
+
+  `rust_crypto` over `aws_lc_rs`: it matches the pure-Rust posture of the rest of the crypto stack (`aes-gcm`, `argon2`) and avoids requiring a C toolchain and cmake on all five release targets.
+
+  This is the case for reading a major bump rather than trusting a green check — the compiler had nothing to say about it.
+
 ## [4.6.0] - 2026-08-07
 
 ### Removed
