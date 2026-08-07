@@ -11,7 +11,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1 — Builder (uses Rust slim to compile the binary)
 # ---------------------------------------------------------------------------
-FROM rust:1.89-slim-bookworm AS builder
+FROM rust:1.96-slim-bookworm AS builder
 
 ARG FEATURES=""
 
