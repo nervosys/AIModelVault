@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0] - 2026-08-07
+
+### Removed
+
+- **The `safetensors` and `ndarray` crates.** Both were optional dependencies enabled by default that no code ever called: `safetensors::` and `ndarray::` appear in no `.rs` file in the repository, and neither feature gated a single `#[cfg]`. SafeTensors support is real and unaffected — it is implemented in `src/formats.rs` and never used the upstream crate.
+
+  Every default install compiled and linked them for nothing. Dropping them takes the default dependency graph from **476 to 464 crates**, along with their build time, binary size, and advisory surface. Two of the open Dependabot PRs existed only because of crates the project does not use.
+
+  Found while assessing whether a `safetensors` 0.4 → 0.8 major bump was safe to merge. It was safe in the sense that nothing could break, which turned out to be the more interesting finding.
+
+  The feature *names* are kept as no-ops, so `--features safetensors` and `--features ndarray` still resolve rather than failing the build for anyone who passes them. `default` and `full` are unchanged.
+
 ## [4.5.0] - 2026-08-07
 
 ### Removed

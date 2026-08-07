@@ -1,6 +1,6 @@
 [package]
 name = "ai-model-vault"
-version = "4.5.0"
+version = "4.6.0"
 edition = "2021"
 rust-version = "1.89"
 authors = ["NERVOSYS AI Team"]
@@ -122,10 +122,14 @@ clap = { version = "4.4", features = ["derive", "env"] }
 rpassword = "7.3"
 hex = "0.4"
 tempfile = "3.8"
-# Model format support (optional features)
-# These will be optional to reduce binary size
-safetensors = { version = "0.4", optional = true }
-ndarray = { version = "0.15", optional = true }
+# NOTE: the `safetensors` and `ndarray` crates were removed in 4.6.0. Both were
+# optional dependencies enabled by default that no code ever called -- there is
+# no `safetensors::` or `ndarray::` path anywhere in the tree, and neither
+# feature gated any `#[cfg]`. They compiled into every default install, adding
+# ~25 transitive crates plus their advisory surface, in exchange for nothing.
+# SafeTensors parsing is implemented in `src/formats.rs` and never used the
+# upstream crate. The feature *names* are kept below as no-ops so that
+# `--features safetensors` keeps resolving for anyone who passes it.
 
 # UUID generation
 uuid = { version = "1.6", features = ["v4", "serde"] }
@@ -184,6 +188,12 @@ predicates = "3.1.4"
 [features]
 default = ["safetensors", "ndarray", "sqlite"]
 full = ["safetensors", "ndarray", "sqlite", "sled", "vector-db"]
+# Kept as no-ops after the crates behind them were removed in 4.6.0, so an
+# existing `--features safetensors` or `--features ndarray` still resolves
+# instead of failing the build. SafeTensors support itself is unaffected: it
+# lives in `src/formats.rs` and never used the upstream crate.
+safetensors = []
+ndarray = []
 # Database features
 sqlite = ["rusqlite"]
 kv-store = ["sled"]
