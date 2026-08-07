@@ -38,7 +38,7 @@ RUN if [ -z "$FEATURES" ]; then \
 # ---------------------------------------------------------------------------
 # Stage 2a — Alpine runtime (default, ~12 MB image)
 # ---------------------------------------------------------------------------
-FROM alpine:3.20 AS alpine
+FROM alpine:3.24 AS alpine
 
 RUN apk add --no-cache ca-certificates tini && \
     addgroup -g 1000 aim && \
